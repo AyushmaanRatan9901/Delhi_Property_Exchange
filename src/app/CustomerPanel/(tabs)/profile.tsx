@@ -97,7 +97,7 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: moderateScale(60) },
+          { paddingBottom: moderateScale(90) },
         ]}
       >
         {/* Velvet Header Section */}

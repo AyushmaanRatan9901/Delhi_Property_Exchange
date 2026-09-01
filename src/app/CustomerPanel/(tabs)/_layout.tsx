@@ -1,63 +1,9 @@
+import React from "react";
 import { Tabs } from "expo-router";
-import { NativeTabs } from "expo-router/unstable-native-tabs";
-import { Platform } from "react-native";
-import { FloatingTabBar, tabIcon } from "../../../components/FloatingTabBar";
-import { useResponsiveTheme } from "../../../constants/theme";
+import { FloatingTabBar, tabIcon, tabProfileAvatar } from "../../../components/FloatingTabBar";
 
 export default function CustomerTabsLayout() {
-  const { colors } = useResponsiveTheme();
-  const activeColor = colors.primary;
-
-  // iOS gets true native iOS system liquid-glass tabs (NativeTabs)
-  // Android gets our glassmorphic FloatingTabBar
-  return Platform.OS === "ios" ? (
-    <NativeTabs
-      tintColor={activeColor}
-      labelVisibilityMode="labeled"
-      blurEffect="systemChromeMaterial"
-      disableTransparentOnScrollEdge
-    >
-      <NativeTabs.Trigger name="index">
-        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          sf={{ default: "house", selected: "house.fill" }}
-          md="home"
-        />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="search">
-        <NativeTabs.Trigger.Label>Search</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          sf={{ default: "magnifyingglass", selected: "magnifyingglass" }}
-          md="search"
-        />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="saved">
-        <NativeTabs.Trigger.Label>Saved</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          sf={{ default: "heart", selected: "heart.fill" }}
-          md="favorite"
-        />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="requests">
-        <NativeTabs.Trigger.Label>Requests</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          sf={{ default: "calendar", selected: "calendar.badge.clock" }}
-          md="event"
-        />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="profile">
-        <NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          sf={{ default: "person", selected: "person.fill" }}
-          md="person"
-        />
-      </NativeTabs.Trigger>
-    </NativeTabs>
-  ) : (
+  return (
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -100,12 +46,14 @@ export default function CustomerTabsLayout() {
         }}
       />
 
-      {/* 5. Profile Tab */}
+      {/* 5. Profile Tab (Circular User Avatar Image with Focus Ring) */}
       <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: tabIcon("person", "ionicons"),
+          tabBarIcon: tabProfileAvatar(
+            "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=180&q=80"
+          ),
         }}
       />
     </Tabs>
