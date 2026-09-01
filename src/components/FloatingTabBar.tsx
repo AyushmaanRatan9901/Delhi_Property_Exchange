@@ -1,19 +1,22 @@
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
+import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { Tabs } from "expo-router";
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   Animated,
   ColorValue,
   Image,
   LayoutChangeEvent,
-  Platform,
+  Modal,
+  PanResponder,
   Pressable,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
-  PanResponder,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useResponsiveTheme } from "../constants/theme";
@@ -28,6 +31,34 @@ export type IconRenderer = (props: {
   color: ColorValue;
   size: number;
 }) => React.ReactNode;
+
+export interface AccountItem {
+  id: string;
+  username: string;
+  avatar: string;
+  subtitle?: string;
+  unreadCount?: number;
+  isActive?: boolean;
+}
+
+const DEFAULT_ACCOUNTS: AccountItem[] = [
+  {
+    id: "acc-1",
+    username: "ayushmaanratan",
+    avatar:
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=180&q=80",
+    isActive: true,
+  },
+  {
+    id: "acc-2",
+    username: "king_09724",
+    avatar:
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=180&q=80",
+    subtitle: "2 chats",
+    unreadCount: 2,
+    isActive: false,
+  },
+];
 
 /**
  * Helper to build iconic renderers from base name (outline when inactive, filled when active)
@@ -122,12 +153,13 @@ export function FloatingTabBar({
   descriptors,
   navigation,
 }: FloatingTabBarProps) {
-  const { colors, isDark, moderateScale, isTablet, wp } = useResponsiveTheme();
+  const { colors, isDark, moderateScale, isTablet, wp, spacing, radii } =
+    useResponsiveTheme();
   const insets = useSafeAreaInsets();
   const accent = colors.primary;
 
   const barHeight = Math.round(
-    Math.min(Math.max(moderateScale(62), 56), isTablet ? 72 : 66),
+    Math.min(Math.max(moderateScale(56), 52), isTablet ? 66 : 58),
   );
   const maxBarWidth = isTablet ? 560 : Math.min(wp(92), 430);
 
@@ -144,6 +176,11 @@ export function FloatingTabBar({
   });
   const [ready, setReady] = useState(false);
   const [dragHoverIndex, setDragHoverIndex] = useState<number | null>(null);
+
+  // Account Switcher & Add Account Modals State
+  const [accounts, setAccounts] = useState<AccountItem[]>(DEFAULT_ACCOUNTS);
+  const [accountModalVisible, setAccountModalVisible] = useState(false);
+  const [addAccountModalVisible, setAddAccountModalVisible] = useState(false);
 
   const moveIndicator = (key: string) => {
     const l = layouts.current[key];
@@ -252,137 +289,610 @@ export function FloatingTabBar({
     });
   };
 
+  const handleOpenAccountModal = () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch {
+      // noop
+    }
+    setAccountModalVisible(true);
+  };
+
+  const handleSelectAccount = (selectedId: string) => {
+    try {
+      Haptics.selectionAsync();
+    } catch {
+      // noop
+    }
+    setAccounts((prev) =>
+      prev.map((acc) => ({
+        ...acc,
+        isActive: acc.id === selectedId,
+      })),
+    );
+    const target = accounts.find((a) => a.id === selectedId);
+    setAccountModalVisible(false);
+    if (target) {
+      Alert.alert("Account Switched", `Logged in as @${target.username}`);
+    }
+  };
+
   return (
-    <View
-      pointerEvents="box-none"
-      style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 12) }]}
-    >
+    <>
       <View
-        ref={barContainerRef}
-        onLayout={handleBarLayout}
-        {...panResponder.panHandlers}
-        style={[
-          styles.shadowWrap,
-          {
-            width: maxBarWidth,
-            shadowColor: isDark ? "#000000" : "#0F172A",
-            shadowOpacity: isDark ? 0.35 : 0.08,
-          },
-        ]}
+        pointerEvents="box-none"
+        style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 12) }]}
       >
-        <BlurView
-          intensity={100}
-          tint={isDark ? "dark" : "light"}
+        <View
+          ref={barContainerRef}
+          onLayout={handleBarLayout}
+          {...panResponder.panHandlers}
           style={[
-            styles.blur,
+            styles.shadowWrap,
             {
-              height: barHeight,
-              borderRadius: barHeight / 2,
-              borderWidth: 1.2,
-              borderColor: isDark
-                ? "rgba(255, 255, 255, 0.25)"
-                : "rgba(255, 255, 255, 0.85)",
+              width: maxBarWidth,
+              shadowColor: isDark ? "#000000" : "#0F172A",
+              shadowOpacity: isDark ? 0.35 : 0.08,
             },
           ]}
         >
-          {/* Luminous liquid glass refraction layer */}
-          <LinearGradient
-            colors={
-              isDark
-                ? ["rgba(255, 255, 255, 0.08)", "rgba(255, 255, 255, 0.02)", "rgba(0, 0, 0, 0.15)"]
-                : ["rgba(255, 255, 255, 0.35)", "rgba(255, 255, 255, 0.08)", "rgba(255, 255, 255, 0.20)"]
-            }
-            style={StyleSheet.absoluteFill}
-          />
-
-          {/* Specular top glass prism reflection */}
-          <LinearGradient
-            colors={
-              isDark
-                ? ["rgba(255, 255, 255, 0.35)", "rgba(255, 255, 255, 0.08)", "rgba(255, 255, 255, 0)"]
-                : ["rgba(255, 255, 255, 0.90)", "rgba(255, 255, 255, 0.35)", "rgba(255, 255, 255, 0)"]
-            }
+          <BlurView
+            intensity={100}
+            tint={isDark ? "dark" : "light"}
             style={[
-              styles.topHighlight,
+              styles.blur,
               {
-                height: barHeight * 0.5,
-                borderTopLeftRadius: barHeight / 2,
-                borderTopRightRadius: barHeight / 2,
+                height: barHeight,
+                borderRadius: barHeight / 2,
+                borderWidth: 1.2,
+                borderColor: isDark
+                  ? "rgba(255, 255, 255, 0.25)"
+                  : "rgba(255, 255, 255, 0.85)",
               },
             ]}
-            pointerEvents="none"
-          />
+          >
+            {/* Luminous liquid glass refraction layer */}
+            <LinearGradient
+              colors={
+                isDark
+                  ? [
+                      "rgba(255, 255, 255, 0.08)",
+                      "rgba(255, 255, 255, 0.02)",
+                      "rgba(0, 0, 0, 0.15)",
+                    ]
+                  : [
+                      "rgba(255, 255, 255, 0.35)",
+                      "rgba(255, 255, 255, 0.08)",
+                      "rgba(255, 255, 255, 0.20)",
+                    ]
+              }
+              style={StyleSheet.absoluteFill}
+            />
 
-          {/* Sliding Liquid Glass Active Indicator Pill */}
-          {ready && (
-            <Animated.View
+            {/* Specular top glass prism reflection */}
+            <LinearGradient
+              colors={
+                isDark
+                  ? [
+                      "rgba(255, 255, 255, 0.35)",
+                      "rgba(255, 255, 255, 0.08)",
+                      "rgba(255, 255, 255, 0)",
+                    ]
+                  : [
+                      "rgba(255, 255, 255, 0.90)",
+                      "rgba(255, 255, 255, 0.35)",
+                      "rgba(255, 255, 255, 0)",
+                    ]
+              }
               style={[
-                styles.indicatorWrap,
-                { transform: [{ translateX: indicator.x }] },
+                styles.topHighlight,
+                {
+                  height: barHeight * 0.5,
+                  borderTopLeftRadius: barHeight / 2,
+                  borderTopRightRadius: barHeight / 2,
+                },
               ]}
-            >
+              pointerEvents="none"
+            />
+
+            {/* Sliding Liquid Glass Active Indicator Pill */}
+            {ready && (
               <Animated.View
                 style={[
-                  styles.indicator,
+                  styles.indicatorWrap,
+                  { transform: [{ translateX: indicator.x }] },
+                ]}
+              >
+                <Animated.View
+                  style={[
+                    styles.indicator,
+                    {
+                      width: indicator.w,
+                      borderRadius: barHeight,
+                      backgroundColor: isDark
+                        ? "rgba(255, 255, 255, 0.18)"
+                        : "rgba(16, 155, 161, 0.16)",
+                      borderWidth: 0,
+                    },
+                  ]}
+                />
+              </Animated.View>
+            )}
+
+            {/* Tab Icons Row */}
+            <View style={styles.row}>
+              {state.routes.map((route: any, index: number) => {
+                const descriptor = descriptors[route.key];
+                const focused =
+                  dragHoverIndex !== null
+                    ? dragHoverIndex === index
+                    : state.index === index;
+
+                const onPress = () => {
+                  const event = navigation.emit({
+                    type: "tabPress",
+                    target: route.key,
+                    canPreventDefault: true,
+                  });
+                  if (!focused && !event.defaultPrevented) {
+                    navigation.navigate(route.name, route.params);
+                  }
+                };
+
+                const onLongPress = () => {
+                  if (route.name === "profile") {
+                    handleOpenAccountModal();
+                  } else {
+                    navigation.emit({
+                      type: "tabLongPress",
+                      target: route.key,
+                    });
+                  }
+                };
+
+                return (
+                  <TabButton
+                    key={route.key}
+                    route={route}
+                    descriptor={descriptor}
+                    focused={focused}
+                    onPress={onPress}
+                    onLongPress={onLongPress}
+                    onLayout={(e: LayoutChangeEvent) => {
+                      const { x, width } = e.nativeEvent.layout;
+                      layouts.current[route.key] = { x, width };
+                      if (state.index === index) moveIndicator(route.key);
+                    }}
+                    accent={accent}
+                    barHeight={barHeight}
+                  />
+                );
+              })}
+            </View>
+          </BlurView>
+        </View>
+      </View>
+
+      {/* MODAL 1: Account Switcher Bottom Sheet (Hold Profile for 1 Sec) */}
+      <Modal
+        visible={accountModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setAccountModalVisible(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setAccountModalVisible(false)}
+          style={styles.modalOverlay}
+        >
+          <View
+            style={[
+              styles.bottomSheetContainer,
+              {
+                backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+                borderColor: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.06)",
+                paddingBottom: Math.max(insets.bottom, 22),
+              },
+            ]}
+          >
+            {/* Top Drag Handle */}
+            <View style={styles.dragHandleWrapper}>
+              <View
+                style={[
+                  styles.dragHandle,
                   {
-                    width: indicator.w,
-                    borderRadius: barHeight,
                     backgroundColor: isDark
-                      ? "rgba(255, 255, 255, 0.18)"
-                      : "rgba(16, 155, 161, 0.16)",
-                    borderWidth: 0,
+                      ? "rgba(255,255,255,0.22)"
+                      : "#CBD5E1",
                   },
                 ]}
               />
-            </Animated.View>
-          )}
+            </View>
 
-          {/* Tab Icons Row */}
-          <View style={styles.row}>
-            {state.routes.map((route: any, index: number) => {
-              const descriptor = descriptors[route.key];
-              const focused =
-                dragHoverIndex !== null
-                  ? dragHoverIndex === index
-                  : state.index === index;
+            {/* Sheet Title Bar */}
+            <View style={[styles.modalHeaderRow, { marginBottom: spacing.sm }]}>
+              <Text
+                style={[
+                  styles.modalTitleText,
+                  {
+                    color: colors.textPrimary,
+                    fontSize: moderateScale(16),
+                  },
+                ]}
+              >
+                Switch Accounts
+              </Text>
+              <View
+                style={[
+                  styles.countBadge,
+                  {
+                    backgroundColor: isDark
+                      ? "rgba(16, 155, 161, 0.20)"
+                      : colors.primaryLight,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.countBadgeText,
+                    {
+                      color: colors.primary,
+                      fontSize: moderateScale(11),
+                    },
+                  ]}
+                >
+                  {accounts.length} Saved
+                </Text>
+              </View>
+            </View>
 
-              const onPress = () => {
-                const event = navigation.emit({
-                  type: "tabPress",
-                  target: route.key,
-                  canPreventDefault: true,
-                });
-                if (!focused && !event.defaultPrevented) {
-                  navigation.navigate(route.name, route.params);
-                }
-              };
+            {/* Accounts Enclosure Card Box */}
+            <View
+              style={[
+                styles.accountsBox,
+                {
+                  backgroundColor: isDark
+                    ? colors.backgroundSecondary
+                    : "#F8FAFC",
+                  borderColor: colors.border,
+                  borderRadius: radii.xl || 18,
+                },
+              ]}
+            >
+              {accounts.map((acc, idx) => (
+                <React.Fragment key={acc.id}>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => handleSelectAccount(acc.id)}
+                    style={styles.accountRow}
+                  >
+                    {/* Avatar with active ring */}
+                    <View
+                      style={[
+                        styles.avatarRing,
+                        {
+                          borderColor: acc.isActive
+                            ? colors.primary
+                            : "transparent",
+                          padding: acc.isActive ? 2 : 0,
+                        },
+                      ]}
+                    >
+                      <Image
+                        source={{ uri: acc.avatar }}
+                        style={[
+                          styles.accountAvatar,
+                          {
+                            borderColor: acc.isActive
+                              ? colors.primary
+                              : colors.border,
+                          },
+                        ]}
+                      />
+                    </View>
 
-              const onLongPress = () => {
-                navigation.emit({ type: "tabLongPress", target: route.key });
-              };
+                    {/* Username & subtitle */}
+                    <View style={styles.accountInfo}>
+                      <Text
+                        style={[
+                          styles.accountUsername,
+                          {
+                            color: colors.textPrimary,
+                            fontSize: moderateScale(15),
+                          },
+                        ]}
+                      >
+                        @{acc.username}
+                      </Text>
+                      {acc.isActive ? (
+                        <View style={styles.statusRow}>
+                          <View
+                            style={[
+                              styles.activeDot,
+                              { backgroundColor: colors.verifiedGreen || "#10B981" },
+                            ]}
+                          />
+                          <Text
+                            style={[
+                              styles.accountSubtitle,
+                              {
+                                color: colors.textMuted,
+                                fontSize: moderateScale(11.5),
+                              },
+                            ]}
+                          >
+                            Active now
+                          </Text>
+                        </View>
+                      ) : acc.subtitle ? (
+                        <View style={styles.statusRow}>
+                          <View
+                            style={[
+                              styles.activeDot,
+                              { backgroundColor: colors.notificationRed || "#EF4444" },
+                            ]}
+                          />
+                          <Text
+                            style={[
+                              styles.accountSubtitle,
+                              {
+                                color: colors.textMuted,
+                                fontSize: moderateScale(11.5),
+                              },
+                            ]}
+                          >
+                            {acc.subtitle}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
 
-              return (
-                <TabButton
-                  key={route.key}
-                  route={route}
-                  descriptor={descriptor}
-                  focused={focused}
-                  onPress={onPress}
-                  onLongPress={onLongPress}
-                  onLayout={(e: LayoutChangeEvent) => {
-                    const { x, width } = e.nativeEvent.layout;
-                    layouts.current[route.key] = { x, width };
-                    if (state.index === index) moveIndicator(route.key);
-                  }}
-                  accent={accent}
-                  barHeight={barHeight}
+                    {/* Checkmark or Selection Circle */}
+                    {acc.isActive ? (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={moderateScale(24)}
+                        color={colors.primary}
+                      />
+                    ) : (
+                      <Ionicons
+                        name="ellipse-outline"
+                        size={moderateScale(22)}
+                        color={colors.textLight || colors.textMuted}
+                      />
+                    )}
+                  </TouchableOpacity>
+
+                  {/* Divider */}
+                  <View
+                    style={[
+                      styles.rowDivider,
+                      { backgroundColor: colors.borderLight || colors.border },
+                    ]}
+                  />
+                </React.Fragment>
+              ))}
+
+              {/* Action: Add New Account */}
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  try {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  } catch {
+                    // noop
+                  }
+                  setAccountModalVisible(false);
+                  setTimeout(() => {
+                    setAddAccountModalVisible(true);
+                  }, 250);
+                }}
+                style={styles.addAccountRow}
+              >
+                <View
+                  style={[
+                    styles.plusIconWrap,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(16, 155, 161, 0.18)"
+                        : colors.primaryLight,
+                    },
+                  ]}
+                >
+                  <Feather
+                    name="plus"
+                    size={moderateScale(19)}
+                    color={colors.primary}
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.addAccountText,
+                    {
+                      color: colors.textPrimary,
+                      fontSize: moderateScale(14.5),
+                    },
+                  ]}
+                >
+                  Add New Account
+                </Text>
+                <Feather
+                  name="chevron-right"
+                  size={moderateScale(18)}
+                  color={colors.textMuted}
                 />
-              );
-            })}
+              </TouchableOpacity>
+            </View>
           </View>
-        </BlurView>
-      </View>
-    </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* MODAL 2: Add Account Options Bottom Sheet */}
+      <Modal
+        visible={addAccountModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setAddAccountModalVisible(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setAddAccountModalVisible(false)}
+          style={styles.modalOverlay}
+        >
+          <View
+            style={[
+              styles.bottomSheetContainer,
+              {
+                backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+                borderColor: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.06)",
+                paddingBottom: Math.max(insets.bottom, 24),
+              },
+            ]}
+          >
+            {/* Drag Handle */}
+            <View style={styles.dragHandleWrapper}>
+              <View
+                style={[
+                  styles.dragHandle,
+                  {
+                    backgroundColor: isDark
+                      ? "rgba(255,255,255,0.22)"
+                      : "#CBD5E1",
+                  },
+                ]}
+              />
+            </View>
+
+            {/* Header Icon & Title */}
+            <View style={styles.addAccountHeaderBlock}>
+              <View
+                style={[
+                  styles.addAccountIconCircle,
+                  {
+                    backgroundColor: isDark
+                      ? "rgba(16, 155, 161, 0.18)"
+                      : colors.primaryLight,
+                  },
+                ]}
+              >
+                <Feather
+                  name="user-plus"
+                  size={moderateScale(24)}
+                  color={colors.primary}
+                />
+              </View>
+              <Text
+                style={[
+                  styles.addAccountModalTitle,
+                  {
+                    color: colors.textPrimary,
+                    fontSize: moderateScale(17.5),
+                  },
+                ]}
+              >
+                Add Account
+              </Text>
+              <Text
+                style={[
+                  styles.addAccountModalSubtitle,
+                  {
+                    color: colors.textMuted,
+                    fontSize: moderateScale(12.5),
+                  },
+                ]}
+              >
+                Log in to an existing profile or register a new account to switch workspaces seamlessly.
+              </Text>
+            </View>
+
+            {/* Primary Button: Log in to existing account */}
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => {
+                setAddAccountModalVisible(false);
+                Alert.alert(
+                  "Log in to Existing Account",
+                  "Redirecting to secure login...",
+                );
+              }}
+              style={[
+                styles.loginPrimaryButton,
+                { borderRadius: radii.pill || 28 },
+              ]}
+            >
+              <LinearGradient
+                colors={
+                  isDark
+                    ? [colors.primary, colors.primaryDark]
+                    : [colors.primary, colors.primaryGradientEnd || colors.primaryDark]
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[
+                  styles.gradientButtonInner,
+                  { borderRadius: radii.pill || 28 },
+                ]}
+              >
+                <Feather
+                  name="log-in"
+                  size={moderateScale(17)}
+                  color="#FFFFFF"
+                  style={{ marginRight: 8 }}
+                />
+                <Text
+                  style={[
+                    styles.loginPrimaryButtonText,
+                    { fontSize: moderateScale(14.5) },
+                  ]}
+                >
+                  Log in to existing account
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            {/* Secondary Button: Create New Account */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                setAddAccountModalVisible(false);
+                Alert.alert(
+                  "Create New Account",
+                  "Redirecting to account registration...",
+                );
+              }}
+              style={[
+                styles.createSecondaryButton,
+                {
+                  backgroundColor: isDark
+                    ? colors.backgroundSecondary
+                    : "#FFFFFF",
+                  borderColor: colors.border,
+                  borderRadius: radii.pill || 28,
+                },
+              ]}
+            >
+              <Feather
+                name="user-check"
+                size={moderateScale(17)}
+                color={colors.textPrimary}
+                style={{ marginRight: 8 }}
+              />
+              <Text
+                style={[
+                  styles.createSecondaryButtonText,
+                  {
+                    color: colors.textPrimary,
+                    fontSize: moderateScale(14.5),
+                  },
+                ]}
+              >
+                Create New Account
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </>
   );
 }
 
@@ -420,21 +930,15 @@ function TabButton({
   }, [focused, scale]);
 
   const options = descriptor.options;
-  const label =
-    options.tabBarLabel !== undefined
-      ? options.tabBarLabel
-      : options.title !== undefined
-        ? options.title
-        : route.name;
-
   const iconColor = focused ? accent : isDark ? "#94A3B8" : "#64748B";
-  const iconSize = moderateScale(21);
+  const iconSize = moderateScale(23);
   const renderIcon = options.tabBarIcon;
 
   return (
     <Pressable
       onPress={onPress}
       onLongPress={onLongPress}
+      delayLongPress={route.name === "profile" ? 1000 : 500}
       onLayout={onLayout}
       android_ripple={{
         color: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)",
@@ -446,26 +950,12 @@ function TabButton({
       <Animated.View
         style={[
           styles.tabButtonInner,
-          { height: barHeight - 16, transform: [{ scale }] },
+          { height: barHeight - 12, transform: [{ scale }] },
         ]}
       >
         {typeof renderIcon === "function"
           ? renderIcon({ focused, color: iconColor, size: iconSize })
           : null}
-        <Text
-          numberOfLines={1}
-          style={[
-            styles.tabLabel,
-            {
-              color: focused ? accent : isDark ? "#94A3B8" : "#64748B",
-              fontSize: moderateScale(10),
-              fontWeight: focused ? "700" : "500",
-              marginTop: 2,
-            },
-          ]}
-        >
-          {label}
-        </Text>
       </Animated.View>
     </Pressable>
   );
@@ -523,6 +1013,166 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     letterSpacing: 0.1,
+  },
+
+  /* Modals Styling */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.65)",
+    justifyContent: "flex-end",
+  },
+  bottomSheetContainer: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderTopWidth: 1,
+    paddingTop: 10,
+    paddingHorizontal: 16,
+  },
+  dragHandleWrapper: {
+    alignItems: "center",
+    paddingVertical: 6,
+    marginBottom: 4,
+  },
+  dragHandle: {
+    width: 42,
+    height: 4.5,
+    borderRadius: 3,
+  },
+  modalHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 6,
+    paddingTop: 4,
+  },
+  modalTitleText: {
+    fontWeight: "800",
+    letterSpacing: -0.3,
+  },
+  countBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  countBadgeText: {
+    fontWeight: "700",
+  },
+  accountsBox: {
+    borderWidth: 1,
+    marginTop: 4,
+    marginBottom: 6,
+    overflow: "hidden",
+  },
+  accountRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  avatarRing: {
+    borderRadius: 26,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  accountAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+  },
+  accountInfo: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  accountUsername: {
+    fontWeight: "700",
+  },
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 2,
+  },
+  activeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+  accountSubtitle: {
+    fontWeight: "500",
+  },
+  rowDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginHorizontal: 16,
+  },
+  addAccountRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+  },
+  plusIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addAccountText: {
+    marginLeft: 14,
+    flex: 1,
+    fontWeight: "700",
+  },
+
+  /* Add Account Modal 2 */
+  addAccountHeaderBlock: {
+    alignItems: "center",
+    paddingVertical: 8,
+    marginBottom: 16,
+  },
+  addAccountIconCircle: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  addAccountModalTitle: {
+    fontWeight: "800",
+    textAlign: "center",
+    marginBottom: 6,
+  },
+  addAccountModalSubtitle: {
+    textAlign: "center",
+    lineHeight: 18,
+    paddingHorizontal: 20,
+  },
+  loginPrimaryButton: {
+    marginBottom: 12,
+    overflow: "hidden",
+  },
+  gradientButtonInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+  },
+  loginPrimaryButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+  createSecondaryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.2,
+    paddingVertical: 13.5,
+    marginBottom: 6,
+  },
+  createSecondaryButtonText: {
+    fontWeight: "700",
   },
 });
 
