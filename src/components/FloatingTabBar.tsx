@@ -2,7 +2,7 @@ import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { Tabs } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import {
   Animated,
   ColorValue,
@@ -13,6 +13,7 @@ import {
   StyleSheet,
   Text,
   View,
+  PanResponder,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useResponsiveTheme } from "../constants/theme";
@@ -131,12 +132,18 @@ export function FloatingTabBar({
   const maxBarWidth = isTablet ? 560 : Math.min(wp(92), 430);
 
   const layouts = useRef<Record<string, { x: number; width: number }>>({});
+  const barContainerRef = useRef<View>(null);
+  const barPageLayout = useRef<{ pageX: number; width: number }>({
+    pageX: 0,
+    width: maxBarWidth,
+  });
 
   const [indicator] = useState({
     x: new Animated.Value(0),
     w: new Animated.Value(0),
   });
   const [ready, setReady] = useState(false);
+  const [dragHoverIndex, setDragHoverIndex] = useState<number | null>(null);
 
   const moveIndicator = (key: string) => {
     const l = layouts.current[key];
@@ -170,18 +177,96 @@ export function FloatingTabBar({
     }
   }, [state.index, ready]);
 
+  // Determine which tab index corresponds to an absolute X coordinate on screen
+  const getIndexFromTouch = (pageX: number): number => {
+    const total = state.routes.length;
+    if (total === 0) return 0;
+
+    const localX = pageX - barPageLayout.current.pageX;
+
+    // Check specific layout bounds
+    for (let i = 0; i < total; i++) {
+      const route = state.routes[i];
+      const l = layouts.current[route.key];
+      if (l && localX >= l.x && localX <= l.x + l.width) {
+        return i;
+      }
+    }
+
+    // Fallback: divide width proportionally
+    const w = barPageLayout.current.width || maxBarWidth;
+    const clampedX = Math.max(0, Math.min(localX, w));
+    const idx = Math.floor((clampedX / w) * total);
+    return Math.max(0, Math.min(idx, total - 1));
+  };
+
+  // Hold and drag PanResponder
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          Math.abs(gestureState.dx) > 6 || Math.abs(gestureState.vx) > 0.15,
+        onPanResponderGrant: (evt) => {
+          const idx = getIndexFromTouch(evt.nativeEvent.pageX);
+          setDragHoverIndex(idx);
+          const route = state.routes[idx];
+          if (route) moveIndicator(route.key);
+        },
+        onPanResponderMove: (evt) => {
+          const idx = getIndexFromTouch(evt.nativeEvent.pageX);
+          setDragHoverIndex(idx);
+          const route = state.routes[idx];
+          if (route) moveIndicator(route.key);
+        },
+        onPanResponderRelease: (evt) => {
+          const idx = getIndexFromTouch(evt.nativeEvent.pageX);
+          setDragHoverIndex(null);
+          const targetRoute = state.routes[idx];
+          if (targetRoute) {
+            const event = navigation.emit({
+              type: "tabPress",
+              target: targetRoute.key,
+              canPreventDefault: true,
+            });
+            if (state.index !== idx && !event.defaultPrevented) {
+              navigation.navigate(targetRoute.name, targetRoute.params);
+            }
+            moveIndicator(targetRoute.key);
+          }
+        },
+        onPanResponderTerminate: () => {
+          setDragHoverIndex(null);
+          const activeRoute = state.routes[state.index];
+          if (activeRoute) moveIndicator(activeRoute.key);
+        },
+      }),
+    [state.routes, state.index, navigation],
+  );
+
+  const handleBarLayout = () => {
+    barContainerRef.current?.measure((x, y, width, height, pageX) => {
+      if (width) {
+        barPageLayout.current = { pageX, width };
+      }
+    });
+  };
+
   return (
     <View
       pointerEvents="box-none"
       style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 12) }]}
     >
       <View
+        ref={barContainerRef}
+        onLayout={handleBarLayout}
+        {...panResponder.panHandlers}
         style={[
           styles.shadowWrap,
           {
             width: maxBarWidth,
             shadowColor: isDark ? "#000000" : "#0F172A",
-            shadowOpacity: isDark ? 0.5 : 0.15,
+            shadowOpacity: isDark ? 0.35 : 0.08,
           },
         ]}
       >
@@ -256,7 +341,10 @@ export function FloatingTabBar({
           <View style={styles.row}>
             {state.routes.map((route: any, index: number) => {
               const descriptor = descriptors[route.key];
-              const focused = state.index === index;
+              const focused =
+                dragHoverIndex !== null
+                  ? dragHoverIndex === index
+                  : state.index === index;
 
               const onPress = () => {
                 const event = navigation.emit({
@@ -284,7 +372,7 @@ export function FloatingTabBar({
                   onLayout={(e: LayoutChangeEvent) => {
                     const { x, width } = e.nativeEvent.layout;
                     layouts.current[route.key] = { x, width };
-                    if (focused) moveIndicator(route.key);
+                    if (state.index === index) moveIndicator(route.key);
                   }}
                   accent={accent}
                   barHeight={barHeight}
@@ -421,7 +509,6 @@ const styles = StyleSheet.create({
   },
   indicator: {
     height: "100%",
-    borderWidth: 0.8,
   },
   tabButton: {
     flex: 1,
