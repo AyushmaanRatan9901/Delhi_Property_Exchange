@@ -50,6 +50,7 @@ import {
   VirtualTourCallout,
   WhyChooseUs,
 } from "../../../components/CustomerComponent";
+import { NotificationModal } from "../../CusomterPanelScreens/PropertyDeatilScreeen/Notification/notification";
 import { useResponsiveTheme } from "../../../constants/theme";
 
 const ALL_CITIES = [
@@ -72,6 +73,10 @@ export default function CustomerHomeScreen() {
 
   // State Management
   const [sideMenuVisible, setSideMenuVisible] = useState(false);
+  const [notificationVisible, setNotificationVisible] = useState(false);
+  const [notificationOrigin, setNotificationOrigin] = useState<
+    { x: number; y: number } | undefined
+  >(undefined);
   const [currentLocation, setCurrentLocation] = useState("Dwarka, Delhi");
   const [selectedPopularLocation, setSelectedPopularLocation] =
     useState("Dwarka");
@@ -86,11 +91,11 @@ export default function CustomerHomeScreen() {
     setSideMenuVisible(true);
   };
 
-  const handleNotificationPress = () => {
-    Alert.alert(
-      "Notifications",
-      "You have 3 new notifications for room visits and price drops.",
-    );
+  const handleNotificationPress = (origin?: { x: number; y: number }) => {
+    if (origin) {
+      setNotificationOrigin(origin);
+    }
+    setNotificationVisible(true);
   };
 
   const handleProfilePress = () => {
@@ -190,14 +195,14 @@ export default function CustomerHomeScreen() {
   const handleCallSupport = () => {
     Alert.alert(
       "Calling Support",
-      "Connecting to 24/7 StayFinder Housing Assistant at 1800-123-STAY",
+      "Connecting to 24/7 Delhi Property Exchange Housing Assistant at 1800-123-STAY",
     );
   };
 
   const handleWhatsAppSupport = () => {
     Alert.alert(
       "WhatsApp Support",
-      "Opening WhatsApp chat with StayFinder Support Team",
+      "Opening WhatsApp chat with Delhi Property Exchange Support Team",
     );
   };
 
@@ -357,7 +362,7 @@ export default function CustomerHomeScreen() {
           }
         />
 
-        {/* 18. How StayFinder Works 4 Simple Steps */}
+        {/* 18. How Delhi Property Exchange Works 4 Simple Steps */}
         <HowItWorksSteps />
 
         {/* 19. Exclusive Tenant Perks & Partner Benefits */}
@@ -369,7 +374,7 @@ export default function CustomerHomeScreen() {
         {/* 21. Tenant Reviews & Testimonials Slider */}
         <TestimonialsSlider />
 
-        {/* 22. Community Events & Life at StayFinder */}
+        {/* 22. Community Events & Life at Delhi Property Exchange */}
         <CommunityEventsBanner />
 
         {/* 23. Referral & Cash Reward Banner */}
@@ -603,6 +608,13 @@ export default function CustomerHomeScreen() {
           </View>
         </Modal>
       )}
+
+      {/* Dynamic Circular Reveal Notification Modal originating from the Header Bell */}
+      <NotificationModal
+        visible={notificationVisible}
+        onClose={() => setNotificationVisible(false)}
+        origin={notificationOrigin}
+      />
     </SafeAreaView>
   );
 }

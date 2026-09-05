@@ -35,7 +35,7 @@ export const CommunityEventsBanner: React.FC = () => {
     <View style={[styles.container, { marginVertical: spacing.md }]}>
       <View style={{ paddingHorizontal: spacing.screenHorizontal, marginBottom: spacing.md }}>
         <Text style={[typography.sectionTitle, { fontSize: moderateScale(17), color: colors.textPrimary }]}>
-          Life & Community at StayFinder
+          Life & Community at Delhi Property Exchange
         </Text>
         <Text style={[typography.categorySubtitle, { fontSize: moderateScale(12), color: colors.textSecondary, marginTop: 2 }]}>
           Never feel alone • Make lifelong friends and network

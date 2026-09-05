@@ -1028,18 +1028,26 @@ export const SideMenu: React.FC<SideMenuProps> = ({
                 <Text
                   style={[
                     typography.brandTitle,
-                    { fontSize: moderateScale(15), color: colors.textPrimary },
+                    {
+                      fontSize: moderateScale(14),
+                      fontWeight: "800",
+                      color: colors.textPrimary,
+                    },
                   ]}
                 >
-                  Stay
+                  Delhi Property{" "}
                 </Text>
                 <Text
                   style={[
                     typography.brandHighlight,
-                    { fontSize: moderateScale(15), color: colors.primary },
+                    {
+                      fontSize: moderateScale(14),
+                      fontWeight: "800",
+                      color: colors.primary,
+                    },
                   ]}
                 >
-                  Finder
+                  Exchange
                 </Text>
                 <View
                   style={[

@@ -184,7 +184,7 @@ export default function SavedScreen() {
   const handleShareWishlist = async () => {
     try {
       await Share.share({
-        message: `Check out my shortlisted stays on StayFinder with Zero Brokerage: https://stayfinder.app/wishlist`,
+        message: `Check out my shortlisted stays on Delhi Property Exchange with Zero Brokerage: https://delhipropertyexchange.com/wishlist`,
       });
     } catch (error) {
       console.log("Error sharing wishlist:", error);

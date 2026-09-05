@@ -28,7 +28,7 @@ const REVIEWS = [
     role: 'Product Designer',
     stay: 'Dwarka Sector 6 Studio',
     avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=120&q=80',
-    comment: 'Seamless digital agreement and instant move-in. The room was sparkling clean and exactly like the photos on StayFinder.',
+    comment: 'Seamless digital agreement and instant move-in. The room was sparkling clean and exactly like the photos on Delhi Property Exchange.',
     rating: 5,
   },
 ];

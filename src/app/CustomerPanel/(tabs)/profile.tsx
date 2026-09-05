@@ -67,15 +67,19 @@ export default function ProfileScreen() {
   };
 
   const handleLogOut = () => {
-    Alert.alert("Log Out", "Are you sure you want to log out of StayFinder?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Log Out",
-        style: "destructive",
-        onPress: () =>
-          Alert.alert("Logged Out", "You have been securely logged out."),
-      },
-    ]);
+    Alert.alert(
+      "Log Out",
+      "Are you sure you want to log out of Delhi Property Exchange?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Log Out",
+          style: "destructive",
+          onPress: () =>
+            Alert.alert("Logged Out", "You have been securely logged out."),
+        },
+      ],
+    );
   };
 
   const topInset =
@@ -88,7 +92,7 @@ export default function ProfileScreen() {
   return (
     <View style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <StatusBar
-        barStyle="light-content"
+        barStyle={isDark ? "light-content" : "dark-content"}
         translucent
         backgroundColor="transparent"
       />
@@ -844,7 +848,7 @@ export default function ProfileScreen() {
               onPress={() =>
                 Alert.alert(
                   "Terms & Privacy",
-                  "StayFinder guarantees 100% deposit security and zero brokerage.",
+                  "Delhi Property Exchange guarantees 100% deposit security and zero brokerage.",
                 )
               }
               activeOpacity={0.7}
@@ -933,7 +937,7 @@ export default function ProfileScreen() {
                 fontWeight: "600",
               }}
             >
-              StayFinder Mobile v2.4 • Build 2026
+              Delhi Property Exchange Mobile v2.4 • Build 2026
             </Text>
             <Text
               style={{

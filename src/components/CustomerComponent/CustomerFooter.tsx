@@ -85,11 +85,11 @@ export const CustomerFooter: React.FC<CustomerFooterProps> = ({
       {/* Brand Tagline & Version */}
       <View style={[layout.center, { marginTop: spacing.lg }]}>
         <View style={layout.horizontalView}>
-          <Text style={[typography.brandTitle, { fontSize: moderateScale(17), color: colors.textPrimary }]}>Stay</Text>
-          <Text style={[typography.brandHighlight, { fontSize: moderateScale(17), color: colors.primary }]}>Finder</Text>
+          <Text style={[typography.brandTitle, { fontSize: moderateScale(16), fontWeight: "800", color: colors.textPrimary }]}>Delhi Property </Text>
+          <Text style={[typography.brandHighlight, { fontSize: moderateScale(16), fontWeight: "800", color: colors.primary }]}>Exchange</Text>
         </View>
         <Text style={[typography.cardAmenity, { fontSize: moderateScale(11), color: colors.textMuted, marginTop: 2 }]}>
-          Find Your Perfect Stay • Made with ❤️ for Tenants
+          Verified Housing & Rentals • Made with ❤️ for Tenants
         </Text>
       </View>
     </View>

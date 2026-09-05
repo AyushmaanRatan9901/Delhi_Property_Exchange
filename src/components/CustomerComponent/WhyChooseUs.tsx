@@ -57,7 +57,7 @@ export const WhyChooseUs: React.FC = () => {
         ]}
       >
         <Text style={[typography.sectionTitle, { fontSize: moderateScale(17), color: colors.textPrimary, textAlign: 'center' }]}>
-          Why 50,000+ Choose StayFinder
+          Why 50,000+ Choose Delhi Property Exchange
         </Text>
         <Text
           style={[

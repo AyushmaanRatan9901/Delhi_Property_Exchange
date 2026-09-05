@@ -61,7 +61,7 @@ export const HowItWorksSteps: React.FC = () => {
         ]}
       >
         <Text style={[typography.sectionTitle, { fontSize: moderateScale(17), color: colors.textPrimary, textAlign: 'center' }]}>
-          How StayFinder Works
+          How Delhi Property Exchange Works
         </Text>
         <Text
           style={[

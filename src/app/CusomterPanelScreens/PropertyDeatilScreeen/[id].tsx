@@ -188,7 +188,7 @@ export default function PropertyDetailsScreen() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Check out ${property.title} in ${property.location} on StayFinder with Zero Brokerage: https://stayfinder.app/stay/${property.id}`,
+        message: `Check out ${property.title} in ${property.location} on Delhi Property Exchange with Zero Brokerage: https://delhipropertyexchange.com/stay/${property.id}`,
       });
     } catch (e) {
       console.log("Share error", e);
@@ -376,7 +376,7 @@ export default function PropertyDetailsScreen() {
                     color: colors.verifiedGreen,
                   }}
                 >
-                  StayFinder Verified
+                  Delhi Property Exchange Verified
                 </Text>
               </View>
             )}
@@ -606,21 +606,39 @@ export default function PropertyDetailsScreen() {
               shadows.sm,
             ]}
           >
-            <View style={layout.horizontalViewBetween}>
-              <View>
+            {/* Top Row: Rent & Deposit side-by-side with flex: 1 */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: spacing.sm,
+              }}
+            >
+              {/* Left Column: Monthly Rent */}
+              <View style={{ flex: 1.1 }}>
                 <Text
                   style={{
                     fontSize: moderateScale(11),
                     color: colors.textSecondary,
                     fontWeight: "600",
+                    textTransform: "uppercase",
+                    letterSpacing: 0.5,
                   }}
                 >
                   Monthly Rent
                 </Text>
-                <View style={[layout.horizontalView, { marginTop: 1 }]}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "baseline",
+                    flexWrap: "wrap",
+                    marginTop: 3,
+                  }}
+                >
                   <Text
                     style={{
-                      fontSize: moderateScale(22),
+                      fontSize: moderateScale(20),
                       fontWeight: "800",
                       color: colors.primary,
                     }}
@@ -630,10 +648,10 @@ export default function PropertyDetailsScreen() {
                   {property.originalPrice && (
                     <Text
                       style={{
-                        fontSize: moderateScale(13),
+                        fontSize: moderateScale(12),
                         color: colors.textMuted,
                         textDecorationLine: "line-through",
-                        marginLeft: 8,
+                        marginLeft: 6,
                       }}
                     >
                       ₹
@@ -644,37 +662,85 @@ export default function PropertyDetailsScreen() {
                   )}
                   <Text
                     style={{
-                      fontSize: moderateScale(12),
+                      fontSize: moderateScale(11.5),
                       color: colors.textSecondary,
+                      marginLeft: 2,
                     }}
                   >
-                    {" "}
-                    / month
+                    /mo
                   </Text>
                 </View>
               </View>
 
-              <View style={{ alignItems: "flex-end" }}>
+              {/* Vertical Hairline Divider */}
+              <View
+                style={{
+                  width: 1,
+                  height: "100%",
+                  minHeight: 36,
+                  backgroundColor: isDark ? colors.border : "#CCFBF1",
+                  marginHorizontal: 2,
+                }}
+              />
+
+              {/* Right Column: Security Deposit */}
+              <View style={{ flex: 1.1, alignItems: "flex-end" }}>
                 <Text
                   style={{
                     fontSize: moderateScale(11),
                     color: colors.textSecondary,
                     fontWeight: "600",
+                    textTransform: "uppercase",
+                    letterSpacing: 0.5,
                   }}
                 >
                   Security Deposit
                 </Text>
                 <Text
+                  numberOfLines={2}
                   style={{
-                    fontSize: moderateScale(13),
+                    fontSize: moderateScale(12),
                     fontWeight: "700",
                     color: colors.textPrimary,
-                    marginTop: 2,
+                    textAlign: "right",
+                    marginTop: 3,
                   }}
                 >
                   {property.deposit}
                 </Text>
               </View>
+            </View>
+
+            {/* Bottom Guarantee Banner inside Card */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                backgroundColor: isDark
+                  ? "rgba(16, 185, 129, 0.12)"
+                  : "#ECFDF5",
+                borderRadius: radii.md || 8,
+                paddingHorizontal: spacing.sm,
+                paddingVertical: 5,
+                marginTop: spacing.sm,
+              }}
+            >
+              <Ionicons
+                name="shield-checkmark"
+                size={moderateScale(13)}
+                color={colors.verifiedGreen || "#10B981"}
+                style={{ marginRight: 5 }}
+              />
+              <Text
+                style={{
+                  fontSize: moderateScale(11),
+                  fontWeight: "600",
+                  color: colors.verifiedGreen || "#047857",
+                  flex: 1,
+                }}
+              >
+                100% Refundable Deposit • Zero Hidden Charges
+              </Text>
             </View>
           </View>
         </View>

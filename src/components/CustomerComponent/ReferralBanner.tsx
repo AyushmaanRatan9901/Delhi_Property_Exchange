@@ -51,7 +51,7 @@ export const ReferralBanner: React.FC<ReferralBannerProps> = ({ onReferPress }) 
               Earn ₹2,000 Cash
             </Text>
             <Text style={[styles.subtitle, { fontSize: moderateScale(11.5), marginTop: 2 }]}>
-              For every friend who moves into any StayFinder room or PG.
+              For every friend who moves into any Delhi Property Exchange room or PG.
             </Text>
 
             <TouchableOpacity
