@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
@@ -27,6 +28,9 @@ export const GenderPreferenceSelector: React.FC<GenderPreferenceSelectorProps> =
   const [selectedId, setSelectedId] = useState<string>('all');
 
   const handleSelect = (p: GenderPreference) => {
+    try {
+      Haptics.selectionAsync();
+    } catch (e) {}
     setSelectedId(p.id);
     onSelect?.(p);
   };

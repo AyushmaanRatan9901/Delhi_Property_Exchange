@@ -4,13 +4,17 @@ import {
   MaterialCommunityIcons,
   MaterialIcons,
 } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import Slider from "@react-native-community/slider";
+import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
   Image,
   Modal,
+  Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -169,10 +173,65 @@ const SEARCH_DATABASE: ExtendedPropertyItem[] = [
     hasFood: false,
     hasAC: false,
   },
+  {
+    id: "s7",
+    title: "UrbanNest Co-Living Hub & Lounge",
+    type: "PG",
+    price: 9500,
+    pricePeriod: "month",
+    location: "Hauz Khas & Green Park, Delhi",
+    amenities: ["High Speed WiFi", "Gaming Lounge", "AC", "Daily Housekeeping", "Community Cafe"],
+    imageUrl:
+      "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=600&q=80",
+    photosCount: 20,
+    isVerified: true,
+    rating: 4.9,
+    reviewsCount: 48,
+    metroDistance: "250m from Hauz Khas Metro",
+    depositMonths: "1 Month Deposit",
+    gender: "Unisex",
+    sharingType: "Single",
+    furnishing: "Furnished",
+    hasFood: true,
+    hasAC: true,
+  },
+  {
+    id: "s8",
+    title: "Spacious 1 BHK Independent Floor",
+    type: "Room",
+    price: 16000,
+    pricePeriod: "month",
+    location: "Dwarka, Sector 7",
+    amenities: ["Modular Kitchen", "Balcony", "Wardrobe", "Reserved Car Parking", "Power Backup"],
+    imageUrl:
+      "https://images.unsplash.com/photo-1502005229762-ee1b2b8ab98f?auto=format&fit=crop&w=600&q=80",
+    photosCount: 18,
+    isVerified: true,
+    rating: 4.8,
+    reviewsCount: 31,
+    metroDistance: "400m from Sec 7 Metro",
+    depositMonths: "1 Month Deposit",
+    gender: "Any",
+    sharingType: "1BHK",
+    furnishing: "Furnished",
+    hasFood: false,
+    hasAC: true,
+  },
 ];
 
 export default function SearchScreen() {
   const router = useRouter();
+  const routeParams = useLocalSearchParams<{
+    gender?: string;
+    type?: string;
+    sharing?: string;
+    query?: string;
+    genderPrefId?: string;
+    minPrice?: string;
+    maxPrice?: string;
+    budgetId?: string;
+  }>();
+
   const {
     colors,
     moderateScale,
@@ -188,15 +247,22 @@ export default function SearchScreen() {
   const { width: windowWidth } = useWindowDimensions();
 
   // Search & Filter State
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(routeParams.query || "");
   const [selectedType, setSelectedType] = useState<"All" | "Room" | "PG">(
-    "All",
+    (routeParams.type as any) || "All",
   );
   const [selectedGender, setSelectedGender] = useState<
     "All" | "Boys" | "Girls" | "Unisex"
-  >("All");
-  const [selectedSharing, setSelectedSharing] = useState<string>("All");
-  const [maxPrice, setMaxPrice] = useState<number>(25000);
+  >((routeParams.gender as any) || "All");
+  const [selectedSharing, setSelectedSharing] = useState<string>(
+    routeParams.sharing || "All",
+  );
+  const [minPrice, setMinPrice] = useState<number>(
+    routeParams.minPrice ? Number(routeParams.minPrice) : 0,
+  );
+  const [maxPrice, setMaxPrice] = useState<number>(
+    routeParams.maxPrice ? Number(routeParams.maxPrice) : 25000,
+  );
   const [onlyVerified, setOnlyVerified] = useState(true);
   const [foodIncludedOnly, setFoodIncludedOnly] = useState(false);
   const [acOnly, setAcOnly] = useState(false);
@@ -204,7 +270,45 @@ export default function SearchScreen() {
     "recommended" | "price_low" | "price_high" | "rating"
   >("recommended");
 
+  // Sync incoming route params whenever navigated from Home
+  useEffect(() => {
+    if (routeParams.gender !== undefined) {
+      if (["All", "Boys", "Girls", "Unisex"].includes(routeParams.gender)) {
+        setSelectedGender(
+          routeParams.gender as "All" | "Boys" | "Girls" | "Unisex",
+        );
+      }
+    }
+    if (routeParams.type !== undefined) {
+      if (["All", "Room", "PG"].includes(routeParams.type)) {
+        setSelectedType(routeParams.type as "All" | "Room" | "PG");
+      }
+    }
+    if (routeParams.sharing !== undefined) {
+      setSelectedSharing(routeParams.sharing);
+    }
+    if (routeParams.query !== undefined) {
+      setSearchQuery(routeParams.query);
+    }
+    if (routeParams.minPrice !== undefined) {
+      setMinPrice(Number(routeParams.minPrice));
+    }
+    if (routeParams.maxPrice !== undefined) {
+      setMaxPrice(Number(routeParams.maxPrice));
+    }
+  }, [
+    routeParams.gender,
+    routeParams.type,
+    routeParams.sharing,
+    routeParams.query,
+    routeParams.genderPrefId,
+    routeParams.minPrice,
+    routeParams.maxPrice,
+    routeParams.budgetId,
+  ]);
+
   // UI View state
+  const [budgetMode, setBudgetMode] = useState<"slider" | "form">("slider");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [sortModalVisible, setSortModalVisible] = useState(false);
@@ -257,8 +361,8 @@ export default function SearchScreen() {
       if (selectedSharing !== "All" && item.sharingType !== selectedSharing)
         return false;
 
-      // Max price
-      if (item.price > maxPrice) return false;
+      // Price Range filter
+      if (item.price < minPrice || item.price > maxPrice) return false;
 
       // Verified
       if (onlyVerified && !item.isVerified) return false;
@@ -281,6 +385,7 @@ export default function SearchScreen() {
     selectedType,
     selectedGender,
     selectedSharing,
+    minPrice,
     maxPrice,
     onlyVerified,
     foodIncludedOnly,
@@ -293,7 +398,7 @@ export default function SearchScreen() {
     if (selectedType !== "All") count++;
     if (selectedGender !== "All") count++;
     if (selectedSharing !== "All") count++;
-    if (maxPrice < 25000) count++;
+    if (minPrice > 0 || maxPrice < 25000) count++;
     if (foodIncludedOnly) count++;
     if (acOnly) count++;
     return count;
@@ -301,6 +406,7 @@ export default function SearchScreen() {
     selectedType,
     selectedGender,
     selectedSharing,
+    minPrice,
     maxPrice,
     foodIncludedOnly,
     acOnly,
@@ -310,6 +416,7 @@ export default function SearchScreen() {
     setSelectedType("All");
     setSelectedGender("All");
     setSelectedSharing("All");
+    setMinPrice(0);
     setMaxPrice(25000);
     setFoodIncludedOnly(false);
     setAcOnly(false);
@@ -1302,6 +1409,440 @@ export default function SearchScreen() {
                 paddingBottom: spacing.xxl,
               }}
             >
+              {/* Monthly Budget Range Section */}
+              <View style={{ marginBottom: spacing.lg }}>
+                <View
+                  style={[
+                    layout.horizontalViewBetween,
+                    { marginBottom: spacing.xs },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      typography.cardTitle,
+                      {
+                        fontSize: moderateScale(14),
+                        color: colors.textPrimary,
+                      },
+                    ]}
+                  >
+                    Monthly Budget (Rent)
+                  </Text>
+
+                  {/* Mode Switcher: Slider vs Input Form */}
+                  <View
+                    style={[
+                      styles.budgetModeSwitcher,
+                      {
+                        backgroundColor: isDark
+                          ? colors.surfaceHover
+                          : colors.surfaceLight,
+                        borderColor: colors.border,
+                        borderRadius: radii.pill,
+                      },
+                    ]}
+                  >
+                    <TouchableOpacity
+                      onPress={() => {
+                        try {
+                          Haptics.selectionAsync();
+                        } catch (e) {}
+                        setBudgetMode("slider");
+                      }}
+                      style={[
+                        styles.modeSwitchBtn,
+                        budgetMode === "slider" && {
+                          backgroundColor: colors.primary,
+                          borderRadius: radii.pill,
+                        },
+                      ]}
+                    >
+                      <MaterialCommunityIcons
+                        name="tune-variant"
+                        size={moderateScale(13)}
+                        color={
+                          budgetMode === "slider"
+                            ? colors.white
+                            : colors.textSecondary
+                        }
+                        style={{ marginRight: 3 }}
+                      />
+                      <Text
+                        style={{
+                          fontSize: moderateScale(11),
+                          fontWeight: "700",
+                          color:
+                            budgetMode === "slider"
+                              ? colors.white
+                              : colors.textSecondary,
+                        }}
+                      >
+                        Slider
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => {
+                        try {
+                          Haptics.selectionAsync();
+                        } catch (e) {}
+                        setBudgetMode("form");
+                      }}
+                      style={[
+                        styles.modeSwitchBtn,
+                        budgetMode === "form" && {
+                          backgroundColor: colors.primary,
+                          borderRadius: radii.pill,
+                        },
+                      ]}
+                    >
+                      <Feather
+                        name="edit-3"
+                        size={moderateScale(12)}
+                        color={
+                          budgetMode === "form"
+                            ? colors.white
+                            : colors.textSecondary
+                        }
+                        style={{ marginRight: 3 }}
+                      />
+                      <Text
+                        style={{
+                          fontSize: moderateScale(11),
+                          fontWeight: "700",
+                          color:
+                            budgetMode === "form"
+                              ? colors.white
+                              : colors.textSecondary,
+                        }}
+                      >
+                        Custom Form
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Subtitle / Active Price Banner */}
+                <View
+                  style={[
+                    styles.priceDisplayCard,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(13, 148, 136, 0.15)"
+                        : colors.primaryLight,
+                      borderColor: isDark
+                        ? "rgba(13, 148, 136, 0.35)"
+                        : colors.primarySoft,
+                      borderRadius: radii.xl,
+                      padding: spacing.sm + 2,
+                      marginBottom: spacing.sm,
+                    },
+                  ]}
+                >
+                  <View style={layout.horizontalViewBetween}>
+                    <Text
+                      style={{
+                        fontSize: moderateScale(11.5),
+                        color: colors.textSecondary,
+                        fontWeight: "600",
+                      }}
+                    >
+                      Target Monthly Rent:
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: moderateScale(14),
+                        fontWeight: "800",
+                        color: colors.primary,
+                      }}
+                    >
+                      ₹{minPrice.toLocaleString("en-IN")} — ₹
+                      {maxPrice >= 30000
+                        ? "30,000+"
+                        : maxPrice.toLocaleString("en-IN")}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* View 1: Slider Mode */}
+                {budgetMode === "slider" ? (
+                  <View style={{ marginTop: spacing.xs }}>
+                    {/* Community Slider Component */}
+                    <Slider
+                      style={{ width: "100%", height: 40 }}
+                      minimumValue={3000}
+                      maximumValue={30000}
+                      step={500}
+                      value={Math.max(3000, Math.min(30000, maxPrice || 3000))}
+                      minimumTrackTintColor={colors.primary}
+                      maximumTrackTintColor={
+                        isDark ? colors.surfaceHover : "#CBD5E1"
+                      }
+                      thumbTintColor={colors.primary}
+                      onValueChange={(val) => setMaxPrice(Math.round(val))}
+                      onSlidingComplete={(val) => {
+                        setMaxPrice(Math.round(val));
+                        try {
+                          Haptics.selectionAsync();
+                        } catch (e) {}
+                      }}
+                    />
+
+                    {/* Step Marks Indicator */}
+                    <View
+                      style={[
+                        layout.horizontalViewBetween,
+                        { marginTop: 6, paddingHorizontal: 2 },
+                      ]}
+                    >
+                      <Text
+                        style={{
+                          fontSize: moderateScale(10),
+                          color: colors.textMuted,
+                          fontWeight: "600",
+                        }}
+                      >
+                        ₹3k (Min)
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: moderateScale(10),
+                          color: colors.textMuted,
+                          fontWeight: "600",
+                        }}
+                      >
+                        ₹10k
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: moderateScale(10),
+                          color: colors.textMuted,
+                          fontWeight: "600",
+                        }}
+                      >
+                        ₹18k
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: moderateScale(10),
+                          color: colors.textMuted,
+                          fontWeight: "600",
+                        }}
+                      >
+                        ₹30k+
+                      </Text>
+                    </View>
+
+                    {/* Quick Budget Chips */}
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{
+                        gap: spacing.xs + 2,
+                        marginTop: spacing.sm + 2,
+                      }}
+                    >
+                      {[
+                        { label: "Under ₹6k", min: 0, max: 6000 },
+                        { label: "₹6k - ₹10k", min: 6000, max: 10000 },
+                        { label: "₹10k - ₹15k", min: 10000, max: 15000 },
+                        { label: "₹15k - ₹25k", min: 15000, max: 25000 },
+                        { label: "Any Budget", min: 0, max: 30000 },
+                      ].map((preset, idx) => {
+                        const isSelected =
+                          minPrice === preset.min && maxPrice === preset.max;
+                        return (
+                          <TouchableOpacity
+                            key={idx}
+                            onPress={() => {
+                              try {
+                                Haptics.selectionAsync();
+                              } catch (e) {}
+                              setMinPrice(preset.min);
+                              setMaxPrice(preset.max);
+                            }}
+                            style={[
+                              styles.presetChip,
+                              {
+                                backgroundColor: isSelected
+                                  ? colors.primary
+                                  : isDark
+                                    ? colors.surfaceHover
+                                    : colors.surfaceLight,
+                                borderColor: isSelected
+                                  ? colors.primary
+                                  : colors.border,
+                                borderRadius: radii.pill,
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={{
+                                fontSize: moderateScale(11),
+                                fontWeight: isSelected ? "700" : "600",
+                                color: isSelected
+                                  ? colors.white
+                                  : colors.textPrimary,
+                              }}
+                            >
+                              {preset.label}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                ) : (
+                  /* View 2: Form Inputs Mode */
+                  <View style={{ marginTop: spacing.xs }}>
+                    <View style={[layout.horizontalView, { gap: spacing.sm }]}>
+                      {/* Min Price Input Box */}
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={{
+                            fontSize: moderateScale(10.5),
+                            fontWeight: "700",
+                            color: colors.textSecondary,
+                            marginBottom: 4,
+                            letterSpacing: 0.3,
+                          }}
+                        >
+                          MIN PRICE (₹)
+                        </Text>
+                        <View
+                          style={[
+                            styles.budgetInputContainer,
+                            {
+                              backgroundColor: isDark
+                                ? colors.surfaceHover
+                                : colors.surfaceLight,
+                              borderColor: colors.border,
+                              borderRadius: radii.xl,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={{
+                              fontSize: moderateScale(13),
+                              fontWeight: "700",
+                              color: colors.primary,
+                              marginRight: 4,
+                            }}
+                          >
+                            ₹
+                          </Text>
+                          <TextInput
+                            value={minPrice > 0 ? minPrice.toString() : ""}
+                            onChangeText={(text) => {
+                              const num = parseInt(
+                                text.replace(/[^0-9]/g, ""),
+                                10,
+                              );
+                              setMinPrice(isNaN(num) ? 0 : num);
+                            }}
+                            keyboardType="numeric"
+                            placeholder="0"
+                            placeholderTextColor={colors.textMuted}
+                            style={{
+                              flex: 1,
+                              color: colors.textPrimary,
+                              fontSize: moderateScale(13.5),
+                              fontWeight: "700",
+                            }}
+                          />
+                          {minPrice > 0 && (
+                            <TouchableOpacity onPress={() => setMinPrice(0)}>
+                              <Ionicons
+                                name="close-circle"
+                                size={moderateScale(15)}
+                                color={colors.textMuted}
+                              />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
+
+                      {/* Divider Icon */}
+                      <View style={{ paddingTop: 18 }}>
+                        <Feather
+                          name="arrow-right"
+                          size={moderateScale(14)}
+                          color={colors.textMuted}
+                        />
+                      </View>
+
+                      {/* Max Price Input Box */}
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={{
+                            fontSize: moderateScale(10.5),
+                            fontWeight: "700",
+                            color: colors.textSecondary,
+                            marginBottom: 4,
+                            letterSpacing: 0.3,
+                          }}
+                        >
+                          MAX PRICE (₹)
+                        </Text>
+                        <View
+                          style={[
+                            styles.budgetInputContainer,
+                            {
+                              backgroundColor: isDark
+                                ? colors.surfaceHover
+                                : colors.surfaceLight,
+                              borderColor: colors.border,
+                              borderRadius: radii.xl,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={{
+                              fontSize: moderateScale(13),
+                              fontWeight: "700",
+                              color: colors.primary,
+                              marginRight: 4,
+                            }}
+                          >
+                            ₹
+                          </Text>
+                          <TextInput
+                            value={maxPrice > 0 ? maxPrice.toString() : ""}
+                            onChangeText={(text) => {
+                              const num = parseInt(
+                                text.replace(/[^0-9]/g, ""),
+                                10,
+                              );
+                              setMaxPrice(isNaN(num) ? 0 : num);
+                            }}
+                            keyboardType="numeric"
+                            placeholder="25000"
+                            placeholderTextColor={colors.textMuted}
+                            style={{
+                              flex: 1,
+                              color: colors.textPrimary,
+                              fontSize: moderateScale(13.5),
+                              fontWeight: "700",
+                            }}
+                          />
+                          {maxPrice > 0 && (
+                            <TouchableOpacity
+                              onPress={() => setMaxPrice(30000)}
+                            >
+                              <Ionicons
+                                name="close-circle"
+                                size={moderateScale(15)}
+                                color={colors.textMuted}
+                              />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                )}
+              </View>
+
               {/* Property Category */}
               <Text
                 style={[
@@ -2110,6 +2651,60 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 40,
     borderWidth: 1,
+  },
+  budgetModeSwitcher: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    padding: 2,
+  },
+  modeSwitchBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  priceDisplayCard: {
+    borderWidth: 1,
+  },
+  sliderTrackContainer: {
+    height: 12,
+    width: "100%",
+    position: "relative",
+    justifyContent: "center",
+    marginVertical: 8,
+  },
+  sliderActiveFill: {
+    height: "100%",
+    position: "absolute",
+    left: 0,
+  },
+  sliderThumb: {
+    position: "absolute",
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2.5,
+    alignItems: "center",
+    justifyContent: "center",
+    top: -6,
+  },
+  sliderThumbInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  presetChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+  },
+  budgetInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: Platform.OS === "ios" ? 10 : 6,
   },
   detailModalContent: {
     maxHeight: "85%",

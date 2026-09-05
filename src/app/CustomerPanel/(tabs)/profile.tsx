@@ -5,6 +5,7 @@ import {
   MaterialIcons,
 } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Alert,
@@ -24,6 +25,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useResponsiveTheme } from "../../../constants/theme";
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const {
     colors,
@@ -139,10 +141,7 @@ export default function ProfileScreen() {
             </Text>
             <TouchableOpacity
               onPress={() => {
-                setTempName(userName);
-                setTempPhone(userPhone);
-                setTempEmail(userEmail);
-                setEditProfileModalVisible(true);
+                router.push("/CusomterPanelScreens/EditProfile/Editprofile" as any);
               }}
               activeOpacity={0.8}
               style={[
@@ -748,9 +747,8 @@ export default function ProfileScreen() {
           >
             <TouchableOpacity
               onPress={() =>
-                Alert.alert(
-                  "Helpdesk",
-                  "Connecting to 24/7 Housing Caretaker at 1800-123-STAY",
+                router.push(
+                  "/CusomterPanelScreens/CareTakerHelper/CareTakerHelper" as any,
                 )
               }
               activeOpacity={0.7}
@@ -797,9 +795,8 @@ export default function ProfileScreen() {
 
             <TouchableOpacity
               onPress={() =>
-                Alert.alert(
-                  "Safety & Emergency",
-                  "Emergency Warden: +91 99999 11111",
+                router.push(
+                  "/CusomterPanelScreens/SafetyEmergencySOS/SafetyEmergencySOS" as any,
                 )
               }
               activeOpacity={0.7}
@@ -846,9 +843,8 @@ export default function ProfileScreen() {
 
             <TouchableOpacity
               onPress={() =>
-                Alert.alert(
-                  "Terms & Privacy",
-                  "Delhi Property Exchange guarantees 100% deposit security and zero brokerage.",
+                router.push(
+                  "/CusomterPanelScreens/Legal/TermsPrivacyRefund" as any,
                 )
               }
               activeOpacity={0.7}

@@ -39,7 +39,6 @@ import {
   OccupancyTypes,
   OfferItem,
   PartnerPerksGrid,
-  PopularLocations,
   PropertyItem,
   PropertyList,
   ReferralBanner,
@@ -50,8 +49,8 @@ import {
   VirtualTourCallout,
   WhyChooseUs,
 } from "../../../components/CustomerComponent";
-import { NotificationModal } from "../../CusomterPanelScreens/PropertyDeatilScreeen/Notification/notification";
 import { useResponsiveTheme } from "../../../constants/theme";
+import { NotificationModal } from "../../CusomterPanelScreens/PropertyDeatilScreeen/Notification/notification";
 
 const ALL_CITIES = [
   { id: "1", name: "Dwarka, Delhi", state: "Delhi" },
@@ -108,10 +107,15 @@ export default function CustomerHomeScreen() {
   };
 
   const handleCategoryPress = (category: "ROOM" | "PG") => {
-    Alert.alert(
-      `${category} Selected`,
-      `Showing available ${category} listings near ${currentLocation}`,
-    );
+    const typeParam = category === "ROOM" ? "Room" : "PG";
+    router.push({
+      pathname: "/CustomerPanel/(tabs)/search",
+      params: {
+        type: typeParam,
+        gender: "All",
+        sharing: "All",
+      },
+    } as any);
   };
 
   const handleFilterPress = () => {
@@ -136,14 +140,59 @@ export default function CustomerHomeScreen() {
   };
 
   const handleGenderSelect = (pref: GenderPreference) => {
-    Alert.alert(
-      pref.label,
-      `Filtering stays for ${pref.label} (${pref.count})`,
-    );
+    let genderParam: "All" | "Boys" | "Girls" | "Unisex" = "All";
+    let typeParam: "All" | "Room" | "PG" = "All";
+    let sharingParam: string = "All";
+    let queryParam: string = "";
+
+    switch (pref.id) {
+      case "boys":
+        genderParam = "Boys";
+        typeParam = "PG";
+        break;
+      case "girls":
+        genderParam = "Girls";
+        typeParam = "PG";
+        break;
+      case "coliving":
+        genderParam = "Unisex";
+        typeParam = "PG";
+        break;
+      case "family":
+        typeParam = "Room";
+        sharingParam = "1BHK";
+        queryParam = "";
+        break;
+      case "all":
+      default:
+        genderParam = "All";
+        typeParam = "All";
+        sharingParam = "All";
+        queryParam = "";
+        break;
+    }
+
+    router.push({
+      pathname: "/CustomerPanel/(tabs)/search",
+      params: {
+        gender: genderParam,
+        type: typeParam,
+        sharing: sharingParam,
+        query: queryParam,
+        genderPrefId: pref.id,
+      },
+    } as any);
   };
 
   const handleBudgetSelect = (range: BudgetRange) => {
-    Alert.alert("Budget Filter", `Showing stays for budget ${range.label}`);
+    router.push({
+      pathname: "/CustomerPanel/(tabs)/search",
+      params: {
+        minPrice: range.min.toString(),
+        maxPrice: range.max.toString(),
+        budgetId: range.id,
+      },
+    } as any);
   };
 
   const handleOccupancySelect = (item: OccupancyItem) => {
@@ -310,12 +359,12 @@ export default function CustomerHomeScreen() {
           onPgPress={() => handleCategoryPress("PG")}
         />
 
-        {/* 7. Popular Locations Chips */}
+        {/* 7. Popular Locations Chips
         <PopularLocations
           selectedLocation={selectedPopularLocation}
           onSelectLocation={handleLocationSelect}
           onSeeAllPress={() => setLocationModalVisible(true)}
-        />
+        /> */}
 
         {/* 8. Filter by Monthly Budget */}
         <BudgetFilterChips onSelectBudget={handleBudgetSelect} />

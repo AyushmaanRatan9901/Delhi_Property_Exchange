@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useResponsiveTheme } from '../../constants/theme';
@@ -26,6 +27,9 @@ export const BudgetFilterChips: React.FC<BudgetFilterChipsProps> = ({ onSelectBu
   const [selectedId, setSelectedId] = useState<string>('b2');
 
   const handleSelect = (b: BudgetRange) => {
+    try {
+      Haptics.selectionAsync();
+    } catch (e) {}
     setSelectedId(b.id);
     onSelectBudget?.(b);
   };

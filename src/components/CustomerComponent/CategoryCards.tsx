@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,12 +13,26 @@ interface CategoryCardsProps {
 export const CategoryCards: React.FC<CategoryCardsProps> = ({ onRoomPress, onPgPress }) => {
   const { colors, gradients, moderateScale, typography, spacing, radii, shadows, layout, isDark } = useResponsiveTheme();
 
+  const handleRoom = () => {
+    try {
+      Haptics.selectionAsync();
+    } catch (e) {}
+    onRoomPress?.();
+  };
+
+  const handlePg = () => {
+    try {
+      Haptics.selectionAsync();
+    } catch (e) {}
+    onPgPress?.();
+  };
+
   return (
     <View style={[styles.container, { paddingHorizontal: spacing.screenHorizontal, marginVertical: spacing.xs }]}>
       <View style={layout.horizontalViewBetween}>
         {/* ROOM Card */}
         <TouchableOpacity
-          onPress={onRoomPress}
+          onPress={handleRoom}
           activeOpacity={0.85}
           style={[styles.cardWrapper, { marginRight: spacing.sm }]}
         >
@@ -89,7 +104,7 @@ export const CategoryCards: React.FC<CategoryCardsProps> = ({ onRoomPress, onPgP
 
         {/* PG Card */}
         <TouchableOpacity
-          onPress={onPgPress}
+          onPress={handlePg}
           activeOpacity={0.85}
           style={[styles.cardWrapper, { marginLeft: spacing.sm }]}
         >

@@ -1,4 +1,5 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useResponsiveTheme } from "../../constants/theme";
@@ -13,7 +14,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   onMenuPress,
   onNotificationPress,
-  onProfilePress,
+
   unreadNotifications = 3,
 }) => {
   const bellRef = React.useRef<View>(null);
@@ -158,7 +159,9 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* User Profile Avatar */}
         <TouchableOpacity
-          onPress={onProfilePress}
+          onPress={() =>
+            router.push("/CusomterPanelScreens/EditProfile/Editprofile")
+          }
           activeOpacity={0.8}
           style={styles.avatarContainer}
         >
