@@ -51,7 +51,7 @@ const DEFAULT_ACCOUNTS: AccountItem[] = [
   },
   {
     id: "acc-2",
-    username: "king_09724",
+    username: "Raju_8979",
     avatar:
       "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=180&q=80",
     subtitle: "2 chats",
@@ -490,7 +490,9 @@ export function FloatingTabBar({
               styles.bottomSheetContainer,
               {
                 backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
-                borderColor: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.06)",
+                borderColor: isDark
+                  ? "rgba(255, 255, 255, 0.12)"
+                  : "rgba(0, 0, 0, 0.06)",
                 paddingBottom: Math.max(insets.bottom, 22),
               },
             ]}
@@ -609,7 +611,10 @@ export function FloatingTabBar({
                           <View
                             style={[
                               styles.activeDot,
-                              { backgroundColor: colors.verifiedGreen || "#10B981" },
+                              {
+                                backgroundColor:
+                                  colors.verifiedGreen || "#10B981",
+                              },
                             ]}
                           />
                           <Text
@@ -629,7 +634,10 @@ export function FloatingTabBar({
                           <View
                             style={[
                               styles.activeDot,
-                              { backgroundColor: colors.notificationRed || "#EF4444" },
+                              {
+                                backgroundColor:
+                                  colors.notificationRed || "#EF4444",
+                              },
                             ]}
                           />
                           <Text
@@ -744,7 +752,9 @@ export function FloatingTabBar({
               styles.bottomSheetContainer,
               {
                 backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
-                borderColor: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.06)",
+                borderColor: isDark
+                  ? "rgba(255, 255, 255, 0.12)"
+                  : "rgba(0, 0, 0, 0.06)",
                 paddingBottom: Math.max(insets.bottom, 24),
               },
             ]}
@@ -801,7 +811,8 @@ export function FloatingTabBar({
                   },
                 ]}
               >
-                Log in to an existing profile or register a new account to switch workspaces seamlessly.
+                Log in to an existing profile or register a new account to
+                switch workspaces seamlessly.
               </Text>
             </View>
 
@@ -824,7 +835,10 @@ export function FloatingTabBar({
                 colors={
                   isDark
                     ? [colors.primary, colors.primaryDark]
-                    : [colors.primary, colors.primaryGradientEnd || colors.primaryDark]
+                    : [
+                        colors.primary,
+                        colors.primaryGradientEnd || colors.primaryDark,
+                      ]
                 }
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
