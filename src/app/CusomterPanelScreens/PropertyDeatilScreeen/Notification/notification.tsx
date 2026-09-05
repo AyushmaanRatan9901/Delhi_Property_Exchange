@@ -1,11 +1,5 @@
-import {
-  Feather,
-  Ionicons,
-  MaterialCommunityIcons,
-  MaterialIcons,
-} from "@expo/vector-icons";
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -44,7 +38,10 @@ export interface NotificationData {
   propertyTitle?: string;
   badge?: string;
   badgeColor?: string;
-  icon: keyof typeof MaterialCommunityIcons.glyphMap | keyof typeof Feather.glyphMap | keyof typeof Ionicons.glyphMap;
+  icon:
+    | keyof typeof MaterialCommunityIcons.glyphMap
+    | keyof typeof Feather.glyphMap
+    | keyof typeof Ionicons.glyphMap;
   iconFamily: "MaterialCommunityIcons" | "Feather" | "Ionicons";
   iconColor: string;
   iconBg: string;
@@ -175,8 +172,8 @@ export interface NotificationModalProps {
 }
 
 /**
- * High-performance Circular Reveal Notification Modal
- * Originates from the exact coordinates of the Header Bell Icon
+ * Ultra-Smooth Realistic iOS-Inspired App Launch & Morphing Transition Modal
+ * Originates from the exact coordinates of the Header Bell Icon and expands into full-screen
  */
 export const NotificationModal: React.FC<NotificationModalProps> = ({
   visible,
@@ -199,60 +196,75 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
   // Animation State
   const [modalRendered, setModalRendered] = useState(visible);
   const animProgress = useRef(new Animated.Value(0)).current;
-  const [notifications, setNotifications] = useState<NotificationData[]>(INITIAL_NOTIFICATIONS);
+  const animContentSlide = useRef(new Animated.Value(0)).current;
+  const [notifications, setNotifications] = useState<NotificationData[]>(
+    INITIAL_NOTIFICATIONS,
+  );
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
-  const [selectedNotif, setSelectedNotif] = useState<NotificationData | null>(null);
+  const [selectedNotif, setSelectedNotif] = useState<NotificationData | null>(
+    null,
+  );
 
   // Dynamic origin calculation based on Header Bell position
   const bellOrigin = useMemo(() => {
     if (origin && origin.x > 0 && origin.y > 0) {
       return origin;
     }
-    // Default dynamic header bell position
     return {
       x: SCREEN_WIDTH - 76,
-      y: insets.top + 34,
+      y: (insets.top || 20) + 34,
     };
   }, [origin, insets.top]);
 
-  // Max radius needed to cover the entire device viewport from (bellOrigin.x, bellOrigin.y)
-  const maxRadius = useMemo(() => {
-    const dx = Math.max(bellOrigin.x, SCREEN_WIDTH - bellOrigin.x);
-    const dy = Math.max(bellOrigin.y, SCREEN_HEIGHT - bellOrigin.y);
-    return Math.ceil(Math.hypot(dx, dy)) + 60;
-  }, [bellOrigin]);
+  const ICON_SIZE = 44;
 
-  const clipDiameter = maxRadius * 2;
-
-  // Handle open / close animations
+  // Handle open / close animations with realistic iOS spring physics
   useEffect(() => {
     if (visible) {
       setModalRendered(true);
+      animProgress.setValue(0);
+      animContentSlide.setValue(0);
+
       try {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       } catch (e) {}
 
-      // Smooth buttery spring expansion
-      Animated.spring(animProgress, {
-        toValue: 1,
-        damping: 24,
-        mass: 0.85,
-        stiffness: 190,
-        overshootClamping: true,
-        useNativeDriver: true,
-      }).start();
+      // Step 1: Smooth, Cinematic iOS Expansion from Icon to Full Screen
+      Animated.parallel([
+        Animated.timing(animProgress, {
+          toValue: 1,
+          duration: 540,
+          easing: Easing.bezier(0.16, 1, 0.3, 1),
+          useNativeDriver: true,
+        }),
+        Animated.timing(animContentSlide, {
+          toValue: 1,
+          duration: 500,
+          delay: 120,
+          easing: Easing.bezier(0.16, 1, 0.3, 1),
+          useNativeDriver: true,
+        }),
+      ]).start();
     } else if (modalRendered) {
       try {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       } catch (e) {}
 
-      // Smooth fluid collapse back into bell
-      Animated.timing(animProgress, {
-        toValue: 0,
-        duration: 320,
-        easing: Easing.bezier(0.25, 0.1, 0.25, 1.0),
-        useNativeDriver: true,
-      }).start(() => {
+      // Step 2: Smooth Fluid Contraction back into the Bell Icon
+      Animated.parallel([
+        Animated.timing(animProgress, {
+          toValue: 0,
+          duration: 360,
+          easing: Easing.bezier(0.25, 1, 0.3, 1),
+          useNativeDriver: true,
+        }),
+        Animated.timing(animContentSlide, {
+          toValue: 0,
+          duration: 250,
+          easing: Easing.ease,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
         setModalRendered(false);
       });
     }
@@ -263,12 +275,20 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (e) {}
 
-    Animated.timing(animProgress, {
-      toValue: 0,
-      duration: 320,
-      easing: Easing.bezier(0.25, 0.1, 0.25, 1.0),
-      useNativeDriver: true,
-    }).start(() => {
+    Animated.parallel([
+      Animated.timing(animProgress, {
+        toValue: 0,
+        duration: 360,
+        easing: Easing.bezier(0.25, 1, 0.3, 1),
+        useNativeDriver: true,
+      }),
+      Animated.timing(animContentSlide, {
+        toValue: 0,
+        duration: 250,
+        easing: Easing.ease,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
       setModalRendered(false);
       onClose();
     });
@@ -279,7 +299,10 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e) {}
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    Alert.alert("All Caught Up! 🎉", "All notifications have been marked as read.");
+    Alert.alert(
+      "All Caught Up! 🎉",
+      "All notifications have been marked as read.",
+    );
   };
 
   const handleClearAll = () => {
@@ -293,12 +316,14 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
           style: "destructive",
           onPress: () => {
             try {
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+              Haptics.notificationAsync(
+                Haptics.NotificationFeedbackType.Warning,
+              );
             } catch (e) {}
             setNotifications([]);
           },
         },
-      ]
+      ],
     );
   };
 
@@ -307,9 +332,8 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
       Haptics.selectionAsync();
     } catch (e) {}
 
-    // Mark as read
     setNotifications((prev) =>
-      prev.map((n) => (n.id === item.id ? { ...n, read: true } : n))
+      prev.map((n) => (n.id === item.id ? { ...n, read: true } : n)),
     );
 
     if (item.propertyId) {
@@ -323,7 +347,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
     } else if (item.actionText?.includes("DELHI2000")) {
       Alert.alert(
         "Promo Code Copied! 🎁",
-        "Code DELHI2000 copied. ₹2,000 will be credited to your account upon move-in confirmation."
+        "Code DELHI2000 copied. ₹2,000 will be credited to your account upon move-in confirmation.",
       );
     } else {
       setSelectedNotif(item);
@@ -333,17 +357,29 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
   const filteredNotifications = useMemo(() => {
     if (activeTab === "all") return notifications;
     if (activeTab === "visit")
-      return notifications.filter((n) => n.type === "visit" || n.type === "token");
+      return notifications.filter(
+        (n) => n.type === "visit" || n.type === "token",
+      );
     if (activeTab === "offer")
-      return notifications.filter((n) => n.type === "price_drop" || n.type === "offer");
+      return notifications.filter(
+        (n) => n.type === "price_drop" || n.type === "offer",
+      );
     if (activeTab === "security")
-      return notifications.filter((n) => n.type === "security" || n.type === "system");
+      return notifications.filter(
+        (n) => n.type === "security" || n.type === "system",
+      );
     return notifications;
   }, [notifications, activeTab]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   if (!modalRendered) return null;
+
+  // iOS Morphing Shared Element Calculations
+  const targetCenterX = SCREEN_WIDTH / 2;
+  const targetCenterY = SCREEN_HEIGHT / 2;
+  const deltaX = bellOrigin.x - targetCenterX;
+  const deltaY = bellOrigin.y - targetCenterY;
 
   return (
     <Modal
@@ -354,7 +390,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
       statusBarTranslucent
     >
       <View style={styles.modalRoot}>
-        {/* Semi-transparent Dimmed Backdrop */}
+        {/* Background Backdrop Smooth Fade & Scale Dissolve */}
         <Animated.View
           style={[
             styles.backdrop,
@@ -373,62 +409,108 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
           />
         </Animated.View>
 
-        {/* Circular Reveal Clipping Mask Container */}
+        {/* Morphing Expanding Shared-Element Window with Smooth Corner Curvature */}
         <Animated.View
           style={[
-            styles.circularClipContainer,
+            styles.morphWindow,
             {
-              left: bellOrigin.x - maxRadius,
-              top: bellOrigin.y - maxRadius,
-              width: clipDiameter,
-              height: clipDiameter,
-              borderRadius: maxRadius,
+              width: SCREEN_WIDTH,
+              height: SCREEN_HEIGHT,
+              backgroundColor: colors.background,
+              borderColor: isDark
+                ? "rgba(255, 255, 255, 0.16)"
+                : "rgba(0, 0, 0, 0.08)",
               transform: [
                 {
-                  scale: animProgress.interpolate({
+                  translateX: animProgress.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [0.001, 1],
+                    outputRange: [deltaX, 0],
+                  }),
+                },
+                {
+                  translateY: animProgress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [deltaY, 0],
+                  }),
+                },
+                {
+                  scaleX: animProgress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [ICON_SIZE / SCREEN_WIDTH, 1],
+                  }),
+                },
+                {
+                  scaleY: animProgress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [ICON_SIZE / SCREEN_HEIGHT, 1],
                   }),
                 },
               ],
             },
           ]}
         >
-          {/* Inner Fullscreen View Counter-translated so content is aligned with the screen */}
+          {/* Initial Icon State (Micro-badge at the start of launch) */}
           <Animated.View
+            pointerEvents="none"
             style={[
-              styles.screenContent,
+              styles.launchIconOverlay,
               {
-                left: maxRadius - bellOrigin.x,
-                top: maxRadius - bellOrigin.y,
-                width: SCREEN_WIDTH,
-                height: SCREEN_HEIGHT,
-                backgroundColor: colors.background,
                 opacity: animProgress.interpolate({
-                  inputRange: [0, 0.25, 0.8, 1],
-                  outputRange: [0, 0.75, 0.98, 1],
+                  inputRange: [0, 0.12, 0.28],
+                  outputRange: [1, 0.8, 0],
                 }),
                 transform: [
                   {
-                    translateY: animProgress.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [-16, 0],
+                    scale: animProgress.interpolate({
+                      inputRange: [0, 0.28],
+                      outputRange: [1, 2.4],
                     }),
                   },
                 ],
               },
             ]}
           >
+            <View
+              style={[
+                styles.launchIconPill,
+                {
+                  backgroundColor: colors.primary,
+                  borderRadius: moderateScale(22),
+                  width: moderateScale(44),
+                  height: moderateScale(44),
+                },
+              ]}
+            >
+              <Ionicons
+                name="notifications"
+                size={moderateScale(22)}
+                color="#FFFFFF"
+              />
+            </View>
+          </Animated.View>
+
+          {/* Full Application Screen Interface */}
+          <Animated.View
+            style={[
+              styles.fullAppContent,
+              {
+                opacity: animProgress.interpolate({
+                  inputRange: [0, 0.15, 0.6, 1],
+                  outputRange: [0, 0.4, 0.9, 1],
+                }),
+              },
+            ]}
+          >
             <SafeAreaView
               style={[styles.safeArea, { backgroundColor: colors.background }]}
-              edges={["bottom"]}
+              edges={[]}
             >
               <StatusBar
                 barStyle={isDark ? "light-content" : "dark-content"}
                 backgroundColor={colors.background}
               />
 
-              {/* Top Premium Notification Bar */}
+              {/* Top Premium Header Bar */}
               <View
                 style={[
                   styles.headerBar,
@@ -438,7 +520,8 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
                       : "rgba(255, 255, 255, 0.96)",
                     borderBottomColor: colors.borderLight,
                     paddingHorizontal: spacing.screenHorizontal,
-                    paddingTop: insets.top > 0 ? insets.top + spacing.xs : spacing.md,
+                    paddingTop:
+                      insets.top > 0 ? insets.top + spacing.xs : spacing.md,
                     paddingBottom: spacing.sm + 2,
                   },
                   shadows.sm,
@@ -446,7 +529,9 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
               >
                 <View style={layout.horizontalViewBetween}>
                   {/* Title & Unread Pill */}
-                  <View style={[layout.horizontalView, { gap: spacing.xs + 2 }]}>
+                  <View
+                    style={[layout.horizontalView, { gap: spacing.xs + 2 }]}
+                  >
                     <View
                       style={[
                         styles.bellIconPill,
@@ -601,9 +686,11 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
                             backgroundColor: isActive
                               ? colors.primary
                               : isDark
-                              ? colors.surfaceHover
-                              : colors.surfaceLight,
-                            borderColor: isActive ? colors.primary : colors.border,
+                                ? colors.surfaceHover
+                                : colors.surfaceLight,
+                            borderColor: isActive
+                              ? colors.primary
+                              : colors.border,
                             borderRadius: radii.pill,
                             paddingHorizontal: spacing.md,
                             paddingVertical: spacing.xs + 2,
@@ -614,7 +701,9 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
                           style={{
                             fontSize: moderateScale(11.5),
                             fontWeight: isActive ? "800" : "600",
-                            color: isActive ? colors.white : colors.textSecondary,
+                            color: isActive
+                              ? colors.white
+                              : colors.textSecondary,
                           }}
                         >
                           {tab.label}
@@ -625,14 +714,25 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
                 </ScrollView>
               </View>
 
-              {/* Notification List Scroll */}
-              <ScrollView
+              {/* Staggered Notification Cards Stream */}
+              <Animated.ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{
                   paddingHorizontal: spacing.screenHorizontal,
                   paddingTop: spacing.md,
-                  paddingBottom: insets.bottom + spacing.xxl + 20,
+                  paddingBottom:
+                    (insets.bottom > 0 ? insets.bottom : 20) + spacing.xxl + 20,
                   gap: spacing.sm + 2,
+                }}
+                style={{
+                  transform: [
+                    {
+                      translateY: animContentSlide.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [22, 0],
+                      }),
+                    },
+                  ],
                 }}
               >
                 {filteredNotifications.length === 0 ? (
@@ -676,7 +776,8 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
                         paddingHorizontal: spacing.xl,
                       }}
                     >
-                      You're all up to date! New visit updates, price drops, and move-in tokens will appear here.
+                      You're all up to date! New visit updates, price drops, and
+                      move-in tokens will appear here.
                     </Text>
                   </View>
                 ) : (
@@ -704,7 +805,12 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
                         shadows.sm,
                       ]}
                     >
-                      <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "flex-start",
+                        }}
+                      >
                         {/* Icon Box */}
                         <View
                           style={[
@@ -748,7 +854,13 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
                               justifyContent: "space-between",
                             }}
                           >
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                            <View
+                              style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                gap: 5,
+                              }}
+                            >
                               {item.badge && (
                                 <View
                                   style={[
@@ -757,7 +869,8 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
                                       backgroundColor: isDark
                                         ? "rgba(255,255,255,0.08)"
                                         : "rgba(0,0,0,0.05)",
-                                      borderColor: item.badgeColor || colors.primary,
+                                      borderColor:
+                                        item.badgeColor || colors.primary,
                                       borderRadius: radii.pill,
                                     },
                                   ]}
@@ -897,7 +1010,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
                     </Text>
                   </TouchableOpacity>
                 )}
-              </ScrollView>
+              </Animated.ScrollView>
             </SafeAreaView>
           </Animated.View>
         </Animated.View>
@@ -934,12 +1047,27 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: "rgba(4, 13, 24, 0.65)",
   },
-  circularClipContainer: {
+  morphWindow: {
     position: "absolute",
     overflow: "hidden",
+    borderRadius: 36,
   },
-  screenContent: {
+  launchIconOverlay: {
     position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 10,
+  },
+  launchIconPill: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  fullAppContent: {
+    flex: 1,
   },
   safeArea: {
     flex: 1,
