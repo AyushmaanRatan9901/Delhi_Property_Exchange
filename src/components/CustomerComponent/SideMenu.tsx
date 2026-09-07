@@ -275,8 +275,8 @@ export const SideMenu: React.FC<SideMenuProps> = ({
   const SUPPORT_MENU: MenuItem[] = [
     {
       id: "helpdesk",
-      icon: "headset",
-      iconType: "material",
+      icon: "headphones",
+      iconType: "feather",
       title: "24/7 Caretaker Helpdesk",
       subtitle: "Instant phone & WhatsApp support",
       iconColor: colors.verifiedGreen,
