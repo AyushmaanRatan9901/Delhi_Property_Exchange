@@ -62,7 +62,7 @@ export const BrokerQuickActions: React.FC<BrokerQuickActionsProps> = ({
     handlePressWithHaptic(
       onHistoryPress ||
         (() => {
-          router.push("/BrokerPanel/(tabs)/history" as any);
+          router.push("/BrokerPanel/(tabs)/property" as any);
         })
     );
   };

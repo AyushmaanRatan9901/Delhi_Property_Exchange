@@ -50,7 +50,7 @@ import {
   WhyChooseUs,
 } from "../../../components/CustomerComponent";
 import { useResponsiveTheme } from "../../../constants/theme";
-import { NotificationModal } from "../../CusomterPanelScreens/PropertyDeatilScreeen/Notification/notification";
+import { NotificationModal } from "../../Screens/CusomterPanelScreens/PropertyDeatilScreeen/Notification/notification";
 
 const ALL_CITIES = [
   { id: "1", name: "Dwarka, Delhi", state: "Delhi" },

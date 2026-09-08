@@ -4,6 +4,7 @@ import {
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import React from "react";
 import {
   Alert,
@@ -36,58 +37,58 @@ interface TopCommissionPropertiesProps {
 
 const DEFAULT_TOP_PROPERTIES: TopCommissionItem[] = [
   {
-    id: "top-1",
+    id: "prop-01",
     rank: 1,
-    title: "Dwarka Sector 14 Metro Residency PG",
-    location: "Dwarka Sector 14, Delhi",
+    title: "Dwarka Sector 12 Luxury Girls PG",
+    location: "Dwarka Sector 12, Delhi",
     imageUrl:
-      "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&auto=format&fit=crop&q=80",
-    propertyType: "Co-Living & Double Sharing",
-    totalCommissionEarned: 64500,
-    totalDealsClosed: 9,
+      "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800&auto=format&fit=crop&q=80",
+    propertyType: "Co-Living & Single Bed",
+    totalCommissionEarned: 58000,
+    totalDealsClosed: 8,
     monthlyRent: 14500,
-    occupancyPercent: 96,
+    occupancyPercent: 95,
     rating: 4.9,
   },
   {
-    id: "top-2",
+    id: "prop-02",
     rank: 2,
-    title: "Janakpuri Block B Elite Boys Stay",
+    title: "Janakpuri West Prime Boys Hostel",
     location: "Janakpuri District Centre, Delhi",
     imageUrl:
-      "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=800&auto=format&fit=crop&q=80",
-    propertyType: "Private Room & 2-Sharing",
-    totalCommissionEarned: 48200,
-    totalDealsClosed: 7,
-    monthlyRent: 13800,
-    occupancyPercent: 92,
+      "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=800&auto=format&fit=crop&q=80",
+    propertyType: "Double Sharing & Studio",
+    totalCommissionEarned: 47250,
+    totalDealsClosed: 9,
+    monthlyRent: 10500,
+    occupancyPercent: 90,
+    rating: 4.9,
+  },
+  {
+    id: "prop-07",
+    rank: 3,
+    title: "Dwarka Mor Metro Stanza Co-Living",
+    location: "Dwarka Mor, West Delhi",
+    imageUrl:
+      "https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?w=800&auto=format&fit=crop&q=80",
+    propertyType: "Co-Living Studio & Double",
+    totalCommissionEarned: 42000,
+    totalDealsClosed: 6,
+    monthlyRent: 14000,
+    occupancyPercent: 88,
     rating: 4.8,
   },
   {
-    id: "top-3",
-    rank: 3,
-    title: "Sagarpur Main Road Scholar PG",
-    location: "Sagarpur West, Delhi",
-    imageUrl:
-      "https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?w=800&auto=format&fit=crop&q=80",
-    propertyType: "Triple Sharing & Budget Rooms",
-    totalCommissionEarned: 36000,
-    totalDealsClosed: 6,
-    monthlyRent: 10000,
-    occupancyPercent: 88,
-    rating: 4.7,
-  },
-  {
-    id: "top-4",
+    id: "prop-05",
     rank: 4,
     title: "Dwarka Sector 7 Luxury 2BHK Floor",
     location: "Dwarka Sector 7, Delhi",
     imageUrl:
       "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&auto=format&fit=crop&q=80",
     propertyType: "Full 2BHK Furnished Apartment",
-    totalCommissionEarned: 29500,
+    totalCommissionEarned: 39000,
     totalDealsClosed: 3,
-    monthlyRent: 24000,
+    monthlyRent: 26000,
     occupancyPercent: 100,
     rating: 4.9,
   },
@@ -99,6 +100,7 @@ export const TopCommissionProperties: React.FC<
   topProperties = DEFAULT_TOP_PROPERTIES,
   onPropertyPress,
 }) => {
+  const router = useRouter();
   const { colors, moderateScale, spacing, radii, typography, layout, shadows, isDark } =
     useResponsiveTheme();
 
@@ -221,17 +223,16 @@ export const TopCommissionProperties: React.FC<
             <TouchableOpacity
               key={item.id}
               activeOpacity={0.88}
-              onPress={() =>
-                onPropertyPress?.(item) ||
-                Alert.alert(
-                  item.title,
-                  `Total Commission Earned: ₹${item.totalCommissionEarned.toLocaleString(
-                    "en-IN"
-                  )}\nDeals Closed: ${item.totalDealsClosed} Tenants\nOccupancy: ${
-                    item.occupancyPercent
-                  }%\nMonthly Rent: ₹${item.monthlyRent.toLocaleString("en-IN")}`
-                )
-              }
+              onPress={() => {
+                if (onPropertyPress) {
+                  onPropertyPress(item);
+                } else {
+                  router.push({
+                    pathname: "/Screens/BrokerPanelScreens/PropertyDetailScreen",
+                    params: { id: item.id },
+                  } as any);
+                }
+              }}
               style={[
                 styles.card,
                 {

@@ -89,7 +89,7 @@ export default function BrokerDashboardScreen() {
         <BrokerStatsOverview
           onCardPress={(metric) => {
             if (metric === "properties") {
-              router.push("/BrokerPanel/(tabs)/history" as any);
+              router.push("/BrokerPanel/(tabs)/property" as any);
             } else if (
               metric === "commission" ||
               metric === "monthly" ||
@@ -105,7 +105,7 @@ export default function BrokerDashboardScreen() {
           onAddPress={() => router.push("/BrokerPanel/(tabs)/add" as any)}
           onMoneyPress={() => router.push("/BrokerPanel/(tabs)/money" as any)}
           onHistoryPress={() =>
-            router.push("/BrokerPanel/(tabs)/history" as any)
+            router.push("/BrokerPanel/(tabs)/property" as any)
           }
         />
 
@@ -121,13 +121,13 @@ export default function BrokerDashboardScreen() {
         {/* 5. Meri Latest Added Property Section */}
         <LatestAddedProperties
           onViewAllPress={() =>
-            router.push("/BrokerPanel/(tabs)/history" as any)
+            router.push("/BrokerPanel/(tabs)/property" as any)
           }
           onPropertyPress={(item) =>
-            Alert.alert(
-              item.title,
-              `Monthly Rent: ₹${item.monthlyRent.toLocaleString("en-IN")}\nExpected Commission: ₹${item.expectedCommission.toLocaleString("en-IN")}\nStatus: ${item.status}\nInquiries: ${item.inquiriesCount} Leads active.`,
-            )
+            router.push({
+              pathname: "/Screens/BrokerPanelScreens/PropertyDetailScreen",
+              params: { id: item.id },
+            } as any)
           }
         />
 

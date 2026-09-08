@@ -160,7 +160,9 @@ export const Header: React.FC<HeaderProps> = ({
         {/* User Profile Avatar */}
         <TouchableOpacity
           onPress={() =>
-            router.push("/CusomterPanelScreens/EditProfile/Editprofile")
+            router.push(
+              "/Screens/CusomterPanelScreens/EditProfile/Editprofile" as any
+            )
           }
           activeOpacity={0.8}
           style={styles.avatarContainer}

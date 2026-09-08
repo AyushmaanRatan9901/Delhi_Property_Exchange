@@ -22,12 +22,12 @@ export default function BrokerTabsLayout() {
         }}
       />
 
-      {/* 4. Earnings & Payouts Tab */}
+      {/* 2. Properties Portfolio Tab */}
       <Tabs.Screen
-        name="money"
+        name="property"
         options={{
-          title: "Payouts",
-          tabBarIcon: tabIcon("wallet", "ionicons"),
+          title: "Properties",
+          tabBarIcon: tabIcon("home", "ionicons"),
         }}
       />
 
@@ -40,12 +40,12 @@ export default function BrokerTabsLayout() {
         }}
       />
 
-      {/* 3. Deal & Leads History Tab */}
+      {/* 4. Earnings & Payouts Tab */}
       <Tabs.Screen
-        name="history"
+        name="money"
         options={{
-          title: "Deals",
-          tabBarIcon: tabIcon("document-text", "ionicons"),
+          title: "Payouts",
+          tabBarIcon: tabIcon("wallet", "ionicons"),
         }}
       />
 

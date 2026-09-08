@@ -19,7 +19,7 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import { useResponsiveTheme } from "../../../../constants/theme";
+import { useResponsiveTheme } from "../../../../../constants/theme";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 

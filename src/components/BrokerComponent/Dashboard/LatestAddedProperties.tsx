@@ -41,7 +41,7 @@ interface LatestAddedPropertiesProps {
 
 const DEFAULT_LATEST_PROPERTIES: BrokerPropertyItem[] = [
   {
-    id: "bp-101",
+    id: "prop-01",
     title: "Dwarka Sector 12 Luxury Girls PG",
     imageUrl:
       "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800&auto=format&fit=crop&q=80",
@@ -58,7 +58,7 @@ const DEFAULT_LATEST_PROPERTIES: BrokerPropertyItem[] = [
     rating: 4.8,
   },
   {
-    id: "bp-102",
+    id: "prop-02",
     title: "Janakpuri West Prime Boys Hostel",
     imageUrl:
       "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=800&auto=format&fit=crop&q=80",
@@ -75,7 +75,7 @@ const DEFAULT_LATEST_PROPERTIES: BrokerPropertyItem[] = [
     rating: 4.9,
   },
   {
-    id: "bp-103",
+    id: "prop-03",
     title: "Rohini Sector 15 Furnished 1BHK Flat",
     imageUrl:
       "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&auto=format&fit=crop&q=80",
@@ -92,7 +92,7 @@ const DEFAULT_LATEST_PROPERTIES: BrokerPropertyItem[] = [
     rating: 4.7,
   },
   {
-    id: "bp-104",
+    id: "prop-04",
     title: "Uttam Nagar East Co-Living Studio",
     imageUrl:
       "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format&fit=crop&q=80",
@@ -193,7 +193,7 @@ export const LatestAddedProperties: React.FC<LatestAddedPropertiesProps> = ({
           onPress={
             onViewAllPress ||
             (() => {
-              router.push("/BrokerPanel/(tabs)/history" as any);
+              router.push("/BrokerPanel/(tabs)/property" as any);
             })
           }
           style={[layout.horizontalView, { alignItems: "center" }]}
@@ -233,17 +233,16 @@ export const LatestAddedProperties: React.FC<LatestAddedPropertiesProps> = ({
             <TouchableOpacity
               key={item.id}
               activeOpacity={0.9}
-              onPress={() =>
-                onPropertyPress?.(item) ||
-                Alert.alert(
-                  item.title,
-                  `Monthly Rent: ₹${item.monthlyRent.toLocaleString(
-                    "en-IN"
-                  )}\nExpected Commission: ₹${item.expectedCommission.toLocaleString(
-                    "en-IN"
-                  )}\nStatus: ${item.status}\nInquiries: ${item.inquiriesCount} visits booked.`
-                )
-              }
+              onPress={() => {
+                if (onPropertyPress) {
+                  onPropertyPress(item);
+                } else {
+                  router.push({
+                    pathname: "/Screens/BrokerPanelScreens/PropertyDetailScreen",
+                    params: { id: item.id },
+                  } as any);
+                }
+              }}
               style={[
                 styles.propertyCard,
                 {
