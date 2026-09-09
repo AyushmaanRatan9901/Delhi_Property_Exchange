@@ -1,5 +1,5 @@
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import React from "react";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import React, { useRef } from "react";
 import {
   Alert,
   Image,
@@ -15,7 +15,7 @@ interface BrokerHeaderProps {
   brokerAgency?: string;
   avatarUrl?: string;
   unreadNotifications?: number;
-  onNotificationPress?: () => void;
+  onNotificationPress?: (origin?: { x: number; y: number }) => void;
   onProfilePress?: () => void;
   onSupportPress?: () => void;
 }
@@ -29,8 +29,18 @@ export const BrokerHeader: React.FC<BrokerHeaderProps> = ({
   onProfilePress,
   onSupportPress,
 }) => {
-  const { colors, moderateScale, spacing, radii, typography, layout, isDark, toggleTheme } =
-    useResponsiveTheme();
+  const {
+    colors,
+    moderateScale,
+    spacing,
+    radii,
+    typography,
+    layout,
+    isDark,
+    toggleTheme,
+  } = useResponsiveTheme();
+
+  const bellRef = useRef<View | null>(null);
 
   return (
     <View
@@ -85,7 +95,9 @@ export const BrokerHeader: React.FC<BrokerHeaderProps> = ({
           </View>
 
           <View style={{ marginLeft: spacing.sm, flex: 1 }}>
-            <View style={[layout.horizontalView, { alignItems: "center", gap: 4 }]}>
+            <View
+              style={[layout.horizontalView, { alignItems: "center", gap: 4 }]}
+            >
               <Text
                 numberOfLines={1}
                 style={[
@@ -150,13 +162,15 @@ export const BrokerHeader: React.FC<BrokerHeaderProps> = ({
               (() =>
                 Alert.alert(
                   "Broker Priority Desk",
-                  "Connecting you with your dedicated Partner Manager (10 AM - 8 PM)."
+                  "Connecting you with your dedicated Partner Manager (10 AM - 8 PM).",
                 ))
             }
             style={[
               styles.iconBtn,
               {
-                backgroundColor: isDark ? colors.surfaceHover : colors.surfaceLight,
+                backgroundColor: isDark
+                  ? colors.surfaceHover
+                  : colors.surfaceLight,
                 borderColor: colors.border,
                 borderRadius: radii.pill,
                 width: moderateScale(36),
@@ -171,45 +185,28 @@ export const BrokerHeader: React.FC<BrokerHeaderProps> = ({
             />
           </TouchableOpacity>
 
-          {/* Theme Switcher (if available) */}
-          {toggleTheme && (
-            <TouchableOpacity
-              activeOpacity={0.75}
-              onPress={toggleTheme}
-              style={[
-                styles.iconBtn,
-                {
-                  backgroundColor: isDark ? colors.surfaceHover : colors.surfaceLight,
-                  borderColor: colors.border,
-                  borderRadius: radii.pill,
-                  width: moderateScale(36),
-                  height: moderateScale(36),
-                },
-              ]}
-            >
-              <Ionicons
-                name={isDark ? "sunny-outline" : "moon-outline"}
-                size={moderateScale(16)}
-                color={colors.textPrimary}
-              />
-            </TouchableOpacity>
-          )}
-
           {/* Notification Bell with Badge */}
           <TouchableOpacity
+            ref={bellRef as any}
             activeOpacity={0.75}
-            onPress={
-              onNotificationPress ||
-              (() =>
-                Alert.alert(
-                  "Commission & Deal Alerts",
-                  `You have ${unreadNotifications} unread deal alerts and lead updates.`
-                ))
-            }
+            onPress={() => {
+              if (bellRef.current) {
+                bellRef.current.measureInWindow((x, y, width, height) => {
+                  onNotificationPress?.({
+                    x: x + width / 2,
+                    y: y + height / 2,
+                  });
+                });
+              } else {
+                onNotificationPress?.();
+              }
+            }}
             style={[
               styles.iconBtn,
               {
-                backgroundColor: isDark ? colors.surfaceHover : colors.surfaceLight,
+                backgroundColor: isDark
+                  ? colors.surfaceHover
+                  : colors.surfaceLight,
                 borderColor: colors.border,
                 borderRadius: radii.pill,
                 width: moderateScale(36),
@@ -246,9 +243,7 @@ export const BrokerHeader: React.FC<BrokerHeaderProps> = ({
         style={[
           styles.statusStrip,
           {
-            backgroundColor: isDark
-              ? "rgba(16, 185, 129, 0.1)"
-              : "#ECFDF5",
+            backgroundColor: isDark ? "rgba(16, 185, 129, 0.1)" : "#ECFDF5",
             borderColor: isDark ? "rgba(16, 185, 129, 0.25)" : "#A7F3D0",
             borderRadius: radii.pill,
             marginTop: spacing.xs + 2,

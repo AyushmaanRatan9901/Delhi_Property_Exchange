@@ -1,25 +1,22 @@
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
+  Image,
   ImageBackground,
   LayoutChangeEvent,
   PanResponder,
-  Platform,
   StatusBar,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Path } from "react-native-svg";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -36,12 +33,14 @@ export default function OnboardingScreen() {
 
   const [containerWidth, setContainerWidth] = useState(SCREEN_WIDTH - 48);
   const dragX = useRef(new Animated.Value(0)).current;
+  const holdScale = useRef(new Animated.Value(1)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
   const isCompleted = useRef(false);
 
   // Maximum travel distance for the circle thumb
   const maxSlideDistance = Math.max(
     0,
-    containerWidth - THUMB_SIZE - BUTTON_PADDING * 2
+    containerWidth - THUMB_SIZE - BUTTON_PADDING * 2,
   );
 
   const completeSwipe = () => {
@@ -52,35 +51,77 @@ export default function OnboardingScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e) {}
 
-    Animated.timing(dragX, {
-      toValue: maxSlideDistance,
-      duration: 180,
-      useNativeDriver: true,
-    }).start(() => {
-      router.replace("/CustomerPanel/(tabs)" as any);
+    Animated.parallel([
+      Animated.timing(dragX, {
+        toValue: maxSlideDistance,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.spring(holdScale, {
+        toValue: 1.18,
+        friction: 5,
+        useNativeDriver: true,
+      }),
+      Animated.timing(glowAnim, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      router.replace("/(auth)/login" as any);
     });
   };
 
   const resetSwipe = () => {
-    Animated.spring(dragX, {
-      toValue: 0,
-      friction: 6,
-      tension: 50,
-      useNativeDriver: true,
-    }).start();
+    Animated.parallel([
+      Animated.spring(dragX, {
+        toValue: 0,
+        friction: 6,
+        tension: 50,
+        useNativeDriver: true,
+      }),
+      Animated.spring(holdScale, {
+        toValue: 1,
+        friction: 5,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+      Animated.timing(glowAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
   };
 
-  // PanResponder for smooth left-to-right dragging
+  // PanResponder for smooth left-to-right dragging with hold & hover animation
   const panResponder = useMemo(
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponder: (_, gesture) =>
-          Math.abs(gesture.dx) > 3 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
+          Math.abs(gesture.dx) > 3 &&
+          Math.abs(gesture.dx) > Math.abs(gesture.dy),
         onPanResponderGrant: () => {
+          if (isCompleted.current) return;
           try {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           } catch (e) {}
+
+          // Trigger Hover / Hold expansion and neon glow
+          Animated.parallel([
+            Animated.spring(holdScale, {
+              toValue: 1.14,
+              friction: 4,
+              tension: 50,
+              useNativeDriver: true,
+            }),
+            Animated.timing(glowAnim, {
+              toValue: 1,
+              duration: 160,
+              useNativeDriver: true,
+            }),
+          ]).start();
         },
         onPanResponderMove: (_, gesture) => {
           if (isCompleted.current) return;
@@ -101,7 +142,7 @@ export default function OnboardingScreen() {
           }
         },
       }),
-    [maxSlideDistance]
+    [maxSlideDistance],
   );
 
   // Text fades out smoothly as thumb moves right
@@ -138,29 +179,43 @@ export default function OnboardingScreen() {
           style={styles.topGradient}
         />
 
-        {/* 2. Top Header with Circular Brand Logo (Matching Screenshot Top Right) */}
-        <SafeAreaView edges={["top"]} style={styles.safeHeader}>
-          <View style={styles.headerRow}>
-            <View />
-            {/* Top Right Translucent Brand Logo Badge */}
-            <View style={styles.logoBadgeOuter}>
-              <LinearGradient
-                colors={["rgba(56, 189, 248, 0.85)", "rgba(14, 165, 233, 0.4)"]}
-                style={styles.logoGradientRing}
-              >
-                <View style={styles.logoInnerCircle}>
-                  <MaterialCommunityIcons
-                    name="home-city-outline"
-                    size={16}
-                    color="#0284C7"
-                  />
-                  <Text style={styles.logoText}>CHHABRA STAY</Text>
-                  <Text style={styles.logoSubText}>DELHI NCR</Text>
-                </View>
-              </LinearGradient>
-            </View>
-          </View>
-        </SafeAreaView>
+        {/* 2. Top-Right Corner Circle Brand Logo Badge */}
+        <View
+          style={[
+            styles.topRightCornerCircle,
+            {
+              width: 154 + Math.max(0, insets.top - 20) * 0.35,
+              height: 154 + Math.max(0, insets.top - 20) * 0.35,
+              borderBottomLeftRadius: 154 + Math.max(0, insets.top - 20) * 0.35,
+            },
+          ]}
+          pointerEvents="none"
+        >
+          <LinearGradient
+            colors={[
+              "rgba(255, 255, 255, 0.50)",
+              "rgba(255, 255, 255, 0.25)",
+              "rgba(255, 255, 255, 0.08)",
+            ]}
+            start={{ x: 1, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={[
+              styles.cornerCircleGradient,
+              {
+                paddingTop: insets.top > 0 ? insets.top + 9 : 28,
+                paddingLeft: 48,
+                paddingRight: 6,
+                paddingBottom: 74,
+              },
+            ]}
+          >
+            <Image
+              source={require("../../../assets/images/logo1.png")}
+              style={styles.cornerLogoImage}
+              resizeMode="contain"
+            />
+          </LinearGradient>
+        </View>
 
         {/* Bottom Multi-stop Dark Gradient Overlay for Crisp Text Contrast */}
         <LinearGradient
@@ -179,7 +234,7 @@ export default function OnboardingScreen() {
         <View
           style={[
             styles.contentContainer,
-            { paddingBottom: Math.max(insets.bottom, 16) + 36 },
+            { paddingBottom: Math.max(insets.bottom, 20) + 40 },
           ]}
         >
           {/* Main Headline */}
@@ -202,10 +257,7 @@ export default function OnboardingScreen() {
           >
             {/* Center "Get Started" Text (Fades on slide) */}
             <Animated.View
-              style={[
-                styles.labelContainer,
-                { opacity: textOpacity },
-              ]}
+              style={[styles.labelContainer, { opacity: textOpacity }]}
               pointerEvents="none"
             >
               <Text style={styles.buttonLabel}>Get Started</Text>
@@ -213,10 +265,7 @@ export default function OnboardingScreen() {
 
             {/* Right Triple Chevron Arrows */}
             <Animated.View
-              style={[
-                styles.chevronsContainer,
-                { opacity: chevronsOpacity },
-              ]}
+              style={[styles.chevronsContainer, { opacity: chevronsOpacity }]}
               pointerEvents="none"
             >
               <Feather
@@ -226,26 +275,73 @@ export default function OnboardingScreen() {
               />
             </Animated.View>
 
-            {/* Draggable Cyan Circle Thumb */}
+            {/* Draggable Cyan Circle Thumb with Hover Scale & Glow Halo */}
             <Animated.View
               style={[
                 styles.draggableThumbContainer,
                 {
-                  transform: [{ translateX: dragX }],
+                  transform: [{ translateX: dragX }, { scale: holdScale }],
                 },
               ]}
               {...panResponder.panHandlers}
             >
+              {/* Outer Cyan Neon Glow Halo (Active on Hold & Drag) */}
+              <Animated.View
+                style={[
+                  styles.thumbGlowHalo,
+                  {
+                    opacity: glowAnim,
+                  },
+                ]}
+                pointerEvents="none"
+              />
+
               <LinearGradient
-                colors={["#00E5FF", "#00B4D8", "#0096C7"]}
+                colors={["#00FFFF", "#00D2D3", "#0096C7"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.cyanCircle}
               >
-                <Feather name="arrow-right" size={22} color="#072032" />
+                <Animated.View
+                  style={{
+                    transform: [
+                      {
+                        rotate: dragX.interpolate({
+                          inputRange: [0, Math.max(1, maxSlideDistance)],
+                          outputRange: ["0deg", "22deg"],
+                          extrapolate: "clamp",
+                        }),
+                      },
+                    ],
+                  }}
+                >
+                  <Feather name="arrow-right" size={23} color="#072032" />
+                </Animated.View>
               </LinearGradient>
             </Animated.View>
           </View>
+        </View>
+
+        {/* 5. Bottom Decorative Dual Organic Waves */}
+        <View style={styles.bottomWavesWrapper} pointerEvents="none">
+          <Svg
+            width={SCREEN_WIDTH}
+            height={75}
+            viewBox={`0 0 ${SCREEN_WIDTH} 75`}
+            style={{ position: "absolute", bottom: 0 }}
+          >
+            {/* Layer 1: Dark Navy Wave */}
+            <Path
+              d={`M0,40 Q${SCREEN_WIDTH * 0.3},10 ${SCREEN_WIDTH * 0.65},35 Q${SCREEN_WIDTH * 0.85},48 ${SCREEN_WIDTH},25 L${SCREEN_WIDTH},75 L0,75 Z`}
+              fill="#0B132B"
+            />
+
+            {/* Layer 2: Vibrant Teal / Cyan Wave */}
+            <Path
+              d={`M0,52 Q${SCREEN_WIDTH * 0.35},75 ${SCREEN_WIDTH * 0.7},40 Q${SCREEN_WIDTH * 0.88},28 ${SCREEN_WIDTH},48 L${SCREEN_WIDTH},75 L0,75 Z`}
+              fill="#008F9B"
+            />
+          </Svg>
         </View>
       </ImageBackground>
     </View>
@@ -260,7 +356,7 @@ const styles = StyleSheet.create({
   backgroundImage: {
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
   },
   topGradient: {
     position: "absolute",
@@ -270,47 +366,32 @@ const styles = StyleSheet.create({
     height: 140,
     zIndex: 1,
   },
-  safeHeader: {
-    zIndex: 10,
-  },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === "android" ? 12 : 4,
-  },
-  logoBadgeOuter: {
-    shadowColor: "#0284C7",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
+  topRightCornerCircle: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: 116,
+    height: 116,
+    borderBottomLeftRadius: 116,
+    overflow: "hidden",
+    borderLeftWidth: 1.5,
+    borderBottomWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.45)",
+    zIndex: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: -2, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
     elevation: 6,
   },
-  logoGradientRing: {
-    padding: 1.5,
-    borderRadius: 30,
-  },
-  logoInnerCircle: {
-    backgroundColor: "rgba(15, 23, 42, 0.72)",
-    borderRadius: 28,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
+  cornerCircleGradient: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },
-  logoText: {
-    color: "#E2E8F0",
-    fontSize: 6.5,
-    fontWeight: "900",
-    letterSpacing: 0.6,
-    marginTop: 1,
-  },
-  logoSubText: {
-    color: "#38BDF8",
-    fontSize: 5.5,
-    fontWeight: "800",
-    letterSpacing: 0.4,
+  cornerLogoImage: {
+    width: 84,
+    height: 84,
   },
   bottomGradient: {
     position: "absolute",
@@ -385,6 +466,19 @@ const styles = StyleSheet.create({
     top: 6,
     zIndex: 10,
   },
+  thumbGlowHalo: {
+    position: "absolute",
+    left: -7,
+    top: -7,
+    right: -7,
+    bottom: -7,
+    borderRadius: 33,
+    shadowColor: "#00E5FF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 14,
+    elevation: 8,
+  },
   cyanCircle: {
     width: 52,
     height: 52,
@@ -393,37 +487,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     shadowColor: "#00E5FF",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOpacity: 0.7,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  waveContainer: {
+  bottomWavesWrapper: {
     position: "absolute",
+    bottom: 0,
     left: 0,
     right: 0,
-    bottom: 0,
-    height: 24,
+    height: 75,
     zIndex: 5,
-    overflow: "hidden",
-  },
-  waveBackdrop: {
-    position: "absolute",
-    left: -20,
-    right: -20,
-    bottom: -10,
-    height: 28,
-    backgroundColor: "#006E7F",
-    borderTopLeftRadius: SCREEN_WIDTH * 0.9,
-    borderTopRightRadius: SCREEN_WIDTH * 0.7,
-    opacity: 0.6,
-  },
-  waveFront: {
-    position: "absolute",
-    left: -10,
-    right: -10,
-    bottom: -6,
-    height: 22,
-    borderTopLeftRadius: SCREEN_WIDTH * 0.6,
-    borderTopRightRadius: SCREEN_WIDTH * 0.9,
   },
 });

@@ -22,6 +22,7 @@ import {
   TopCommissionProperties,
 } from "../../../components/BrokerComponent";
 import { useResponsiveTheme } from "../../../constants/theme";
+import { BrokerNotificationModal } from "../../Screens/BrokerPanelScreens/Notification";
 
 export default function BrokerDashboardScreen() {
   const router = useRouter();
@@ -37,6 +38,15 @@ export default function BrokerDashboardScreen() {
   } = useResponsiveTheme();
 
   const [refreshing, setRefreshing] = useState(false);
+  const [notificationVisible, setNotificationVisible] = useState(false);
+  const [notificationOrigin, setNotificationOrigin] = useState<{ x: number; y: number } | undefined>(undefined);
+
+  const handleNotificationPress = (origin?: { x: number; y: number }) => {
+    if (origin) {
+      setNotificationOrigin(origin);
+    }
+    setNotificationVisible(true);
+  };
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -60,12 +70,7 @@ export default function BrokerDashboardScreen() {
         brokerName="Rajesh Sharma"
         brokerAgency="Dwarka Prime Stays & PG Hub"
         unreadNotifications={4}
-        onNotificationPress={() =>
-          Alert.alert(
-            "Broker Notifications",
-            "• New visit booked for Dwarka Sector 12 PG\n• Commission ₹7,250 credited to wallet\n• 1BHK Floor approved & live",
-          )
-        }
+        onNotificationPress={handleNotificationPress}
         onProfilePress={() => {
           router.push("/BrokerPanel/(tabs)/profile" as any);
         }}
@@ -232,6 +237,13 @@ export default function BrokerDashboardScreen() {
           }
         />
       </ScrollView>
+
+      {/* Dynamic Circular Morphing Notification Modal */}
+      <BrokerNotificationModal
+        visible={notificationVisible}
+        onClose={() => setNotificationVisible(false)}
+        origin={notificationOrigin}
+      />
     </SafeAreaView>
   );
 }

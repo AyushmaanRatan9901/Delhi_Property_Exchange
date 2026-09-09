@@ -1,13 +1,20 @@
-import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
+import {
+  Feather,
+  FontAwesome5,
+  Ionicons,
+  MaterialCommunityIcons,
+  MaterialIcons,
+} from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
   Easing,
   Image,
+  Platform,
   StatusBar,
   StyleSheet,
   Text,
@@ -15,6 +22,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Circle, Defs, RadialGradient, Stop } from "react-native-svg";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -171,7 +179,7 @@ export default function SplashScreen() {
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
-      ]),
+      ])
     ).start();
 
     // 5. Typography Entrance
@@ -447,7 +455,7 @@ export default function SplashScreen() {
             >
               {/* Logo Image from Assets */}
               <Image
-                source={require("../../assets/images/logo1.png")}
+                source={require("../../../assets/images/logo1.png")}
                 style={styles.logoImage}
                 resizeMode="contain"
               />
