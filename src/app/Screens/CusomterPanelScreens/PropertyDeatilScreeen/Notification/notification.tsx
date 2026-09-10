@@ -340,7 +340,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
       handleClose();
       setTimeout(() => {
         router.push({
-          pathname: "/CusomterPanelScreens/PropertyDeatilScreeen/[id]",
+          pathname: "/Screens/CusomterPanelScreens/PropertyDeatilScreeen/[id]",
           params: { id: item.propertyId },
         } as any);
       }, 300);

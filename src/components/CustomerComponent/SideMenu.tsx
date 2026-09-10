@@ -20,6 +20,7 @@ import {
   View,
 } from "react-native";
 import { ThemeMode, useResponsiveTheme } from "../../constants/theme";
+import { useAppSelector } from "../../Redux/hooks";
 
 interface SideMenuProps {
   visible: boolean;
@@ -46,6 +47,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({
   onClose,
   onNavigate,
 }) => {
+  const { user } = useAppSelector((state) => state.auth);
   const {
     colors,
     moderateScale,
@@ -416,7 +418,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({
                     numberOfLines={1}
                     style={[styles.userName, { fontSize: moderateScale(16.5) }]}
                   >
-                    Rahul Sharma
+                    {user?.name || "Rahul Sharma"}
                   </Text>
                   <MaterialIcons
                     name="verified"
@@ -428,7 +430,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({
                 <Text
                   style={[styles.userPhone, { fontSize: moderateScale(11.5) }]}
                 >
-                  +91 98765 43210
+                  {user?.phone || user?.email || "+91 98765 43210"}
                 </Text>
                 <View
                   style={[

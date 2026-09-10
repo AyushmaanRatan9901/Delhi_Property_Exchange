@@ -795,7 +795,7 @@ export default function SearchScreen() {
                 onPress={() =>
                   router.push({
                     pathname:
-                      "/CusomterPanelScreens/PropertyDeatilScreeen/[id]",
+                      "/Screens/CusomterPanelScreens/PropertyDeatilScreeen/[id]",
                     params: { id: item.id },
                   } as any)
                 }
@@ -916,7 +916,7 @@ export default function SearchScreen() {
               activeOpacity={0.92}
               onPress={() =>
                 router.push({
-                  pathname: "/CusomterPanelScreens/PropertyDeatilScreeen/[id]",
+                  pathname: "/Screens/CusomterPanelScreens/PropertyDeatilScreeen/[id]",
                   params: { id: item.id },
                 } as any)
               }

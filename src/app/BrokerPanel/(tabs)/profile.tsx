@@ -29,12 +29,16 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useResponsiveTheme } from "../../../constants/theme";
+import { useAppDispatch, useAppSelector } from "../../../Redux/hooks";
+import { logout } from "../../../Redux/Auth/authActions";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export default function BrokerProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state) => state.auth);
   const {
     colors,
     typography,
@@ -45,12 +49,12 @@ export default function BrokerProfileScreen() {
   } = useResponsiveTheme();
 
   // Broker Profile State
-  const [brokerName, setBrokerName] = useState("Rajesh Sharma");
+  const [brokerName, setBrokerName] = useState(user?.name || "Rajesh Sharma");
   const [brokerAgency, setBrokerAgency] = useState("Dwarka Prime Stays & PG Hub");
-  const [brokerPhone, setBrokerPhone] = useState("+91 98110 12345");
-  const [brokerEmail, setBrokerEmail] = useState("rajesh.broker@estate360.com");
+  const [brokerPhone, setBrokerPhone] = useState(user?.phone || "+91 98110 12345");
+  const [brokerEmail, setBrokerEmail] = useState(user?.email || "rajesh.broker@estate360.com");
   const [brokerLocation, setBrokerLocation] = useState("Dwarka, Janakpuri & Rohini, Delhi");
-  const [reraNumber, setReraNumber] = useState("DLRERA2024A00918");
+  const [reraNumber, setReraNumber] = useState(user?.recordCode || "DLRERA2024A00918");
   const [partnerTier] = useState("Platinum Channel Partner");
 
   // Preferences
@@ -126,7 +130,8 @@ export default function BrokerProfileScreen() {
         {
           text: "Log Out",
           style: "destructive",
-          onPress: () => {
+          onPress: async () => {
+            await dispatch(logout());
             router.replace("/(auth)/login" as any);
           },
         },

@@ -520,7 +520,7 @@ export default function SavedScreen() {
                 onPress={() =>
                   router.push({
                     pathname:
-                      "/CusomterPanelScreens/PropertyDeatilScreeen/[id]",
+                      "/Screens/CusomterPanelScreens/PropertyDeatilScreeen/[id]",
                     params: { id: item.id },
                   } as any)
                 }
@@ -675,7 +675,7 @@ export default function SavedScreen() {
               activeOpacity={0.94}
               onPress={() =>
                 router.push({
-                  pathname: "/CusomterPanelScreens/PropertyDeatilScreeen/[id]",
+                  pathname: "/Screens/CusomterPanelScreens/PropertyDeatilScreeen/[id]",
                   params: { id: item.id },
                 } as any)
               }

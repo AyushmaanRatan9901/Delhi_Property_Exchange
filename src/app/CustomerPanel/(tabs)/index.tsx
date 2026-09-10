@@ -50,6 +50,8 @@ import {
   WhyChooseUs,
 } from "../../../components/CustomerComponent";
 import { useResponsiveTheme } from "../../../constants/theme";
+import { logout } from "../../../Redux/Auth/authActions";
+import { useAppDispatch } from "../../../Redux/hooks";
 import { NotificationModal } from "../../Screens/CusomterPanelScreens/PropertyDeatilScreeen/Notification/notification";
 
 const ALL_CITIES = [
@@ -67,6 +69,7 @@ const ALL_CITIES = [
 
 export default function CustomerHomeScreen() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const { colors, moderateScale, spacing, radii, typography, layout, isDark } =
     useResponsiveTheme();
 
@@ -127,8 +130,10 @@ export default function CustomerHomeScreen() {
 
   const handlePropertyPress = (property: PropertyItem) => {
     router.push({
-      pathname: "/CusomterPanelScreens/PropertyDeatilScreeen/[id]",
-      params: { id: property.id },
+      pathname: "/Screens/CusomterPanelScreens/PropertyDeatilScreeen/[id]",
+      params: {
+        id: String(property.id),
+      },
     } as any);
   };
 
@@ -285,15 +290,21 @@ export default function CustomerHomeScreen() {
         handleCallSupport();
         break;
       case "logout":
-        Alert.alert("Log Out", "Are you sure you want to log out?", [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Log Out",
-            style: "destructive",
-            onPress: () =>
-              Alert.alert("Logged Out", "You have been logged out."),
-          },
-        ]);
+        Alert.alert(
+          "Log Out",
+          "Are you sure you want to log out of Delhi Property Exchange?",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Log Out",
+              style: "destructive",
+              onPress: async () => {
+                await dispatch(logout());
+                router.replace("/(auth)/login" as any);
+              },
+            },
+          ],
+        );
         break;
       default:
         break;

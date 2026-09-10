@@ -23,6 +23,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Defs, RadialGradient, Stop } from "react-native-svg";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import appStorage from "../../Redux/api/storage";
+import { STORAGE_KEYS } from "../../Redux/api/apiConfig";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -64,13 +67,59 @@ export default function SplashScreen() {
   const exitScale = useRef(new Animated.Value(1)).current;
   const exitOpacity = useRef(new Animated.Value(1)).current;
 
-  const navigateToNextScreen = () => {
+  const navigateToNextScreen = async () => {
     if (hasNavigated.current) return;
     hasNavigated.current = true;
 
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch {}
+
+    // Check stored session safely via appStorage adapter (ACCESS_TOKEN, REFRESH_TOKEN, USER_DATA)
+    let targetRoute = "/(onboarding)";
+    try {
+      const accessToken = await appStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+      const refreshToken = await appStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+      const userJson = await appStorage.getItem(STORAGE_KEYS.USER_DATA);
+
+      console.log("==========================================");
+      console.log("[SplashScreen] 🔍 Checking stored session (ACCESS_TOKEN, REFRESH_TOKEN, USER_DATA)...");
+      console.log("[SplashScreen] Access Token:", accessToken ? `${accessToken.substring(0, 25)}...` : "None");
+      console.log("[SplashScreen] Refresh Token:", refreshToken ? `${refreshToken.substring(0, 25)}...` : "None");
+      console.log("[SplashScreen] User Data:", userJson || "None");
+
+      // Only route to dashboard if ALL THREE (access token, refresh token, and user data) are present
+      if (accessToken && refreshToken && userJson) {
+        const user = JSON.parse(userJson);
+        const role = user?.role;
+
+        console.log("[SplashScreen] ✅ All auth credentials present for:", user?.name || user?.email || user?.phone, "| Role:", role);
+
+        if (role === "FIELD_AGENT") {
+          targetRoute = "/FiledAgentPanel/(tabs)/Dashboard";
+        } else if (role === "SUPER_ADMIN") {
+          targetRoute = "/SuperAdminPanel/(tabs)/Dashboard";
+        } else if (role === "PROPERTY_OWNER") {
+          targetRoute = "/HouseOwnerPanel/(tabs)/Dashboard";
+        } else if (role === "VERIFICATION_STAFF") {
+          targetRoute = "/VerificationStaffPanel/(tabs)/Dashboard";
+        } else if (role === "SUB_ADMIN" || role === "ADMIN_PARTNER") {
+          targetRoute = "/AdminPartnerPanel/(tabs)/Dashboard";
+        } else if (role === "BROKER") {
+          targetRoute = "/BrokerPanel/(tabs)/Dashboard";
+        } else {
+          targetRoute = "/CustomerPanel/(tabs)";
+        }
+      } else {
+        console.log("[SplashScreen] ℹ️ Auth tokens/user data missing or incomplete. Routing to onboarding screen.");
+        targetRoute = "/(onboarding)";
+      }
+      console.log("[SplashScreen] 🚀 Navigating to:", targetRoute);
+      console.log("==========================================");
+    } catch (e: any) {
+      console.log("[SplashScreen] Error reading session from storage:", e?.message);
+      targetRoute = "/(onboarding)";
+    }
 
     // Cinematic Zoom-Through Exit
     Animated.parallel([
@@ -87,7 +136,7 @@ export default function SplashScreen() {
         useNativeDriver: true,
       }),
     ]).start(() => {
-      router.replace("/(onboarding)" as any);
+      router.replace(targetRoute as any);
     });
   };
 

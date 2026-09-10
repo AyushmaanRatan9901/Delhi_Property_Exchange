@@ -668,7 +668,7 @@ const SafetyEmergencySOS = () => {
             <TouchableOpacity
               onPress={() =>
                 router.push(
-                  "/CusomterPanelScreens/EditProfile/Editprofile" as any,
+                  "/Screens/CusomterPanelScreens/EditProfile/Editprofile" as any,
                 )
               }
             >

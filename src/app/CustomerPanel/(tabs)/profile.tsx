@@ -5,6 +5,7 @@ import {
   MaterialIcons,
 } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -23,10 +24,14 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useResponsiveTheme } from "../../../constants/theme";
+import { useAppDispatch, useAppSelector } from "../../../Redux/hooks";
+import { logout } from "../../../Redux/Auth/authActions";
 
 export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state) => state.auth);
   const {
     colors,
     moderateScale,
@@ -41,9 +46,9 @@ export default function ProfileScreen() {
   } = useResponsiveTheme();
 
   // User Profile States
-  const [userName, setUserName] = useState("Rahul Sharma");
-  const [userPhone, setUserPhone] = useState("+91 98765 43210");
-  const [userEmail, setUserEmail] = useState("rahul.sharma@example.com");
+  const [userName, setUserName] = useState(user?.name || "Rahul Sharma");
+  const [userPhone, setUserPhone] = useState(user?.phone || "+91 98765 43210");
+  const [userEmail, setUserEmail] = useState(user?.email || "rahul.sharma@example.com");
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [whatsappUpdates, setWhatsappUpdates] = useState(true);
 
@@ -69,6 +74,9 @@ export default function ProfileScreen() {
   };
 
   const handleLogOut = () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    } catch {}
     Alert.alert(
       "Log Out",
       "Are you sure you want to log out of Delhi Property Exchange?",
@@ -77,8 +85,10 @@ export default function ProfileScreen() {
         {
           text: "Log Out",
           style: "destructive",
-          onPress: () =>
-            Alert.alert("Logged Out", "You have been securely logged out."),
+          onPress: async () => {
+            await dispatch(logout());
+            router.replace("/(auth)/login" as any);
+          },
         },
       ],
     );
@@ -141,7 +151,7 @@ export default function ProfileScreen() {
             </Text>
             <TouchableOpacity
               onPress={() => {
-                router.push("/CusomterPanelScreens/EditProfile/Editprofile" as any);
+                router.push("/Screens/CusomterPanelScreens/EditProfile/Editprofile" as any);
               }}
               activeOpacity={0.8}
               style={[
@@ -748,7 +758,7 @@ export default function ProfileScreen() {
             <TouchableOpacity
               onPress={() =>
                 router.push(
-                  "/CusomterPanelScreens/CareTakerHelper/CareTakerHelper" as any,
+                  "/Screens/CusomterPanelScreens/CareTakerHelper/CareTakerHelper" as any,
                 )
               }
               activeOpacity={0.7}
@@ -796,7 +806,7 @@ export default function ProfileScreen() {
             <TouchableOpacity
               onPress={() =>
                 router.push(
-                  "/CusomterPanelScreens/SafetyEmergencySOS/SafetyEmergencySOS" as any,
+                  "/Screens/CusomterPanelScreens/SafetyEmergencySOS/SafetyEmergencySOS" as any,
                 )
               }
               activeOpacity={0.7}
@@ -844,7 +854,7 @@ export default function ProfileScreen() {
             <TouchableOpacity
               onPress={() =>
                 router.push(
-                  "/CusomterPanelScreens/Legal/TermsPrivacyRefund" as any,
+                  "/Screens/CusomterPanelScreens/Legal/TermsPrivacyRefund" as any,
                 )
               }
               activeOpacity={0.7}
