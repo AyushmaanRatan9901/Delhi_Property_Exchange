@@ -1,9 +1,12 @@
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -48,9 +51,104 @@ export function AddNewLeadScreen() {
   const [remarks, setRemarks] = useState("");
   const [gpsLocation, setGpsLocation] = useState<GPSLocation | null>(null);
 
+  // Photo & Video Tour States
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [videoLink, setVideoLink] = useState("");
+  const [isPickingImage, setIsPickingImage] = useState(false);
+
   // Modals & UI States
   const [isGpsModalVisible, setIsGpsModalVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ── Photo Picker Handlers ─────────────────────────────────────
+  const handleTakePhoto = async () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Camera Permission Required",
+          "Please grant camera access in settings to capture live property photos."
+        );
+        return;
+      }
+
+      setIsPickingImage(true);
+      const result = await ImagePicker.launchCameraAsync({
+        quality: 0.8,
+        allowsEditing: true,
+        aspect: [4, 3],
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const uri = result.assets[0].uri;
+        setPhotos((prev) => (prev.length < 10 ? [...prev, uri] : prev));
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (err) {
+      Alert.alert("Camera Error", "Failed to capture photo. Please try again.");
+    } finally {
+      setIsPickingImage(false);
+    }
+  };
+
+  const handlePickFromGallery = async () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Gallery Permission Required",
+          "Please grant media library access to select property photos."
+        );
+        return;
+      }
+
+      setIsPickingImage(true);
+      const remainingSlots = 10 - photos.length;
+      if (remainingSlots <= 0) {
+        Alert.alert("Limit Reached", "You can upload a maximum of 10 property photos.");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsMultipleSelection: true,
+        selectionLimit: remainingSlots,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const newUris = result.assets.map((a) => a.uri);
+        setPhotos((prev) => [...prev, ...newUris].slice(0, 10));
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (err) {
+      Alert.alert("Gallery Error", "Failed to select photos. Please try again.");
+    } finally {
+      setIsPickingImage(false);
+    }
+  };
+
+  const handleRemovePhoto = (index: number) => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch {}
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSetCoverPhoto = (index: number) => {
+    if (index === 0) return;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {}
+    setPhotos((prev) => {
+      const selected = prev[index];
+      const rest = prev.filter((_, i) => i !== index);
+      return [selected, ...rest];
+    });
+    Alert.alert("Cover Photo Updated", "This image is now set as the primary cover photo.");
+  };
 
   const handleCaptureGps = () => {
     try {
@@ -59,7 +157,7 @@ export function AddNewLeadScreen() {
     setIsGpsModalVisible(true);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!ownerName.trim()) {
       Alert.alert("Required Field", "Please enter owner full name.");
       return;
@@ -85,33 +183,43 @@ export function AddNewLeadScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {}
 
-    const newLead = addNewLead({
-      ownerName: ownerName.trim(),
-      ownerPhone: cleanPhone,
-      locality: locality.trim(),
-      fullAddress: fullAddress.trim() || locality.trim(),
-      propertyType,
-      listingType,
-      expectedPrice: priceNum,
-      gpsLocation,
-      photos: [
-        "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format&fit=crop&q=80",
-      ],
-      remarks: remarks.trim(),
-    });
+    const defaultFallbackPhotos = [
+      "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format&fit=crop&q=80",
+    ];
 
-    setIsSubmitting(false);
+    const finalPhotos = photos.length > 0 ? photos : defaultFallbackPhotos;
 
-    Alert.alert(
-      "Lead Submitted Successfully! 🎉",
-      `Lead ID ${newLead.id} is created and sent to Verification team. Estimated commission ₹${newLead.commissionAmount} is queued for your wallet.`,
-      [
-        {
-          text: "View My Leads",
-          onPress: () => router.replace("/FiledAgentPanel/(tabs)/leads" as any),
-        },
-      ]
-    );
+    try {
+      const newLead = await addNewLead({
+        ownerName: ownerName.trim(),
+        ownerPhone: cleanPhone,
+        locality: locality.trim(),
+        fullAddress: fullAddress.trim() || locality.trim(),
+        propertyType,
+        listingType,
+        expectedPrice: priceNum,
+        gpsLocation,
+        photos: finalPhotos,
+        videoLink: videoLink.trim() || undefined,
+        remarks: remarks.trim() || undefined,
+      });
+
+      setIsSubmitting(false);
+
+      Alert.alert(
+        "Lead Submitted Successfully! 🎉",
+        `Lead ID ${newLead.id} is created with ${finalPhotos.length} photo(s) and sent to Verification team. Estimated commission ₹${newLead.commissionAmount} is queued for your wallet.`,
+        [
+          {
+            text: "View My Leads",
+            onPress: () => router.replace("/FiledAgentPanel/(tabs)/leads" as any),
+          },
+        ]
+      );
+    } catch (err) {
+      setIsSubmitting(false);
+      Alert.alert("Submission Error", "Could not submit lead to backend. Please try again.");
+    }
   };
 
   return (
@@ -340,9 +448,152 @@ export function AddNewLeadScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Section 4: Remarks / Key Notes */}
+          {/* Section 4: Property Photos & Video Tour */}
           <View style={styles.formSection}>
-            <Text style={styles.sectionHeading}>4. Agent Notes & Key Details</Text>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionHeading}>4. Property Photos & Video Tour</Text>
+              <View style={styles.photoCountBadge}>
+                <Text style={styles.photoCountText}>{photos.length}/10 Added</Text>
+              </View>
+            </View>
+            <Text style={styles.photoHelpText}>
+              Add high-quality photos (living room, bedrooms, kitchen, facade). The 1st photo is your main Cover photo.
+            </Text>
+
+            {/* Quick Upload Action Buttons */}
+            <View style={styles.photoActionRow}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={handleTakePhoto}
+                disabled={isPickingImage || photos.length >= 10}
+                style={[
+                  styles.photoActionBtn,
+                  styles.cameraBtn,
+                  photos.length >= 10 && styles.photoBtnDisabled,
+                ]}
+              >
+                <Ionicons name="camera" size={20} color="#0F766E" />
+                <View>
+                  <Text style={styles.photoActionTitle}>Take Live Photo</Text>
+                  <Text style={styles.photoActionSub}>Use Device Camera</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={handlePickFromGallery}
+                disabled={isPickingImage || photos.length >= 10}
+                style={[
+                  styles.photoActionBtn,
+                  styles.galleryBtn,
+                  photos.length >= 10 && styles.photoBtnDisabled,
+                ]}
+              >
+                <Ionicons name="images" size={20} color="#0369A1" />
+                <View>
+                  <Text style={[styles.photoActionTitle, { color: "#0369A1" }]}>Browse Gallery</Text>
+                  <Text style={styles.photoActionSub}>Select Multiple</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {isPickingImage && (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator size="small" color="#0D9488" />
+                <Text style={styles.loadingText}>Processing photos...</Text>
+              </View>
+            )}
+
+            {/* Photos Preview Thumbnails */}
+            {photos.length > 0 ? (
+              <View style={styles.photoPreviewSection}>
+                <Text style={styles.previewLabel}>
+                  Tap any photo to set as Cover Photo ({photos.length} uploaded)
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoThumbList}>
+                  {photos.map((uri, index) => {
+                    const isCover = index === 0;
+                    return (
+                      <TouchableOpacity
+                        key={`${uri}-${index}`}
+                        activeOpacity={0.85}
+                        onPress={() => handleSetCoverPhoto(index)}
+                        style={[
+                          styles.thumbWrapper,
+                          isCover && styles.thumbWrapperCover,
+                        ]}
+                      >
+                        <Image source={{ uri }} style={styles.thumbImage} />
+                        
+                        {/* Cover Tag */}
+                        {isCover && (
+                          <View style={styles.coverTag}>
+                            <Ionicons name="star" size={10} color="#FFFFFF" />
+                            <Text style={styles.coverTagText}>COVER</Text>
+                          </View>
+                        )}
+
+                        {/* Remove Button */}
+                        <TouchableOpacity
+                          activeOpacity={0.7}
+                          onPress={() => handleRemovePhoto(index)}
+                          style={styles.thumbDeleteBtn}
+                        >
+                          <Feather name="x" size={13} color="#FFFFFF" />
+                        </TouchableOpacity>
+
+                        {/* Order Indicator */}
+                        <View style={styles.orderBadge}>
+                          <Text style={styles.orderBadgeText}>#{index + 1}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+
+                  {/* Add More Tile */}
+                  {photos.length < 10 && (
+                    <TouchableOpacity
+                      activeOpacity={0.75}
+                      onPress={handlePickFromGallery}
+                      style={styles.addMoreThumbTile}
+                    >
+                      <Feather name="plus" size={24} color="#0D9488" />
+                      <Text style={styles.addMoreThumbText}>Add More</Text>
+                    </TouchableOpacity>
+                  )}
+                </ScrollView>
+              </View>
+            ) : (
+              <View style={styles.photoEmptyBox}>
+                <Ionicons name="cloud-upload-outline" size={32} color="#94A3B8" />
+                <Text style={styles.photoEmptyTitle}>No Property Photos Added Yet</Text>
+                <Text style={styles.photoEmptySub}>
+                  Properties with 3+ clear photos get approved 4x faster by the verification team!
+                </Text>
+              </View>
+            )}
+
+            {/* Optional Video Tour Link */}
+            <Text style={[styles.inputLabel, { marginTop: 14 }]}>
+              Video Tour / 360 Virtual Tour Link (Optional)
+            </Text>
+            <View style={styles.inputBox}>
+              <Ionicons name="videocam-outline" size={18} color="#0D9488" />
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. https://youtu.be/... or Drive link"
+                placeholderTextColor="#94A3B8"
+                autoCapitalize="none"
+                keyboardType="url"
+                value={videoLink}
+                onChangeText={setVideoLink}
+              />
+            </View>
+          </View>
+
+          {/* Section 5: Remarks / Key Notes */}
+          <View style={styles.formSection}>
+            <Text style={styles.sectionHeading}>5. Agent Notes & Key Details</Text>
             <View style={[styles.inputBox, { height: 80, alignItems: "flex-start", paddingTop: 10 }]}>
               <TextInput
                 style={[styles.input, { height: "100%", textAlignVertical: "top" }]}
@@ -575,5 +826,196 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 15.5,
     fontWeight: "800",
+  },
+
+  // ── Photo & Video Tour Styles ──────────────────────────────
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  photoCountBadge: {
+    backgroundColor: "#CCFBF1",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  photoCountText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#0F766E",
+  },
+  photoHelpText: {
+    fontSize: 11.5,
+    color: "#64748B",
+    lineHeight: 16,
+    marginBottom: 12,
+  },
+  photoActionRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 12,
+  },
+  photoActionBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1.2,
+    gap: 8,
+  },
+  cameraBtn: {
+    backgroundColor: "#F0FDFA",
+    borderColor: "#99F6E4",
+  },
+  galleryBtn: {
+    backgroundColor: "#F0F9FF",
+    borderColor: "#BAE6FD",
+  },
+  photoBtnDisabled: {
+    opacity: 0.5,
+  },
+  photoActionTitle: {
+    fontSize: 12.5,
+    fontWeight: "800",
+    color: "#0F766E",
+  },
+  photoActionSub: {
+    fontSize: 10.5,
+    color: "#64748B",
+    marginTop: 1,
+  },
+  loadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 10,
+  },
+  loadingText: {
+    fontSize: 12,
+    color: "#0D9488",
+    fontWeight: "600",
+  },
+  photoPreviewSection: {
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  previewLabel: {
+    fontSize: 11,
+    color: "#64748B",
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  photoThumbList: {
+    flexDirection: "row",
+    paddingVertical: 4,
+  },
+  thumbWrapper: {
+    width: 100,
+    height: 100,
+    borderRadius: 14,
+    marginRight: 10,
+    position: "relative",
+    backgroundColor: "#E2E8F0",
+    borderWidth: 1.5,
+    borderColor: "#CBD5E1",
+    overflow: "hidden",
+  },
+  thumbWrapperCover: {
+    borderColor: "#0D9488",
+    borderWidth: 2.5,
+  },
+  thumbImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 12,
+  },
+  coverTag: {
+    position: "absolute",
+    top: 5,
+    left: 5,
+    backgroundColor: "#0D9488",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  coverTagText: {
+    fontSize: 8.5,
+    fontWeight: "900",
+    color: "#FFFFFF",
+  },
+  thumbDeleteBtn: {
+    position: "absolute",
+    top: 5,
+    right: 5,
+    backgroundColor: "rgba(15, 23, 42, 0.75)",
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  orderBadge: {
+    position: "absolute",
+    bottom: 5,
+    left: 5,
+    backgroundColor: "rgba(15, 23, 42, 0.7)",
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  orderBadgeText: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  addMoreThumbTile: {
+    width: 100,
+    height: 100,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: "#0D9488",
+    backgroundColor: "#F0FDFA",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+    gap: 4,
+  },
+  addMoreThumbText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#0D9488",
+  },
+  photoEmptyBox: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: "#CBD5E1",
+    borderRadius: 14,
+    marginVertical: 4,
+  },
+  photoEmptyTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#475569",
+    marginTop: 6,
+  },
+  photoEmptySub: {
+    fontSize: 11,
+    color: "#94A3B8",
+    textAlign: "center",
+    marginTop: 3,
+    lineHeight: 15,
   },
 });

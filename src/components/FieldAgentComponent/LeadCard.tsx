@@ -1,13 +1,11 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
 import React from "react";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import {
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { formatCurrency, LeadItem, LeadStatus } from "../../constants/fieldAgentData";
+  formatCurrency,
+  LeadItem,
+  LeadStatus,
+} from "../../constants/fieldAgentData";
 
 interface LeadCardProps {
   lead: LeadItem;
@@ -16,7 +14,12 @@ interface LeadCardProps {
 
 const STATUS_CONFIG: Record<
   LeadStatus,
-  { label: string; bg: string; text: string; icon: keyof typeof Ionicons.glyphMap }
+  {
+    label: string;
+    bg: string;
+    text: string;
+    icon: keyof typeof Ionicons.glyphMap;
+  }
 > = {
   NEW: {
     label: "Under Verification",
@@ -103,20 +106,6 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onPress }) => {
         )}
 
         <View style={styles.detailsCol}>
-          {/* Owner Details & Masked Phone Security */}
-          <View style={styles.ownerRow}>
-            <Feather name="user" size={13} color="#0D9488" />
-            <Text style={styles.ownerName} numberOfLines={1}>
-              {lead.ownerName}
-            </Text>
-          </View>
-
-          <View style={styles.maskedPhoneRow}>
-            <Feather name="lock" size={11} color="#64748B" />
-            <Text style={styles.maskedPhoneText}>{lead.maskedPhone}</Text>
-            <Text style={styles.maskedHint}>(Masked)</Text>
-          </View>
-
           {/* Locality & Address */}
           <View style={styles.locationRow}>
             <Feather name="map-pin" size={12} color="#EF4444" />

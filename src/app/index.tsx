@@ -1,7 +1,8 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   Animated,
   Dimensions,
@@ -14,9 +15,16 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Circle, G, Path } from "react-native-svg";
-import { STORAGE_KEYS } from "../Redux/api/apiConfig";
+import Svg, {
+  Circle,
+  Defs,
+  G,
+  Path,
+  LinearGradient as SvgLinearGradient,
+  Stop,
+} from "react-native-svg";
 import appStorage from "../Redux/api/storage";
+import { STORAGE_KEYS } from "../Redux/api/apiConfig";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -46,7 +54,7 @@ export default function SplashScreen() {
   const exitScale = useRef(new Animated.Value(1)).current;
   const exitOpacity = useRef(new Animated.Value(1)).current;
 
-  const navigateToNextScreen = async () => {
+    const navigateToNextScreen = async () => {
     if (hasNavigated.current) return;
     hasNavigated.current = true;
 
@@ -57,17 +65,34 @@ export default function SplashScreen() {
     let targetRoute = "/(onboarding)";
     try {
       const accessToken = await appStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
-      const refreshToken = await appStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
       const userJson = await appStorage.getItem(STORAGE_KEYS.USER_DATA);
 
       console.log("==========================================");
       console.log("[SplashScreen] 🔍 Checking stored session...");
+      console.log("[SplashScreen] Access Token:", accessToken ? `${accessToken.substring(0, 20)}...` : "None");
+      console.log("[SplashScreen] User Data:", userJson ? "Present" : "None");
 
-      if (accessToken && refreshToken && userJson) {
-        const user = JSON.parse(userJson);
-        const role = user?.role;
+      // If accessToken exists, the user is authenticated -> Route to dashboard!
+      if (accessToken) {
+        let role = "CUSTOMER";
 
-        console.log("[SplashScreen] ✅ Session verified for role:", role);
+        if (userJson) {
+          try {
+            const user = JSON.parse(userJson);
+            if (user?.role) {
+              const r = String(user.role).toLowerCase();
+              if (r === "field_agent") role = "FIELD_AGENT";
+              else if (r === "super_admin") role = "SUPER_ADMIN";
+              else if (r === "property_owner" || r === "owner") role = "PROPERTY_OWNER";
+              else if (r === "field_staff" || r === "verification_staff") role = "VERIFICATION_STAFF";
+              else if (r === "admin" || r === "sub_admin" || r === "admin_partner") role = "ADMIN_PARTNER";
+              else if (r === "broker") role = "BROKER";
+              else role = user.role.toUpperCase();
+            }
+          } catch (e) {}
+        }
+
+        console.log("[SplashScreen] ✅ Active session found! Routing directly to dashboard for role:", role);
 
         if (role === "FIELD_AGENT") {
           targetRoute = "/FiledAgentPanel/(tabs)/Dashboard";
@@ -85,9 +110,7 @@ export default function SplashScreen() {
           targetRoute = "/CustomerPanel/(tabs)";
         }
       } else {
-        console.log(
-          "[SplashScreen] ℹ️ No active session found. Routing to onboarding.",
-        );
+        console.log("[SplashScreen] ℹ️ No active token found in storage. Routing to onboarding.");
         targetRoute = "/(onboarding)";
       }
     } catch (e) {
@@ -182,7 +205,7 @@ export default function SplashScreen() {
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
-      ]),
+      ])
     ).start();
 
     // 5. Typography Entrance
@@ -247,9 +270,7 @@ export default function SplashScreen() {
         ]}
       >
         {/* Crisp White Background */}
-        <View
-          style={[StyleSheet.absoluteFill, { backgroundColor: "#FBFEFB" }]}
-        />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: "#FFFFFF" }]} />
 
         {/* Top-Right Decorative Mint/Teal Circular Shape */}
         <Animated.View
@@ -361,17 +382,17 @@ export default function SplashScreen() {
           >
             <Text style={styles.titleText}>Field Agent App</Text>
             <Text style={styles.subTitleText}>
-              Find Leads • Earn Commission • Grow Together
+              Find Leads  •  Earn Commission  •  Grow Together
             </Text>
           </Animated.View>
         </View>
 
-        {/* Bottom Tagline: "Your Property. Our Priority." */}
+        {/* Bottom Tagline & Progress Bar Below Text */}
         <Animated.View
           style={[
             styles.bottomTaglineContainer,
             {
-              bottom: Math.max(insets.bottom + 18, 28),
+              bottom: Math.max(insets.bottom + 14, 22),
               opacity: bottomTextOpacity,
             },
           ]}
@@ -379,7 +400,8 @@ export default function SplashScreen() {
           <Text style={styles.bottomTaglineText}>
             Your Property. Our Priority.
           </Text>
-          {/* Sleek Progress Indicator in Teal */}
+
+          {/* Sleek Progress Indicator Bar below the Tagline */}
           <View style={styles.progressTrack}>
             <Animated.View
               style={[
@@ -456,7 +478,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: SCREEN_HEIGHT * 0.98,
+    height: SCREEN_HEIGHT * 0.58,
     zIndex: 2,
   },
   graphicImageContainer: {
@@ -471,13 +493,6 @@ const styles = StyleSheet.create({
     height: "100%",
     position: "absolute",
     bottom: 0,
-  },
-  graphicTopFade: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 70,
   },
   centerContainer: {
     flex: 1,
@@ -512,19 +527,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: "center",
   },
-  progressTrack: {
-    width: 140,
-    height: 3,
-    // backgroundColor: "#CCFBF1",
-    borderRadius: 2,
-    marginTop: 10,
-    overflow: "hidden",
-  },
-  progressBar: {
-    height: "100%",
-    backgroundColor: "#ffffff",
-    borderRadius: 2,
-  },
   bottomTaglineContainer: {
     position: "absolute",
     left: 0,
@@ -535,7 +537,6 @@ const styles = StyleSheet.create({
   },
   bottomTaglineText: {
     color: "#FFFFFF",
-
     fontSize: 14,
     fontWeight: "600",
     letterSpacing: 0.4,
@@ -543,5 +544,18 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0, 0, 0, 0.45)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
+  },
+  progressTrack: {
+    width: 84,
+    height: 3,
+    backgroundColor: "rgba(255, 255, 255, 0.35)",
+    borderRadius: 2,
+    marginTop: 8,
+    overflow: "hidden",
+  },
+  progressBar: {
+    height: "100%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 2,
   },
 });

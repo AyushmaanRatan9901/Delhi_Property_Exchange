@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
@@ -17,6 +17,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
+import { STORAGE_KEYS } from "../../Redux/api/apiConfig";
+import appStorage from "../../Redux/api/storage";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -30,6 +32,49 @@ const BUTTON_PADDING = 6;
 export default function OnboardingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+
+  // Safety check: if already authenticated, immediately route to corresponding dashboard
+  useEffect(() => {
+    const checkActiveSession = async () => {
+      try {
+        const token = await appStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+        if (token) {
+          const userJson = await appStorage.getItem(STORAGE_KEYS.USER_DATA);
+          let role = "CUSTOMER";
+          if (userJson) {
+            try {
+              const u = JSON.parse(userJson);
+              const r = String(u?.role || "").toLowerCase();
+              if (r === "field_agent") role = "FIELD_AGENT";
+              else if (r === "super_admin") role = "SUPER_ADMIN";
+              else if (r === "property_owner" || r === "owner") role = "PROPERTY_OWNER";
+              else if (r === "field_staff" || r === "verification_staff") role = "VERIFICATION_STAFF";
+              else if (r === "admin" || r === "sub_admin" || r === "admin_partner") role = "ADMIN_PARTNER";
+              else if (r === "broker") role = "BROKER";
+              else if (u?.role) role = u.role.toUpperCase();
+            } catch (e) {}
+          }
+
+          if (role === "FIELD_AGENT") {
+            router.replace("/FiledAgentPanel/(tabs)/Dashboard" as any);
+          } else if (role === "SUPER_ADMIN") {
+            router.replace("/SuperAdminPanel/(tabs)/Dashboard" as any);
+          } else if (role === "PROPERTY_OWNER") {
+            router.replace("/HouseOwnerPanel/(tabs)/Dashboard" as any);
+          } else if (role === "VERIFICATION_STAFF") {
+            router.replace("/VerificationStaffPanel/(tabs)/Dashboard" as any);
+          } else if (role === "SUB_ADMIN" || role === "ADMIN_PARTNER") {
+            router.replace("/AdminPartnerPanel/(tabs)/Dashboard" as any);
+          } else if (role === "BROKER") {
+            router.replace("/BrokerPanel/(tabs)/Dashboard" as any);
+          } else {
+            router.replace("/CustomerPanel/(tabs)" as any);
+          }
+        }
+      } catch (e) {}
+    };
+    checkActiveSession();
+  }, [router]);
 
   const [containerWidth, setContainerWidth] = useState(SCREEN_WIDTH - 48);
   const dragX = useRef(new Animated.Value(0)).current;

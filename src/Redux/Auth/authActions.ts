@@ -244,13 +244,33 @@ export const restoreSession = createAsyncThunk<
     const refreshToken = await appStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
     const userJson = await appStorage.getItem(STORAGE_KEYS.USER_DATA);
 
-    if (token && userJson) {
-      const user: User = JSON.parse(userJson);
-      const tokens: AuthTokens = {
-        accessToken: token,
-        refreshToken: refreshToken || token,
-      };
-      return { user, tokens };
+    if (token) {
+      let user: User | null = null;
+      if (userJson) {
+        try {
+          const rawUser = JSON.parse(userJson);
+          user = normalizeUser(rawUser);
+        } catch (e) {}
+      }
+
+      // If user profile is not in storage, fetch from /auth/me
+      if (!user) {
+        try {
+          const response = await apiClient.get("/auth/me");
+          if (response.data?.data) {
+            user = normalizeUser(response.data.data);
+            await appStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
+          }
+        } catch (meErr) {}
+      }
+
+      if (user) {
+        const tokens: AuthTokens = {
+          accessToken: token,
+          refreshToken: refreshToken || token,
+        };
+        return { user, tokens };
+      }
     }
     return null;
   } catch (error: any) {

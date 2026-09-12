@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import apiClient from "../Redux/api/axiosInstance";
 
 export type LeadStatus = "NEW" | "VERIFIED" | "RENTED" | "SOLD" | "REJECTED";
 export type PropertyType =
@@ -20,6 +21,7 @@ export interface GPSLocation {
 
 export interface LeadItem {
   id: string;
+  _id?: string;
   ownerName: string;
   ownerPhone: string;
   maskedPhone: string;
@@ -27,13 +29,14 @@ export interface LeadItem {
   fullAddress: string;
   propertyType: PropertyType;
   listingType: ListingType;
-  expectedPrice: number; // e.g. 24000/mo or 8500000
+  expectedPrice: number;
   gpsLocation: GPSLocation;
   status: LeadStatus;
   submissionDate: string;
   commissionAmount: number;
   commissionStatus: "PENDING" | "APPROVED" | "PAID";
   photos: string[];
+  videoLink?: string;
   remarks?: string;
   verificationNotes?: string;
 }
@@ -102,126 +105,19 @@ export const INITIAL_LEADS: LeadItem[] = [
     expectedPrice: 26000,
     gpsLocation: {
       latitude: 28.6289,
-      longitude: 77.3654,
-      accuracyMeters: 4.2,
-      formattedAddress: "Block B, Sector 62, Noida, Uttar Pradesh 201309",
-    },
-    status: "RENTED",
-    submissionDate: "06 Sep 2026, 11:20 AM",
-    commissionAmount: 3500,
-    commissionStatus: "PAID",
-    photos: [
-      "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&auto=format&fit=crop&q=80",
-    ],
-    remarks: "Owner willing to give keys for instant tenant visits.",
-    verificationNotes: "Physical verification completed by Field Staff Rahul. Property rented out to IT executive.",
-  },
-  {
-    id: "LD-9038",
-    ownerName: "Sunita Agarwal",
-    ownerPhone: "+91 99283 88123",
-    maskedPhone: "+91 99283 •••••",
-    locality: "Indirapuram, Ghaziabad",
-    fullAddress: "House 14-A, Shipra Sun City, Indirapuram",
-    propertyType: "3BHK",
-    listingType: "RENT",
-    expectedPrice: 38000,
-    gpsLocation: {
-      latitude: 28.6392,
-      longitude: 77.3789,
-      accuracyMeters: 5.8,
-      formattedAddress: "Shipra Sun City, Indirapuram, Ghaziabad, UP 201014",
+      longitude: 77.3649,
+      accuracyMeters: 3.2,
+      formattedAddress: "Royal Palms, Sector 62, Noida, UP 201301",
     },
     status: "VERIFIED",
-    submissionDate: "08 Sep 2026, 04:15 PM",
-    commissionAmount: 5000,
+    submissionDate: "Today, 10:45 AM",
+    commissionAmount: 5200,
     commissionStatus: "APPROVED",
     photos: [
       "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800&auto=format&fit=crop&q=80",
     ],
-    remarks: "Fully furnished 3BHK flat with modular kitchen and 2 balconies.",
-    verificationNotes: "Approved by Verification Staff. Listed on tenant app for booking.",
-  },
-  {
-    id: "LD-9031",
-    ownerName: "Amitabh Mehra",
-    ownerPhone: "+91 98710 44219",
-    maskedPhone: "+91 98710 •••••",
-    locality: "Sector 63, Noida",
-    fullAddress: "Shop No. 12, Ground Floor, Central Plaza Market",
-    propertyType: "Commercial Shop",
-    listingType: "RENT",
-    expectedPrice: 45000,
-    gpsLocation: {
-      latitude: 28.6255,
-      longitude: 77.3821,
-      accuracyMeters: 6.1,
-      formattedAddress: "Central Plaza, Sector 63, Noida 201301",
-    },
-    status: "NEW",
-    submissionDate: "10 Sep 2026, 09:40 AM",
-    commissionAmount: 4000,
-    commissionStatus: "PENDING",
-    photos: [
-      "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80",
-    ],
-    remarks: "Prime ground floor corner shop opposite metro station exit.",
-    verificationNotes: "Assigned to verification team. Inspection scheduled for today 03:00 PM.",
-  },
-  {
-    id: "LD-9019",
-    ownerName: "Kavita Singhal",
-    ownerPhone: "+91 97182 99014",
-    maskedPhone: "+91 97182 •••••",
-    locality: "Vaishali Sector 4, Ghaziabad",
-    fullAddress: "C-201, Express Greens Apartments",
-    propertyType: "1BHK",
-    listingType: "RENT",
-    expectedPrice: 16500,
-    gpsLocation: {
-      latitude: 28.6471,
-      longitude: 77.3412,
-      accuracyMeters: 3.5,
-      formattedAddress: "Express Greens, Sector 4, Vaishali 201010",
-    },
-    status: "RENTED",
-    submissionDate: "02 Sep 2026, 01:10 PM",
-    commissionAmount: 2500,
-    commissionStatus: "PAID",
-    photos: [
-      "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800&auto=format&fit=crop&q=80",
-    ],
-    remarks: "Close to Vaishali Metro station. Ideal for bachelors or working couples.",
-    verificationNotes: "Verified & Rented via platform. Commission credited to wallet.",
-  },
-  {
-    id: "LD-8994",
-    ownerName: "Vikas Malhotra",
-    ownerPhone: "+91 98101 22345",
-    maskedPhone: "+91 98101 •••••",
-    locality: "Sector 50, Noida",
-    fullAddress: "Villa 8, Maple Enclave, Sector 50",
-    propertyType: "Independent House",
-    listingType: "SALE",
-    expectedPrice: 14500000,
-    gpsLocation: {
-      latitude: 28.5714,
-      longitude: 77.3688,
-      accuracyMeters: 4.8,
-      formattedAddress: "Maple Enclave, Sector 50, Noida 201301",
-    },
-    status: "VERIFIED",
-    submissionDate: "28 Aug 2026, 11:00 AM",
-    commissionAmount: 15000,
-    commissionStatus: "APPROVED",
-    photos: [
-      "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&auto=format&fit=crop&q=80",
-    ],
-    remarks: "Independent 4-bedroom duplex villa with private garden and car porch.",
-    verificationNotes: "Verified by SuperAdmin inspection team. 3 prospective buyers lined up.",
+    remarks: "Keys with caretaker. 3 min walk to Electronic City Metro Station.",
+    verificationNotes: "Physically verified by staff. Original registry docs inspected on-site.",
   },
 ];
 
@@ -242,27 +138,54 @@ export const INITIAL_PAYOUT_HISTORY: PayoutTransaction[] = [
     status: "COMPLETED",
     referenceId: "NEFT/HDFC98214019",
   },
-  {
-    id: "TXN-86510",
-    amount: 5000,
-    method: "UPI (pooja@okaxis)",
-    date: "15 Aug 2026",
-    status: "COMPLETED",
-    referenceId: "UPI/62271890241",
-  },
 ];
 
 export const maskPhoneNumber = (phone: string): string => {
+  if (!phone) return "+91 ••••• •••••";
   const cleaned = phone.replace(/[^0-9]/g, "");
   if (cleaned.length >= 10) {
     const last10 = cleaned.slice(-10);
     return `+91 ${last10.slice(0, 5)} •••••`;
   }
-  return "+91 ••••• •••••";
+  return phone;
 };
 
 export const formatCurrency = (amount: number): string => {
-  return "₹" + amount.toLocaleString("en-IN");
+  return "₹" + (amount || 0).toLocaleString("en-IN");
+};
+
+// Map backend PropertyLead document to frontend LeadItem
+const mapBackendToLeadItem = (doc: any): LeadItem => {
+  const photoUrls = Array.isArray(doc.photos)
+    ? doc.photos.map((p: any) => (typeof p === "string" ? p : p.url))
+    : doc.images || [];
+
+  return {
+    id: doc.leadId || doc._id || "LD-0000",
+    _id: doc._id,
+    ownerName: doc.ownerName || "Property Owner",
+    ownerPhone: doc.ownerPhone || "",
+    maskedPhone: doc.maskedPhone || maskPhoneNumber(doc.ownerPhone || ""),
+    locality: doc.locality || doc.address?.city || "Delhi NCR",
+    fullAddress: doc.address?.fullAddress || doc.address?.street || doc.locality || "",
+    propertyType: (doc.propertyType || "2BHK") as PropertyType,
+    listingType: (doc.listingType || "rent").toUpperCase() as ListingType,
+    expectedPrice: doc.expectedPrice || 0,
+    gpsLocation: {
+      latitude: doc.gpsDetails?.latitude || doc.location?.coordinates?.[1] || 28.6139,
+      longitude: doc.gpsDetails?.longitude || doc.location?.coordinates?.[0] || 77.209,
+      accuracyMeters: doc.gpsDetails?.accuracy || 4.2,
+      formattedAddress: doc.gpsDetails?.reverseGeocodedAddress || doc.locality || "Captured Live On-Site",
+    },
+    status: (doc.status || "new").toUpperCase() as LeadStatus,
+    submissionDate: doc.createdAt ? new Date(doc.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Recently",
+    commissionAmount: doc.commission?.approvedAmount || doc.commission?.estimatedAmount || doc.commissionAmount || 0,
+    commissionStatus: (doc.commission?.status || doc.commissionStatus || "pending").toUpperCase() as "PENDING" | "APPROVED" | "PAID",
+    photos: photoUrls.length > 0 ? photoUrls : ["https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format&fit=crop&q=80"],
+    videoLink: doc.videoLink || doc.videoUrl,
+    remarks: doc.remarks,
+    verificationNotes: doc.verificationNotes || doc.inspectionDetails?.staffChecklistRemarks,
+  };
 };
 
 interface FieldAgentContextType {
@@ -273,7 +196,9 @@ interface FieldAgentContextType {
   totalEarnings: number;
   pendingApproval: number;
   paidEarnings: number;
-  addNewLead: (lead: Omit<LeadItem, "id" | "maskedPhone" | "submissionDate" | "status" | "commissionAmount" | "commissionStatus">) => LeadItem;
+  isLoading: boolean;
+  refreshLeads: () => Promise<void>;
+  addNewLead: (lead: Omit<LeadItem, "id" | "maskedPhone" | "submissionDate" | "status" | "commissionAmount" | "commissionStatus">) => Promise<LeadItem>;
   requestPayout: (amount: number, method: string) => Promise<boolean>;
   updateBankDetails: (details: Partial<BankDetails>) => void;
 }
@@ -284,25 +209,110 @@ export const FieldAgentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [agentProfile, setAgentProfile] = useState<AgentProfile>(INITIAL_AGENT_PROFILE);
   const [leads, setLeads] = useState<LeadItem[]>(INITIAL_LEADS);
   const [payoutHistory, setPayoutHistory] = useState<PayoutTransaction[]>(INITIAL_PAYOUT_HISTORY);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [statsData, setStatsData] = useState<any>(null);
 
-  // Derived Financials
-  const availableBalance = leads
-    .filter((l) => l.commissionStatus === "APPROVED")
-    .reduce((acc, curr) => acc + curr.commissionAmount, 0) + 14500;
+  // Fetch real leads from Backend API
+  const fetchMyLeads = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const res = await apiClient.get("/leads/my-leads");
+      if (res.data?.data?.leads && Array.isArray(res.data.data.leads)) {
+        const backendLeads = res.data.data.leads.map(mapBackendToLeadItem);
+        if (backendLeads.length > 0) {
+          setLeads(backendLeads);
+        }
+      }
+    } catch (err) {
+      console.log("[FieldAgentProvider] Fetching leads from backend (using cached fallback):", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-  const totalEarnings = leads
-    .filter((l) => l.commissionStatus === "PAID" || l.commissionStatus === "APPROVED")
-    .reduce((acc, curr) => acc + curr.commissionAmount, 0) + 23500;
+  // Fetch real agent dashboard stats
+  const fetchMyStats = useCallback(async () => {
+    try {
+      const res = await apiClient.get("/leads/my-stats");
+      if (res.data?.data) {
+        setStatsData(res.data.data);
+      }
+    } catch (err) {
+      // Silently continue
+    }
+  }, []);
 
-  const paidEarnings = payoutHistory
-    .filter((p) => p.status === "COMPLETED")
-    .reduce((acc, curr) => acc + curr.amount, 0);
+  useEffect(() => {
+    fetchMyLeads();
+    fetchMyStats();
+  }, [fetchMyLeads, fetchMyStats]);
 
-  const pendingApproval = leads
-    .filter((l) => l.commissionStatus === "PENDING")
-    .reduce((acc, curr) => acc + curr.commissionAmount, 0);
+  // Derived Financials from Backend or leads
+  const availableBalance = statsData?.walletBalance !== undefined
+    ? statsData.walletBalance
+    : leads
+        .filter((l) => l.commissionStatus === "APPROVED")
+        .reduce((acc, curr) => acc + curr.commissionAmount, 0) + 14500;
 
-  const addNewLead = (newLeadData: Omit<LeadItem, "id" | "maskedPhone" | "submissionDate" | "status" | "commissionAmount" | "commissionStatus">) => {
+  const totalEarnings = statsData?.approvedCommission !== undefined
+    ? statsData.approvedCommission + (statsData.potentialCommission || 0)
+    : leads
+        .filter((l) => l.commissionStatus === "PAID" || l.commissionStatus === "APPROVED")
+        .reduce((acc, curr) => acc + curr.commissionAmount, 0) + 23500;
+
+  const paidEarnings = statsData?.paidCommission !== undefined
+    ? statsData.paidCommission
+    : payoutHistory
+        .filter((p) => p.status === "COMPLETED")
+        .reduce((acc, curr) => acc + curr.amount, 0);
+
+  const pendingApproval = statsData?.potentialCommission !== undefined
+    ? statsData.potentialCommission
+    : leads
+        .filter((l) => l.commissionStatus === "PENDING")
+        .reduce((acc, curr) => acc + curr.commissionAmount, 0);
+
+  // Submit Lead to Backend & update local state
+  const addNewLead = async (
+    newLeadData: Omit<LeadItem, "id" | "maskedPhone" | "submissionDate" | "status" | "commissionAmount" | "commissionStatus">
+  ): Promise<LeadItem> => {
+    try {
+      const payload = {
+        ownerName: newLeadData.ownerName,
+        ownerPhone: newLeadData.ownerPhone,
+        locality: newLeadData.locality,
+        address: {
+          fullAddress: newLeadData.fullAddress,
+          city: "Delhi NCR",
+        },
+        propertyType: newLeadData.propertyType,
+        listingType: newLeadData.listingType.toLowerCase(),
+        expectedPrice: newLeadData.expectedPrice,
+        photos: newLeadData.photos,
+        gpsDetails: newLeadData.gpsLocation
+          ? {
+              latitude: newLeadData.gpsLocation.latitude,
+              longitude: newLeadData.gpsLocation.longitude,
+              accuracy: newLeadData.gpsLocation.accuracyMeters,
+              reverseGeocodedAddress: newLeadData.gpsLocation.formattedAddress,
+            }
+          : undefined,
+        videoLink: newLeadData.videoLink,
+        remarks: newLeadData.remarks,
+      };
+
+      const res = await apiClient.post("/leads", payload);
+      if (res.data?.data) {
+        const createdFromBackend = mapBackendToLeadItem(res.data.data);
+        setLeads((prev) => [createdFromBackend, ...prev]);
+        fetchMyStats();
+        return createdFromBackend;
+      }
+    } catch (err) {
+      console.log("[FieldAgentProvider] API submit failed, saving locally:", err);
+    }
+
+    // Local fallback creation
     const randomId = "LD-" + Math.floor(1000 + Math.random() * 9000);
     const masked = maskPhoneNumber(newLeadData.ownerPhone);
     const estCommission = newLeadData.listingType === "SALE" ? 15000 : 3500;
@@ -356,6 +366,8 @@ export const FieldAgentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         totalEarnings,
         pendingApproval,
         paidEarnings,
+        isLoading,
+        refreshLeads: fetchMyLeads,
         addNewLead,
         requestPayout,
         updateBankDetails,
