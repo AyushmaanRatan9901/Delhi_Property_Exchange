@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   Animated,
   Dimensions,
@@ -15,9 +15,16 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Circle, G, Path } from "react-native-svg";
-import { STORAGE_KEYS } from "../../Redux/api/apiConfig";
+import Svg, {
+  Circle,
+  Defs,
+  G,
+  Path,
+  LinearGradient as SvgLinearGradient,
+  Stop,
+} from "react-native-svg";
 import appStorage from "../../Redux/api/storage";
+import { STORAGE_KEYS } from "../../Redux/api/apiConfig";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -31,14 +38,14 @@ export default function SplashScreen() {
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const logoFloat = useRef(new Animated.Value(0)).current;
 
-  const textSlide = useRef(new Animated.Value(22)).current;
+  const textSlide = useRef(new Animated.Value(20)).current;
   const textOpacity = useRef(new Animated.Value(0)).current;
 
   // Bottom Graphic smooth bottom-to-up entrance
   const graphicOpacity = useRef(new Animated.Value(0)).current;
   const graphicSlide = useRef(new Animated.Value(SCREEN_HEIGHT * 0.35)).current;
 
-  const circleScale = useRef(new Animated.Value(0.6)).current;
+  const circleScale = useRef(new Animated.Value(0.5)).current;
   const circleOpacity = useRef(new Animated.Value(0)).current;
 
   const bottomTextOpacity = useRef(new Animated.Value(0)).current;
@@ -86,9 +93,7 @@ export default function SplashScreen() {
           targetRoute = "/CustomerPanel/(tabs)";
         }
       } else {
-        console.log(
-          "[SplashScreen] ℹ️ No active session found. Routing to onboarding.",
-        );
+        console.log("[SplashScreen] ℹ️ No active session found. Routing to onboarding.");
         targetRoute = "/(onboarding)";
       }
     } catch (e) {
@@ -119,7 +124,7 @@ export default function SplashScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch {}
 
-    // 1. Top Decorative Circle Reveal
+    // 1. Top Decorative Mint Circle Reveal
     Animated.parallel([
       Animated.spring(circleScale, {
         toValue: 1,
@@ -134,7 +139,7 @@ export default function SplashScreen() {
       }),
     ]).start();
 
-    // 2. Bottom Architectural Graphic: Ultra-smooth Bottom-to-Up Glide
+    // 2. Bottom Illustrated Graphic: Ultra-smooth Bottom-to-Up Glide
     Animated.parallel([
       Animated.timing(graphicOpacity, {
         toValue: 1,
@@ -144,7 +149,7 @@ export default function SplashScreen() {
       }),
       Animated.timing(graphicSlide, {
         toValue: 0,
-        duration: 1250,
+        duration: 1200,
         easing: Easing.bezier(0.16, 1, 0.3, 1),
         useNativeDriver: true,
       }),
@@ -183,7 +188,7 @@ export default function SplashScreen() {
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
-      ]),
+      ])
     ).start();
 
     // 5. Typography Entrance
@@ -233,7 +238,7 @@ export default function SplashScreen() {
   return (
     <View style={styles.container}>
       <StatusBar
-        barStyle="light-content"
+        barStyle="dark-content"
         translucent
         backgroundColor="transparent"
       />
@@ -247,15 +252,10 @@ export default function SplashScreen() {
           },
         ]}
       >
-        {/* Base Rich Teal / Turquoise Background Gradient */}
-        <LinearGradient
-          colors={["#00B695", "#00A889", "#00997B", "#008066"]}
-          start={{ x: 0.1, y: 0 }}
-          end={{ x: 0.9, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
+        {/* Crisp White Background */}
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: "#FFFFFF" }]} />
 
-        {/* Top-Right Decorative Elevated Circle Shape */}
+        {/* Top-Right Decorative Mint/Teal Circular Shape */}
         <Animated.View
           style={[
             styles.topRightCircle,
@@ -275,11 +275,11 @@ export default function SplashScreen() {
             style={styles.skipButton}
           >
             <Text style={styles.skipText}>Skip</Text>
-            <Feather name="chevron-right" size={14} color="#FFFFFF" />
+            <Feather name="chevron-right" size={14} color="#0D9488" />
           </TouchableOpacity>
         </View>
 
-        {/* Bottom Graphic Section: Photorealistic Cityscape & 3D Wave with Smooth Bottom-to-Up Slide */}
+        {/* Bottom Illustrated Scenery (India Gate & Agent): splash1.png */}
         <Animated.View
           style={[
             styles.bottomGraphicWrapper,
@@ -290,29 +290,18 @@ export default function SplashScreen() {
           ]}
           pointerEvents="none"
         >
-          {/* Framed Graphic View from Image Asset */}
           <View style={styles.graphicImageContainer}>
             <Image
-              source={require("../../../assets/images/splash.png")}
+              source={require("../../../assets/images/splash1.png")}
               style={styles.graphicImage}
               resizeMode="cover"
-            />
-
-            {/* Deep Base Gradient for Tagline readability */}
-            <LinearGradient
-              colors={[
-                "transparent",
-                "rgba(0, 42, 34, 0.65)",
-                "rgba(0, 30, 24, 0.95)",
-              ]}
-              style={styles.graphicBottomFade}
             />
           </View>
         </Animated.View>
 
-        {/* Center Stage: House Logo + Title + Subtitle */}
+        {/* Center Section: Teal House + Location Pin Logo + Title + Subtitle */}
         <View style={styles.centerContainer}>
-          {/* Animated House + Pin Vector Logo */}
+          {/* Animated Logo with floating effect */}
           <Animated.View
             style={[
               styles.logoContainer,
@@ -323,20 +312,20 @@ export default function SplashScreen() {
             ]}
           >
             <Svg width={115} height={115} viewBox="0 0 120 120">
-              {/* House Roof Peaked Outline */}
+              {/* House Roof Peaked Outline in Deep Teal */}
               <Path
                 d="M 16 54 L 60 18 L 86 39"
-                stroke="#FFFFFF"
+                stroke="#009688"
                 strokeWidth="8"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 fill="none"
               />
 
-              {/* Roof Right Tip Accent */}
+              {/* Roof Accent Pill on top-right */}
               <Path
                 d="M 87 40 L 98 49"
-                stroke="#5EEAD4"
+                stroke="#26A69A"
                 strokeWidth="8"
                 strokeLinecap="round"
                 fill="none"
@@ -345,26 +334,26 @@ export default function SplashScreen() {
               {/* House Left Wall and Foundation Base */}
               <Path
                 d="M 26 50 L 26 88 L 56 88"
-                stroke="#FFFFFF"
+                stroke="#009688"
                 strokeWidth="8"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 fill="none"
               />
 
-              {/* Solid White Location Pin on Bottom-Right */}
+              {/* Solid Teal Location Pin on Bottom-Right */}
               <G transform="translate(61, 42)">
                 <Path
                   d="M 21 0 C 9.4 0 0 9.4 0 21 C 0 34 17 52 21 56 C 25 52 42 34 42 21 C 42 9.4 32.6 0 21 0 Z"
-                  fill="#FFFFFF"
+                  fill="#009688"
                 />
-                {/* Inner Pin Dot Cutout */}
-                <Circle cx="21" cy="20" r="7" fill="#00A889" />
+                {/* Inner Pin Dot Cutout (White) */}
+                <Circle cx="21" cy="20" r="7" fill="#FFFFFF" />
               </G>
             </Svg>
           </Animated.View>
 
-          {/* Clean Typography Title & Subtitle */}
+          {/* Typography: Title & Subtitle in Deep Teal */}
           <Animated.View
             style={[
               styles.textContainer,
@@ -376,11 +365,26 @@ export default function SplashScreen() {
           >
             <Text style={styles.titleText}>Field Agent App</Text>
             <Text style={styles.subTitleText}>
-              Find Leads • Earn Commission • Grow Together
+              Find Leads  •  Earn Commission  •  Grow Together
             </Text>
           </Animated.View>
+        </View>
 
-          {/* Minimalist Progress Indicator */}
+        {/* Bottom Tagline & Progress Bar Below Text */}
+        <Animated.View
+          style={[
+            styles.bottomTaglineContainer,
+            {
+              bottom: Math.max(insets.bottom + 14, 22),
+              opacity: bottomTextOpacity,
+            },
+          ]}
+        >
+          <Text style={styles.bottomTaglineText}>
+            Your Property. Our Priority.
+          </Text>
+
+          {/* Sleek Progress Indicator Bar below the Tagline */}
           <View style={styles.progressTrack}>
             <Animated.View
               style={[
@@ -394,21 +398,6 @@ export default function SplashScreen() {
               ]}
             />
           </View>
-        </View>
-
-        {/* Bottom Tagline: "Your Property. Our Priority." */}
-        <Animated.View
-          style={[
-            styles.bottomTaglineContainer,
-            {
-              bottom: Math.max(insets.bottom + 20, 30),
-              opacity: bottomTextOpacity,
-            },
-          ]}
-        >
-          <Text style={styles.bottomTaglineText}>
-            Your Property. Our Priority.
-          </Text>
         </Animated.View>
       </Animated.View>
     </View>
@@ -418,7 +407,7 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#00997B",
+    backgroundColor: "#FFFFFF",
   },
   contentWrapper: {
     flex: 1,
@@ -427,18 +416,18 @@ const styles = StyleSheet.create({
   },
   topRightCircle: {
     position: "absolute",
-    top: -40,
-    right: -40,
-    width: 170,
-    height: 170,
-    borderRadius: 85,
-    backgroundColor: "#00C9A7",
-    opacity: 0.88,
-    shadowColor: "#00382E",
+    top: -45,
+    right: -45,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: "#CCFBF1",
+    opacity: 0.9,
+    shadowColor: "#0D9488",
     shadowOffset: { width: -4, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 4,
   },
   topBar: {
     position: "absolute",
@@ -448,16 +437,21 @@ const styles = StyleSheet.create({
   skipButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: "#F0FDFA",
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
     gap: 2,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.3)",
+    borderColor: "#CCFBF1",
+    shadowColor: "#0D9488",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
   },
   skipText: {
-    color: "#FFFFFF",
+    color: "#0D9488",
     fontSize: 13,
     fontWeight: "600",
     letterSpacing: 0.3,
@@ -467,7 +461,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: SCREEN_HEIGHT * 0.52,
+    height: SCREEN_HEIGHT * 0.58,
     zIndex: 2,
   },
   graphicImageContainer: {
@@ -483,26 +477,12 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 0,
   },
-  graphicTopFade: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 90,
-  },
-  graphicBottomFade: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 120,
-  },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 24,
-    marginTop: -SCREEN_HEIGHT * 0.08,
+    marginTop: -SCREEN_HEIGHT * 0.16,
     zIndex: 10,
   },
   logoContainer: {
@@ -510,43 +490,25 @@ const styles = StyleSheet.create({
     height: 120,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
+    marginBottom: 14,
   },
   textContainer: {
     alignItems: "center",
   },
   titleText: {
-    color: "#FFFFFF",
+    color: "#009688",
     fontSize: 32,
     fontWeight: "700",
     letterSpacing: 0.4,
     textAlign: "center",
   },
   subTitleText: {
-    color: "rgba(255, 255, 255, 0.92)",
+    color: "#0D9488",
     fontSize: 13.5,
     fontWeight: "500",
     letterSpacing: 0.3,
-    marginTop: 10,
+    marginTop: 8,
     textAlign: "center",
-  },
-  progressTrack: {
-    width: 90,
-    height: 3,
-    backgroundColor: "rgba(255, 255, 255, 0.25)",
-    borderRadius: 2,
-    marginTop: 28,
-    overflow: "hidden",
-  },
-  progressBar: {
-    height: "100%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 2,
   },
   bottomTaglineContainer: {
     position: "absolute",
@@ -557,10 +519,26 @@ const styles = StyleSheet.create({
     zIndex: 15,
   },
   bottomTaglineText: {
-    color: "rgba(255, 255, 255, 0.88)",
+    color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: "500",
+    fontWeight: "600",
     letterSpacing: 0.4,
     textAlign: "center",
+    textShadowColor: "rgba(0, 0, 0, 0.45)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  progressTrack: {
+    width: 84,
+    height: 3,
+    backgroundColor: "rgba(255, 255, 255, 0.35)",
+    borderRadius: 2,
+    marginTop: 8,
+    overflow: "hidden",
+  },
+  progressBar: {
+    height: "100%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 2,
   },
 });

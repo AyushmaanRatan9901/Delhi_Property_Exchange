@@ -27,23 +27,21 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Format error messages cleanly
+// Response Interceptor: Format error messages cleanly from ApiResponse / ApiError
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<any>) => {
     if (error.response) {
-      // Backend returned an error response
       const errorMessage =
         error.response.data?.message ||
         (Array.isArray(error.response.data?.errors)
-          ? error.response.data.errors.join(", ")
+          ? error.response.data.errors.map((err: any) => err.msg || err).join(", ")
           : "Server error occurred");
       return Promise.reject(new Error(errorMessage));
     } else if (error.request) {
-      // Network failure or backend unreachable
       return Promise.reject(
         new Error(
-          "Network Error: Unable to connect to server at 192.168.1.19:5000. Please ensure server is running and Wi-Fi is connected."
+          "Network Error: Unable to connect to server at 192.168.1.16:5000. Please ensure the backend is running."
         )
       );
     }

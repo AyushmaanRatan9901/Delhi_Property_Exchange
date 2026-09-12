@@ -10,16 +10,29 @@ export type UserRole =
 
 export interface User {
   id: string;
+  _id?: string;
   name: string;
   email?: string | null;
   phone?: string | null;
   role: UserRole;
-  subAdminModules?: string[];
-  canViewUnmaskedPII?: boolean;
+  staffId?: string;
   recordCode?: string;
   avatar?: string;
+  profilePhoto?: string;
   createdAt?: string;
   isActive?: boolean;
+  isVerified?: boolean;
+  commissionRate?: number;
+  commissionWallet?: {
+    balance: number;
+    pendingBalance: number;
+  };
+  bankDetails?: {
+    accountHolderName?: string;
+    accountNumber?: string;
+    ifscCode?: string;
+  };
+  upiId?: string;
 }
 
 export interface AuthTokens {
@@ -31,6 +44,7 @@ export interface SendOtpPayload {
   identifier: string;
   roleType?: UserRole;
   name?: string;
+  isRegister?: boolean;
 }
 
 export interface SendOtpResponseData {
@@ -39,11 +53,14 @@ export interface SendOtpResponseData {
   name?: string;
   isNewUser?: boolean;
   message?: string;
+  otp?: string;
+  staffId?: string;
 }
 
 export interface VerifyOtpPayload {
   identifier: string;
   otp: string;
+  isRegister?: boolean;
 }
 
 export interface VerifyOtpResponseData {

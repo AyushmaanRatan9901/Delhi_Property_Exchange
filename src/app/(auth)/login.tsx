@@ -31,6 +31,8 @@ import {
   setSelectedRole,
 } from "../../Redux/Auth/authSlice";
 import { UserRole } from "../../Redux/Auth/authTypes";
+import { STORAGE_KEYS } from "../../Redux/api/apiConfig";
+import appStorage from "../../Redux/api/storage";
 import { useAppDispatch, useAppSelector } from "../../Redux/hooks";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -72,17 +74,33 @@ const SIGNUP_ROLES: Array<{
     icon: "shield-checkmark",
     gradient: ["#F59E0B", "#D97706"],
   },
+  {
+    id: "VERIFICATION_STAFF",
+    title: "Verification Staff",
+    badge: "Operations",
+    desc: "Verify property details, inspect documents & audit listings",
+    icon: "checkmark-done-circle",
+    gradient: ["#10B981", "#047857"],
+  },
 ];
 
 const ROLE_LABELS: Record<string, string> = {
   CUSTOMER: "Tenant / Guest",
   PROPERTY_OWNER: "House Owner / Landlord",
-  FIELD_AGENT: "Field Agent / Broker",
+  FIELD_AGENT: "Field Agent / Partner",
   SUPER_ADMIN: "Super Administrator",
   SUB_ADMIN: "Sub Administrator",
   ADMIN_PARTNER: "Admin Partner",
   VERIFICATION_STAFF: "Verification Staff",
   BROKER: "Broker Partner",
+  field_agent: "Field Agent / Partner",
+  field_staff: "Verification Staff",
+  super_admin: "Super Administrator",
+  admin: "Admin Partner",
+  tele_caller: "Telecaller Support",
+  customer: "Tenant / Guest",
+  property_owner: "House Owner / Landlord",
+  broker: "Broker Partner",
 };
 
 export default function LoginScreen() {
@@ -420,11 +438,29 @@ export default function LoginScreen() {
 
       if (requestOtp.fulfilled.match(result)) {
         const resData = result.payload;
-        const assignedRole = resData.role || selectedRoleState;
-        const assignedName =
+
+        let assignedRole = isNewUserRegistration
+          ? selectedRoleState
+          : resData.role || selectedRoleState || "CUSTOMER";
+        let assignedName =
+          (isNewUserRegistration && fullName.trim()) ||
           resData.name ||
-          fullName.trim() ||
           (isEmail ? identifier.split("@")[0] : "Member");
+
+        // Check if there is cached/saved user data in local storage for this identifier
+        try {
+          const storedUserStr = await appStorage.getItem(
+            STORAGE_KEYS.USER_DATA,
+          );
+          if (storedUserStr) {
+            const storedUser = JSON.parse(storedUserStr);
+            const cleanId = identifier.trim();
+            if (storedUser.phone === cleanId || storedUser.email === cleanId) {
+              if (storedUser.role) assignedRole = storedUser.role;
+              if (storedUser.name) assignedName = storedUser.name;
+            }
+          }
+        } catch (e) {}
 
         setDetectedUser({
           name: assignedName,
@@ -464,11 +500,14 @@ export default function LoginScreen() {
       } else {
         // User not registered on server -> Reveal Name & Dropdown Role selector
         const errorMsg = (result.payload as string) || "";
+        const lowerMsg = errorMsg.toLowerCase();
         if (
           !isNewUserRegistration &&
-          (errorMsg.toLowerCase().includes("registered nahi hai") ||
-            errorMsg.toLowerCase().includes("signup") ||
-            errorMsg.toLowerCase().includes("not registered"))
+          (lowerMsg.includes("no account found") ||
+            lowerMsg.includes("not registered") ||
+            lowerMsg.includes("registered nahi hai") ||
+            lowerMsg.includes("signup") ||
+            lowerMsg.includes("not found"))
         ) {
           revealNewUserRegistration();
           try {
@@ -574,6 +613,7 @@ export default function LoginScreen() {
       verifyOtp({
         identifier: identifier.trim(),
         otp: fullOtp,
+        isRegister: isNewUserRegistration,
       }),
     );
 
