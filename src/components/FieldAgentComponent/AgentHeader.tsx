@@ -1,6 +1,7 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React from "react";
+import { useRouter } from "expo-router";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AgentProfile } from "../../constants/fieldAgentData";
@@ -17,6 +18,7 @@ export const AgentHeader: React.FC<AgentHeaderProps> = ({
   onNotificationPress,
   onProfilePress,
 }) => {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { isDark, colors } = useResponsiveTheme();
 
@@ -73,7 +75,11 @@ export const AgentHeader: React.FC<AgentHeaderProps> = ({
           try {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           } catch {}
-          onNotificationPress?.();
+          if (onNotificationPress) {
+            onNotificationPress();
+          } else {
+            router.push("/FiledAgentPanel/notifications" as any);
+          }
         }}
         style={[
           styles.notifButton,

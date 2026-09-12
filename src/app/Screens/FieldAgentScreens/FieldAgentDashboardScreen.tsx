@@ -138,10 +138,7 @@ export function FieldAgentDashboardScreen() {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch {}
-    Alert.alert(
-      "Agent Notifications 🔔",
-      "• Welcome to your Field Agent Portal!\n• Verified property leads earn instant commissions.",
-    );
+    router.push("/FiledAgentPanel/notifications" as any);
   };
 
   return (

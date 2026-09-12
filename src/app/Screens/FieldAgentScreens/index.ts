@@ -3,3 +3,4 @@ export * from "./MyLeadsScreen";
 export * from "./AddNewLeadScreen";
 export * from "./CommissionWalletScreen";
 export * from "./AgentProfileScreen";
+export * from "./AgentNotificationsScreen";
