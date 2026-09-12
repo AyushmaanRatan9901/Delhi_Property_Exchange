@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
@@ -163,6 +164,7 @@ export function AgentProfileScreen() {
   };
 
   const { isDark, colors } = useResponsiveTheme();
+  const { t } = useTranslation();
 
   // Theme Gradients
   const primaryGradient = isDark
@@ -202,7 +204,7 @@ export function AgentProfileScreen() {
             { color: isDark ? colors.textPrimary : "#0F172A" },
           ]}
         >
-          My Field Agent Profile
+          {t("profile.headerTitle")}
         </Text>
         {isLoading && <ActivityIndicator size="small" color="#0D9488" />}
       </View>
@@ -230,7 +232,7 @@ export function AgentProfileScreen() {
             <View style={styles.officialBadge}>
               <Ionicons name="shield-checkmark" size={13} color="#FFFFFF" />
               <Text style={styles.officialBadgeText}>
-                VERIFIED FIELD PARTNER
+                {t("fieldAgent.verifiedPartner")}
               </Text>
             </View>
             <View style={styles.statusPill}>
@@ -268,7 +270,7 @@ export function AgentProfileScreen() {
                 color="#0F766E"
                 backgroundColor="#FFFFFF"
               />
-              <Text style={styles.qrScanText}>SCAN ID</Text>
+              <Text style={styles.qrScanText}>{t("fieldAgent.scanId")}</Text>
             </View>
           </View>
 
@@ -277,7 +279,7 @@ export function AgentProfileScreen() {
           {/* Bottom Row: Staff ID & Copy button */}
           <View style={styles.idBottomRow}>
             <View>
-              <Text style={styles.idLabel}>UNIQUE AGENT / STAFF ID</Text>
+              <Text style={styles.idLabel}>{t("fieldAgent.uniqueId")}</Text>
               <Text style={styles.idNumber}>{displayStaffId}</Text>
             </View>
 
@@ -287,7 +289,7 @@ export function AgentProfileScreen() {
               style={styles.copyIdBtn}
             >
               <Feather name="copy" size={13} color="#FFFFFF" />
-              <Text style={styles.copyIdText}>Copy ID</Text>
+              <Text style={styles.copyIdText}>{t("fieldAgent.copyId")}</Text>
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -308,7 +310,7 @@ export function AgentProfileScreen() {
               { color: isDark ? colors.textPrimary : "#0F172A" },
             ]}
           >
-            Personal Details
+            {t("profile.personalDetails")}
           </Text>
           <View style={styles.row}>
             <Text
@@ -317,7 +319,7 @@ export function AgentProfileScreen() {
                 { color: isDark ? colors.textMuted : "#64748B" },
               ]}
             >
-              Mobile Phone
+              {t("profile.mobilePhone")}
             </Text>
             <Text
               style={[
@@ -341,7 +343,7 @@ export function AgentProfileScreen() {
                 { color: isDark ? colors.textMuted : "#64748B" },
               ]}
             >
-              Email Address
+              {t("profile.emailAddress")}
             </Text>
             <Text
               style={[
@@ -365,7 +367,7 @@ export function AgentProfileScreen() {
                 { color: isDark ? colors.textMuted : "#64748B" },
               ]}
             >
-              Assigned Territory
+              {t("profile.assignedTerritory")}
             </Text>
             <Text
               style={[
@@ -389,7 +391,7 @@ export function AgentProfileScreen() {
                 { color: isDark ? colors.textMuted : "#64748B" },
               ]}
             >
-              Account Status
+              {t("profile.accountStatus")}
             </Text>
             <View
               style={[
@@ -402,8 +404,8 @@ export function AgentProfileScreen() {
                 style={[styles.verifiedTagText, isDark && { color: "#34D399" }]}
               >
                 {currentUser.isActive !== false
-                  ? "Active & Verified"
-                  : "Under Review"}
+                  ? t("profile.activeVerified")
+                  : t("profile.underReview")}
               </Text>
             </View>
           </View>
@@ -426,7 +428,7 @@ export function AgentProfileScreen() {
                 { color: isDark ? colors.textPrimary : "#0F172A" },
               ]}
             >
-              Payout Account Details
+              {t("profile.payoutAccountDetails")}
             </Text>
             <TouchableOpacity onPress={() => setIsBankModalVisible(true)}>
               <Text
@@ -553,7 +555,7 @@ export function AgentProfileScreen() {
             <Text
               style={[styles.securityTitle, isDark && { color: "#2dd4bf" }]}
             >
-              Partner Privacy & Security
+              {t("profile.partnerPrivacySecurity")}
             </Text>
             <Text style={[styles.securityDesc, isDark && { color: "#99F6E4" }]}>
               • You can only view leads personally submitted by you.{"\n"}•
@@ -580,7 +582,7 @@ export function AgentProfileScreen() {
               { color: isDark ? colors.textPrimary : "#0F172A" },
             ]}
           >
-            Field Agent Support
+            {t("profile.supportHeader")}
           </Text>
           <TouchableOpacity
             onPress={() =>
@@ -598,7 +600,7 @@ export function AgentProfileScreen() {
                 { color: isDark ? colors.textSecondary : "#334155" },
               ]}
             >
-              Chat with Field Coordinator
+              {t("profile.chatWithCoordinator")}
             </Text>
             <Feather
               name="chevron-right"
@@ -632,7 +634,7 @@ export function AgentProfileScreen() {
                 { color: isDark ? colors.textSecondary : "#334155" },
               ]}
             >
-              Agent Priority Helpline (Toll-Free)
+              {t("profile.agentPriorityHelpline")}
             </Text>
             <Feather
               name="chevron-right"
@@ -656,7 +658,7 @@ export function AgentProfileScreen() {
         >
           <Feather name="log-out" size={18} color="#EF4444" />
           <Text style={[styles.logoutBtnText, isDark && { color: "#F87171" }]}>
-            Log Out from Agent Portal
+            {t("profile.logoutBtn")}
           </Text>
         </TouchableOpacity>
       </ScrollView>

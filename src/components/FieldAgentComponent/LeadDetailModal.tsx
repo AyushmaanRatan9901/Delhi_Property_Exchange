@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { useMemo, useState, useEffect } from "react";
@@ -65,6 +66,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
   onClose,
 }) => {
   const { isDark, colors } = useResponsiveTheme();
+  const { t } = useTranslation();
   const { leads: allLeads } = useFieldAgent();
 
   if (!lead) return null;
@@ -734,7 +736,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                       { color: isDark ? colors.textPrimary : "#0F172A" },
                     ]}
                   >
-                    Commission Schedule
+                    {t("fieldAgent.commissionBreakdown")}
                   </Text>
                 </View>
                 <View

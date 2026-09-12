@@ -1,6 +1,7 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -33,6 +34,7 @@ export const PayoutRequestModal: React.FC<PayoutRequestModalProps> = ({
   onRequestPayout,
 }) => {
   const { isDark, colors } = useResponsiveTheme();
+  const { t } = useTranslation();
   const [amountStr, setAmountStr] = useState(availableBalance.toString());
   const [selectedMethod, setSelectedMethod] = useState<"UPI" | "BANK">("UPI");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -112,7 +114,7 @@ export const PayoutRequestModal: React.FC<PayoutRequestModalProps> = ({
                   { color: isDark ? colors.textPrimary : "#0F172A" },
                 ]}
               >
-                Instant Commission Payout
+                {t("fieldAgent.instantPayoutTitle")}
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -139,7 +141,7 @@ export const PayoutRequestModal: React.FC<PayoutRequestModalProps> = ({
                 { color: isDark ? "#2DD4BF" : "#0F766E" },
               ]}
             >
-              Available Balance:
+              {t("fieldAgent.availBalanceLabel")}
             </Text>
             <Text
               style={[
@@ -157,7 +159,7 @@ export const PayoutRequestModal: React.FC<PayoutRequestModalProps> = ({
               { color: isDark ? colors.textSecondary : "#475569" },
             ]}
           >
-            Enter Amount to Withdraw
+            {t("fieldAgent.withdrawAmountLabel")}
           </Text>
           <View
             style={[

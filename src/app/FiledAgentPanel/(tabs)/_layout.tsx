@@ -1,4 +1,6 @@
+import React from "react";
 import { Tabs } from "expo-router";
+import { useTranslation } from "react-i18next";
 import {
   FloatingTabBar,
   tabIcon,
@@ -7,6 +9,8 @@ import {
 import { FieldAgentProvider } from "../../../constants/fieldAgentData";
 
 export default function FieldAgentTabsLayout() {
+  const { t } = useTranslation();
+
   return (
     <FieldAgentProvider>
       <Tabs
@@ -18,7 +22,7 @@ export default function FieldAgentTabsLayout() {
         <Tabs.Screen
           name="Dashboard"
           options={{
-            title: "Dashboard",
+            title: t("navigation.dashboard"),
             tabBarIcon: tabIcon("grid", "ionicons"),
           }}
         />
@@ -26,7 +30,7 @@ export default function FieldAgentTabsLayout() {
         <Tabs.Screen
           name="leads"
           options={{
-            title: "My Leads",
+            title: t("navigation.leads"),
             tabBarIcon: tabIcon("list", "ionicons"),
           }}
         />
@@ -34,7 +38,7 @@ export default function FieldAgentTabsLayout() {
         <Tabs.Screen
           name="addLead"
           options={{
-            title: "Add Lead",
+            title: t("navigation.addLead"),
             tabBarIcon: tabIcon("add-circle", "ionicons"),
           }}
         />
@@ -42,7 +46,7 @@ export default function FieldAgentTabsLayout() {
         <Tabs.Screen
           name="wallet"
           options={{
-            title: "Wallet",
+            title: t("navigation.wallet"),
             tabBarIcon: tabIcon("wallet", "ionicons"),
           }}
         />
@@ -50,7 +54,7 @@ export default function FieldAgentTabsLayout() {
         <Tabs.Screen
           name="profile"
           options={{
-            title: "Profile",
+            title: t("navigation.profile"),
             tabBarIcon: tabProfileAvatar(
               "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=180&q=80",
             ),

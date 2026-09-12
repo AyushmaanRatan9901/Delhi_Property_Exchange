@@ -1,6 +1,7 @@
 import { Ionicons, Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
@@ -27,6 +28,7 @@ import apiClient from "../../../Redux/api/axiosInstance";
 export function CommissionWalletScreen() {
   const insets = useSafeAreaInsets();
   const { isDark, colors } = useResponsiveTheme();
+  const { t } = useTranslation();
   const reduxUser = useAppSelector((state) => state.auth.user);
 
   const [stats, setStats] = useState<any>(null);
@@ -197,7 +199,7 @@ export function CommissionWalletScreen() {
               { color: isDark ? colors.textPrimary : "#0F172A" },
             ]}
           >
-            My Commission Wallet
+            {t("wallet.headerTitle")}
           </Text>
           <Text
             style={[
@@ -205,7 +207,7 @@ export function CommissionWalletScreen() {
               { color: isDark ? colors.textMuted : "#64748B" },
             ]}
           >
-            Live balance, verified earnings & payouts
+            {t("wallet.headerSub")}
           </Text>
         </View>
 
@@ -285,7 +287,7 @@ export function CommissionWalletScreen() {
                 onBankDetailsPress={() => setIsBankModalVisible(true)}
               />
 
-              {/* Payout Destination Card */}
+              {/* {t("wallet.payoutDestination")} Card */}
               <View
                 style={[
                   styles.destCard,

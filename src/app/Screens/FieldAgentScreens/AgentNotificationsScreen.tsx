@@ -2,6 +2,7 @@ import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Alert,
   FlatList,
@@ -158,6 +159,7 @@ export function AgentNotificationsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { isDark, colors } = useResponsiveTheme();
+  const { t } = useTranslation();
 
   const [notifications, setNotifications] = useState<AgentNotificationItem[]>(
     INITIAL_AGENT_NOTIFICATIONS
@@ -430,7 +432,7 @@ export function AgentNotificationsScreen() {
                 { color: isDark ? colors.textPrimary : "#0F172A" },
               ]}
             >
-              Agent Notifications
+              {t("notifications.headerTitle")}
             </Text>
             <Text
               style={[
@@ -474,7 +476,7 @@ export function AgentNotificationsScreen() {
                   { color: isDark ? "#2DD4BF" : "#0D9488" },
                 ]}
               >
-                Mark Read
+                {t("notifications.markRead")}
               </Text>
             </TouchableOpacity>
           )}
@@ -598,7 +600,7 @@ export function AgentNotificationsScreen() {
                 { color: isDark ? colors.textPrimary : "#0F172A" },
               ]}
             >
-              No Notifications Found
+              {t("notifications.noNotificationsTitle")}
             </Text>
             <Text
               style={[

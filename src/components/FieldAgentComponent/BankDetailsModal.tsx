@@ -1,6 +1,7 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -31,6 +32,7 @@ export const BankDetailsModal: React.FC<BankDetailsModalProps> = ({
   onSave,
 }) => {
   const { isDark, colors } = useResponsiveTheme();
+  const { t } = useTranslation();
   const [upiId, setUpiId] = useState(bankDetails?.upiId || "");
   const [accountHolder, setAccountHolder] = useState(bankDetails?.accountHolder || "");
   const [bankName, setBankName] = useState(bankDetails?.bankName || "");
@@ -108,7 +110,7 @@ export const BankDetailsModal: React.FC<BankDetailsModalProps> = ({
                         { color: isDark ? colors.textPrimary : "#0F172A" },
                       ]}
                     >
-                      Payout Bank & UPI Details
+                      {t("fieldAgent.bankDetailsTitle")}
                     </Text>
                   </View>
                   <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -126,7 +128,7 @@ export const BankDetailsModal: React.FC<BankDetailsModalProps> = ({
                     { color: isDark ? colors.textSecondary : "#475569" },
                   ]}
                 >
-                  Primary UPI ID (Instant Payouts) *
+                  {t("fieldAgent.primaryUpiLabel")}
                 </Text>
                 <View
                   style={[
@@ -156,7 +158,7 @@ export const BankDetailsModal: React.FC<BankDetailsModalProps> = ({
                     { color: isDark ? colors.textSecondary : "#475569" },
                   ]}
                 >
-                  Account Holder Name
+                  {t("fieldAgent.accountHolderLabel")}
                 </Text>
                 <View
                   style={[
@@ -185,7 +187,7 @@ export const BankDetailsModal: React.FC<BankDetailsModalProps> = ({
                     { color: isDark ? colors.textSecondary : "#475569" },
                   ]}
                 >
-                  Bank Name
+                  {t("fieldAgent.bankNameLabel")}
                 </Text>
                 <View
                   style={[
@@ -216,7 +218,7 @@ export const BankDetailsModal: React.FC<BankDetailsModalProps> = ({
                         { color: isDark ? colors.textSecondary : "#475569" },
                       ]}
                     >
-                      Account Number
+                      {t("fieldAgent.accountNumberLabel")}
                     </Text>
                     <View
                       style={[
@@ -247,7 +249,7 @@ export const BankDetailsModal: React.FC<BankDetailsModalProps> = ({
                         { color: isDark ? colors.textSecondary : "#475569" },
                       ]}
                     >
-                      IFSC Code
+                      {t("fieldAgent.ifscLabel")}
                     </Text>
                     <View
                       style={[
@@ -281,7 +283,7 @@ export const BankDetailsModal: React.FC<BankDetailsModalProps> = ({
                     { backgroundColor: isDark ? "#14B8A6" : "#0D9488" },
                   ]}
                 >
-                  <Text style={styles.saveBtnText}>Save Payout Details</Text>
+                  <Text style={styles.saveBtnText}>{t("fieldAgent.saveBankBtn")}</Text>
                 </TouchableOpacity>
               </ScrollView>
             </View>

@@ -1,6 +1,7 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Modal,
@@ -26,6 +27,7 @@ export const GPSPickerModal: React.FC<GPSPickerModalProps> = ({
   localityHint,
 }) => {
   const { isDark, colors } = useResponsiveTheme();
+  const { t } = useTranslation();
   const [isFetching, setIsFetching] = useState(true);
   const [coords, setCoords] = useState<GPSLocation | null>(null);
 
@@ -290,7 +292,7 @@ export const GPSPickerModal: React.FC<GPSPickerModalProps> = ({
                 ]}
               >
                 <Ionicons name="checkmark-sharp" size={18} color="#FFFFFF" />
-                <Text style={styles.confirmBtnText}>Confirm & Attach GPS Pin</Text>
+                <Text style={styles.confirmBtnText}>{t("fieldAgent.confirmLocationBtn")}</Text>
               </TouchableOpacity>
             </View>
           )}

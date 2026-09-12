@@ -2,6 +2,7 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   FlatList,
   RefreshControl,
@@ -18,18 +19,19 @@ import { LeadCard, LeadDetailModal } from "../../../components/FieldAgentCompone
 import { LeadItem, LeadStatus, useFieldAgent } from "../../../constants/fieldAgentData";
 import { useResponsiveTheme } from "../../../constants/theme";
 
-const FILTER_TABS: Array<{ id: string; label: string; status?: LeadStatus }> = [
-  { id: "ALL", label: "All Leads" },
-  { id: "NEW", label: "New", status: "NEW" },
-  { id: "VERIFIED", label: "Verified", status: "VERIFIED" },
-  { id: "RENTED", label: "Rented", status: "RENTED" },
-  { id: "SOLD", label: "Sold", status: "SOLD" },
+const getFilterTabs = (t: (key: string) => string): Array<{ id: string; label: string; status?: LeadStatus }> => [
+  { id: "ALL", label: t("leads.filterAll") },
+  { id: "NEW", label: t("leads.filterNew"), status: "NEW" },
+  { id: "VERIFIED", label: t("leads.filterVerified"), status: "VERIFIED" },
+  { id: "RENTED", label: t("leads.filterRented"), status: "RENTED" },
+  { id: "SOLD", label: t("leads.filterSold"), status: "SOLD" },
 ];
 
 export function MyLeadsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { isDark, colors } = useResponsiveTheme();
+  const { t } = useTranslation();
   const { leads } = useFieldAgent();
 
   const [selectedFilter, setSelectedFilter] = useState("ALL");
@@ -106,7 +108,7 @@ export function MyLeadsScreen() {
             { color: isDark ? colors.textPrimary : "#0F172A" },
           ]}
         >
-          No Leads Found
+          {t("leads.noLeadsFound")}
         </Text>
         <Text
           style={[
@@ -114,9 +116,7 @@ export function MyLeadsScreen() {
             { color: isDark ? colors.textMuted : "#64748B" },
           ]}
         >
-          {searchQuery
-            ? "Try searching with a different locality or name."
-            : "You haven't submitted any leads under this filter yet."}
+          {searchQuery ? t("leads.noLeadsSearchSub") : t("leads.noLeadsFilterSub")}
         </Text>
         <TouchableOpacity
           onPress={() => router.push("/FiledAgentPanel/(tabs)/visits" as any)}
@@ -126,7 +126,7 @@ export function MyLeadsScreen() {
           ]}
         >
           <Ionicons name="add-circle" size={18} color="#FFFFFF" />
-          <Text style={styles.emptyAddBtnText}>Submit Your First Lead</Text>
+          <Text style={styles.emptyAddBtnText}>{t("leads.submitFirstLeadBtn")}</Text>
         </TouchableOpacity>
       </View>
     ),
@@ -165,7 +165,7 @@ export function MyLeadsScreen() {
               { color: isDark ? colors.textPrimary : "#0F172A" },
             ]}
           >
-            My Submitted Leads
+            {t("leads.headerTitle")}
           </Text>
           <Text
             style={[
@@ -173,7 +173,7 @@ export function MyLeadsScreen() {
               { color: isDark ? colors.textMuted : "#64748B" },
             ]}
           >
-            Tracking {leads.length} properties submitted by you
+            {t("leads.headerSub", { count: leads.length })}
           </Text>
         </View>
 
@@ -191,7 +191,7 @@ export function MyLeadsScreen() {
           ]}
         >
           <Ionicons name="add" size={18} color="#FFFFFF" />
-          <Text style={styles.addBtnText}>New Lead</Text>
+          <Text style={styles.addBtnText}>{t("leads.newLeadBtn")}</Text>
         </TouchableOpacity>
       </View>
 
@@ -254,7 +254,7 @@ export function MyLeadsScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterScroll}
         >
-          {FILTER_TABS.map((item) => {
+          {getFilterTabs(t).map((item) => {
             const isSelected = selectedFilter === item.id;
             const count =
               item.id === "ALL"

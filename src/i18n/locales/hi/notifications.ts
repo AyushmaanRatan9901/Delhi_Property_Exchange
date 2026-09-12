@@ -1,0 +1,16 @@
+export default {
+  headerTitle: "एजेंट सूचनाएं",
+  unreadCount_one: "{{count}} अपठित सूचना",
+  unreadCount_other: "{{count}} अपठित सूचनाएं",
+  allCaughtUp: "सभी सूचनाएं पढ़ ली गईं",
+  markRead: "पढ़ा हुआ चिन्हित करें",
+  clearAllTitle: "सभी सूचनाएं हटाएं",
+  clearAllConfirm: "क्या आप वाकई सभी सूचनाएं हटाना चाहते हैं?",
+  filterAll: "सभी",
+  filterPayouts: "भुगतान और वॉलेट",
+  filterLeads: "लीड अपडेट्स",
+  filterOffers: "इंसेंटिव और ऑफर्स",
+  noNotificationsTitle: "कोई सूचना नहीं मिली",
+  noNotificationsFilterSub: "इस श्रेणी में कोई सूचना उपलब्ध नहीं है।",
+  noNotificationsAllSub: "आप पूरी तरह अपडेट हैं! नए लीड सत्यापन और भुगतान अलर्ट यहाँ दिखाई देंगे।",
+};

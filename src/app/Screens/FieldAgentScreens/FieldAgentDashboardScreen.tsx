@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
@@ -32,6 +33,7 @@ export function FieldAgentDashboardScreen() {
   const insets = useSafeAreaInsets();
   const reduxUser = useAppSelector((state) => state.auth.user);
   const { isDark, colors } = useResponsiveTheme();
+  const { t } = useTranslation();
 
   const {
     agentProfile,
@@ -197,9 +199,9 @@ export function FieldAgentDashboardScreen() {
               </View>
 
               <View style={{ flex: 1 }}>
-                <Text style={styles.heroTitle}>Submit New Property Lead</Text>
+                <Text style={styles.heroTitle}>{t("fieldAgent.addNewLeadQuick")}</Text>
                 <Text style={styles.heroSubtitle}>
-                  1-Click GPS Pin • Earn up to ₹15,000 commission
+                  {t("fieldAgent.gpsPickerTitle")} • {t("fieldAgent.submitLeadBtn")}
                 </Text>
               </View>
 
@@ -258,7 +260,7 @@ export function FieldAgentDashboardScreen() {
                 { color: isDark ? colors.textPrimary : "#0F172A" },
               ]}
             >
-              Recent Submitted Leads
+              {t("fieldAgent.recentSubmissions")}
             </Text>
             <Text
               style={[
@@ -266,7 +268,7 @@ export function FieldAgentDashboardScreen() {
                 { color: isDark ? colors.textMuted : "#64748B" },
               ]}
             >
-              Only your personally submitted leads
+              {t("profile.privacyBullet1")}
             </Text>
           </View>
 
@@ -274,7 +276,7 @@ export function FieldAgentDashboardScreen() {
             onPress={() => router.push("/FiledAgentPanel/(tabs)/leads" as any)}
             style={styles.viewAllBtn}
           >
-            <Text style={styles.viewAllText}>View All ({leads.length})</Text>
+            <Text style={styles.viewAllText}>{t("common.viewAll")} ({leads.length})</Text>
             <Feather
               name="chevron-right"
               size={14}

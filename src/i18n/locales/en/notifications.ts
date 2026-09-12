@@ -1,0 +1,16 @@
+export default {
+  headerTitle: "Agent Notifications",
+  unreadCount_one: "{{count}} unread alert",
+  unreadCount_other: "{{count}} unread alerts",
+  allCaughtUp: "All caught up",
+  markRead: "Mark Read",
+  clearAllTitle: "Clear All Notifications",
+  clearAllConfirm: "Are you sure you want to clear all notifications?",
+  filterAll: "All",
+  filterPayouts: "Payouts & Wallet",
+  filterLeads: "Lead Updates",
+  filterOffers: "Incentives",
+  noNotificationsTitle: "No Notifications Found",
+  noNotificationsFilterSub: "There are no notifications under this category.",
+  noNotificationsAllSub: "You're all caught up! New lead verification and payout alerts will appear here.",
+};

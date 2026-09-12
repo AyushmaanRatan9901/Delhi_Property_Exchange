@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { formatCurrency } from "../../constants/fieldAgentData";
 import { useResponsiveTheme } from "../../constants/theme";
@@ -19,14 +20,15 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
   availableBalance,
   onCardPress,
 }) => {
+  const { t } = useTranslation();
   const { isDark, colors, moderateScale } = useResponsiveTheme();
 
   const stats = [
     {
       id: "total",
-      label: "Total Leads",
+      label: t("fieldAgent.totalLeads"),
       value: totalLeads.toString(),
-      sub: "Submitted by you",
+      sub: t("fieldAgent.myStats"),
       icon: "file-text" as const,
       color: isDark ? "#2DD4BF" : "#0D9488",
       bg: isDark ? "#082F2C" : "#F0FDFA",
@@ -34,9 +36,9 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
     },
     {
       id: "verified",
-      label: "Verified",
+      label: t("fieldAgent.verifiedLeads"),
       value: verifiedLeads.toString(),
-      sub: "Active on platform",
+      sub: t("common.active"),
       icon: "check-circle" as const,
       color: isDark ? "#60A5FA" : "#2563EB",
       bg: isDark ? "#0E2440" : "#EFF6FF",
@@ -44,9 +46,9 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
     },
     {
       id: "converted",
-      label: "Rented / Sold",
+      label: t("fieldAgent.rentedSold"),
       value: convertedLeads.toString(),
-      sub: "Commission earned",
+      sub: t("common.completed"),
       icon: "award" as const,
       color: isDark ? "#FBBF24" : "#D97706",
       bg: isDark ? "#2E1E08" : "#FFFBEB",
@@ -54,13 +56,13 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
     },
     {
       id: "wallet",
-      label: "Wallet Balance",
+      label: t("fieldAgent.availableBalance"),
       value: formatCurrency(availableBalance),
-      sub: "Ready for payout",
+      sub: t("wallet.starPartner"),
       icon: "dollar-sign" as const,
       color: isDark ? "#34D399" : "#059669",
       bg: isDark ? "#062A1C" : "#ECFDF5",
-      border: isDark ? "#065F46" : "#D1FAE5",
+      border: isDark ? "#065F46" : "#A7F3D0",
     },
   ];
 

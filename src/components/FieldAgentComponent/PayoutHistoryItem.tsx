@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
 import { formatCurrency, PayoutTransaction } from "../../constants/fieldAgentData";
 import { useResponsiveTheme } from "../../constants/theme";
@@ -12,6 +13,7 @@ export const PayoutHistoryItem: React.FC<PayoutHistoryItemProps> = ({
   transaction,
 }) => {
   const { isDark, colors } = useResponsiveTheme();
+  const { t } = useTranslation();
   const isCompleted = transaction.status === "COMPLETED";
 
   return (

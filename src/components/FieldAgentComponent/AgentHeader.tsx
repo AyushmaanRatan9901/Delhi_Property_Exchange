@@ -2,6 +2,7 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Alert,
   Image,
@@ -15,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AgentProfile } from "../../constants/fieldAgentData";
 import { useResponsiveTheme } from "../../constants/theme";
+import { changeLanguage, Language, SUPPORTED_LANGUAGES } from "../../i18n/language";
 
 interface AgentHeaderProps {
   profile?: AgentProfile;
@@ -22,17 +24,6 @@ interface AgentHeaderProps {
   onProfilePress?: () => void;
   onLanguageChange?: (langCode: string) => void;
 }
-
-interface LanguageOption {
-  code: string;
-  name: string;
-  nativeName: string;
-}
-
-const LANGUAGES: LanguageOption[] = [
-  { code: "EN", name: "English", nativeName: "English" },
-  { code: "HI", name: "Hindi", nativeName: "हिन्दी" },
-];
 
 export const AgentHeader: React.FC<AgentHeaderProps> = ({
   profile,
@@ -43,23 +34,20 @@ export const AgentHeader: React.FC<AgentHeaderProps> = ({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { isDark, colors } = useResponsiveTheme();
+  const { t, i18n } = useTranslation();
 
   const [isLangModalVisible, setIsLangModalVisible] = useState(false);
-  const [selectedLang, setSelectedLang] = useState<LanguageOption>(
-    LANGUAGES[0],
-  );
 
-  const handleSelectLanguage = (lang: LanguageOption) => {
+  const currentLang = (i18n.language === "hi" ? "hi" : "en") as Language;
+  const currentLangOption = SUPPORTED_LANGUAGES.find((l) => l.code === currentLang) || SUPPORTED_LANGUAGES[0];
+
+  const handleSelectLanguage = async (lang: (typeof SUPPORTED_LANGUAGES)[0]) => {
     try {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {}
-    setSelectedLang(lang);
+    await changeLanguage(lang.code);
     setIsLangModalVisible(false);
     onLanguageChange?.(lang.code);
-    Alert.alert(
-      "Language Updated",
-      `App interface language switched to ${lang.name} (${lang.nativeName}).`,
-    );
   };
 
   return (
@@ -103,7 +91,7 @@ export const AgentHeader: React.FC<AgentHeaderProps> = ({
           <View style={styles.subRow}>
             <View style={styles.badgePill}>
               <Ionicons name="shield-checkmark" size={10} color="#0D9488" />
-              <Text style={styles.badgePillText}>Field Partner Portal</Text>
+              <Text style={styles.badgePillText}>{t("fieldAgent.portalSubtitle")}</Text>
             </View>
           </View>
         </View>
@@ -139,7 +127,7 @@ export const AgentHeader: React.FC<AgentHeaderProps> = ({
               { color: isDark ? colors.textPrimary : "#0F172A" },
             ]}
           >
-            {selectedLang.code}
+            {currentLang.toUpperCase()}
           </Text>
         </TouchableOpacity>
 
@@ -197,9 +185,7 @@ export const AgentHeader: React.FC<AgentHeaderProps> = ({
             >
               {/* Modal Header */}
               <View style={styles.modalHeader}>
-                <View
-                  style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
-                >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <Ionicons
                     name="globe-outline"
                     size={20}
@@ -211,7 +197,7 @@ export const AgentHeader: React.FC<AgentHeaderProps> = ({
                       { color: isDark ? colors.textPrimary : "#0F172A" },
                     ]}
                   >
-                    Select Language / भाषा चुनें
+                    {t("common.selectLanguage")}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -228,8 +214,8 @@ export const AgentHeader: React.FC<AgentHeaderProps> = ({
 
               {/* Languages List */}
               <View style={styles.langList}>
-                {LANGUAGES.map((lang) => {
-                  const isSelected = selectedLang.code === lang.code;
+                {SUPPORTED_LANGUAGES.map((lang) => {
+                  const isSelected = currentLang === lang.code;
                   return (
                     <TouchableOpacity
                       key={lang.code}
@@ -243,13 +229,13 @@ export const AgentHeader: React.FC<AgentHeaderProps> = ({
                               ? "rgba(13, 148, 136, 0.2)"
                               : "#F0FDFA"
                             : isDark
-                              ? colors.surfaceLight
-                              : "#F8FAFC",
+                            ? colors.surfaceLight
+                            : "#F8FAFC",
                           borderColor: isSelected
                             ? "#0D9488"
                             : isDark
-                              ? colors.border
-                              : "#E2E8F0",
+                            ? colors.border
+                            : "#E2E8F0",
                         },
                       ]}
                     >
@@ -261,8 +247,8 @@ export const AgentHeader: React.FC<AgentHeaderProps> = ({
                               backgroundColor: isSelected
                                 ? "#0D9488"
                                 : isDark
-                                  ? colors.cardBackground
-                                  : "#E2E8F0",
+                                ? colors.cardBackground
+                                : "#E2E8F0",
                             },
                           ]}
                         >
@@ -273,12 +259,12 @@ export const AgentHeader: React.FC<AgentHeaderProps> = ({
                                 color: isSelected
                                   ? "#FFFFFF"
                                   : isDark
-                                    ? colors.textPrimary
-                                    : "#475569",
+                                  ? colors.textPrimary
+                                  : "#475569",
                               },
                             ]}
                           >
-                            {lang.code}
+                            {lang.code.toUpperCase()}
                           </Text>
                         </View>
                         <View>

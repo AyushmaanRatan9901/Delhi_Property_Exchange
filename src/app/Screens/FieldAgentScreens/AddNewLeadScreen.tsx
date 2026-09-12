@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
@@ -40,6 +41,7 @@ export function AddNewLeadScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { isDark, colors } = useResponsiveTheme();
+  const { t } = useTranslation();
   const { addNewLead } = useFieldAgent();
 
   // Form Fields
@@ -236,7 +238,7 @@ export function AddNewLeadScreen() {
         >
           <Feather name="arrow-left" size={20} color={isDark ? colors.textPrimary : "#0F172A"} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: isDark ? colors.textPrimary : "#0F172A" }]}>Add New Property Lead</Text>
+        <Text style={[styles.headerTitle, { color: isDark ? colors.textPrimary : "#0F172A" }]}>{t("fieldAgent.addNewLeadQuick")}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -253,32 +255,32 @@ export function AddNewLeadScreen() {
           <View style={[styles.infoBanner, isDark && { backgroundColor: "rgba(13, 148, 136, 0.15)", borderColor: "rgba(13, 148, 136, 0.3)" }]}>
             <Ionicons name="shield-checkmark" size={18} color={isDark ? "#2dd4bf" : "#0F766E"} />
             <Text style={[styles.infoBannerText, isDark && { color: "#2dd4bf" }]}>
-              Submitting verified leads gives you direct payout commission. Data confidentiality is guaranteed.
+              {t("fieldAgent.dataSecurityNotice")}
             </Text>
           </View>
 
           {/* Section 1: Owner Details */}
           <View style={[styles.formSection, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: isDark ? colors.border : "#E2E8F0" }]}>
-            <Text style={[styles.sectionHeading, { color: isDark ? colors.textPrimary : "#0F172A" }]}>1. Owner Contact Information</Text>
+            <Text style={[styles.sectionHeading, { color: isDark ? colors.textPrimary : "#0F172A" }]}>1. {t("fieldAgent.ownerContactDetails")}</Text>
 
-            <Text style={[styles.inputLabel, { color: isDark ? colors.textSecondary : "#334155" }]}>Owner Full Name *</Text>
+            <Text style={[styles.inputLabel, { color: isDark ? colors.textSecondary : "#334155" }]}>{t("fieldAgent.ownerNameLabel")}</Text>
             <View style={[styles.inputBox, { backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC", borderColor: isDark ? colors.border : "#E2E8F0" }]}>
               <Feather name="user" size={17} color="#0D9488" />
               <TextInput
                 style={[styles.input, { color: isDark ? colors.textPrimary : "#0F172A" }]}
-                placeholder="e.g. Ramesh Chandra"
+                placeholder={t("fieldAgent.ownerNamePlaceholder")}
                 placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                 value={ownerName}
                 onChangeText={setOwnerName}
               />
             </View>
 
-            <Text style={[styles.inputLabel, { marginTop: 12, color: isDark ? colors.textSecondary : "#334155" }]}>Owner Mobile Number *</Text>
+            <Text style={[styles.inputLabel, { marginTop: 12, color: isDark ? colors.textSecondary : "#334155" }]}>{t("fieldAgent.ownerPhoneLabel")}</Text>
             <View style={[styles.inputBox, { backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC", borderColor: isDark ? colors.border : "#E2E8F0" }]}>
               <Feather name="phone" size={17} color="#0D9488" />
               <TextInput
                 style={[styles.input, { color: isDark ? colors.textPrimary : "#0F172A" }]}
-                placeholder="10-digit phone (e.g. 9811234567)"
+                placeholder={t("fieldAgent.ownerPhonePlaceholder")}
                 placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                 keyboardType="phone-pad"
                 maxLength={10}
@@ -287,16 +289,16 @@ export function AddNewLeadScreen() {
               />
             </View>
             <Text style={[styles.securityNote, { color: isDark ? colors.textMuted : "#64748B" }]}>
-              🔒 Number will be automatically masked once submitted to protect owner privacy.
+              {t("fieldAgent.numberMaskedNotice")}
             </Text>
           </View>
 
           {/* Section 2: Property Type & Listing Info */}
           <View style={[styles.formSection, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: isDark ? colors.border : "#E2E8F0" }]}>
-            <Text style={[styles.sectionHeading, { color: isDark ? colors.textPrimary : "#0F172A" }]}>2. Property Specification</Text>
+            <Text style={[styles.sectionHeading, { color: isDark ? colors.textPrimary : "#0F172A" }]}>2. {t("fieldAgent.propertyType")}</Text>
 
             {/* Listing Type: Rent vs Sale */}
-            <Text style={[styles.inputLabel, { color: isDark ? colors.textSecondary : "#334155" }]}>Listing Purpose *</Text>
+            <Text style={[styles.inputLabel, { color: isDark ? colors.textSecondary : "#334155" }]}>{t("fieldAgent.listingPurpose")}</Text>
             <View style={styles.listingToggleRow}>
               <TouchableOpacity
                 onPress={() => setListingType("RENT")}
@@ -318,7 +320,7 @@ export function AddNewLeadScreen() {
                     listingType === "RENT" && [styles.listingToggleTextActive, isDark && { color: "#2dd4bf" }],
                   ]}
                 >
-                  For Rent (Monthly)
+                  {t("fieldAgent.forRent")}
                 </Text>
               </TouchableOpacity>
 
@@ -342,13 +344,13 @@ export function AddNewLeadScreen() {
                     listingType === "SALE" && [styles.listingToggleTextActive, isDark && { color: "#2dd4bf" }],
                   ]}
                 >
-                  For Sale (Outright)
+                  {t("fieldAgent.forSale")}
                 </Text>
               </TouchableOpacity>
             </View>
 
             {/* Property Type Grid */}
-            <Text style={[styles.inputLabel, { marginTop: 14, color: isDark ? colors.textSecondary : "#334155" }]}>Property Type *</Text>
+            <Text style={[styles.inputLabel, { marginTop: 14, color: isDark ? colors.textSecondary : "#334155" }]}>{t("fieldAgent.propertyType")}</Text>
             <View style={styles.propTypeGrid}>
               {PROPERTY_TYPES.map((type) => {
                 const isSelected = propertyType === type;
@@ -378,7 +380,7 @@ export function AddNewLeadScreen() {
 
             {/* Expected Price */}
             <Text style={[styles.inputLabel, { marginTop: 14, color: isDark ? colors.textSecondary : "#334155" }]}>
-              {listingType === "RENT" ? "Expected Monthly Rent (₹)" : "Expected Sale Price (₹)"}
+              {listingType === "RENT" ? t("fieldAgent.expectedRent") : t("fieldAgent.expectedSale")}
             </Text>
             <View style={[styles.inputBox, { backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC", borderColor: isDark ? colors.border : "#E2E8F0" }]}>
               <Text style={styles.currencyPrefix}>₹</Text>
@@ -395,14 +397,14 @@ export function AddNewLeadScreen() {
 
           {/* Section 3: 1-Click GPS Location Pin */}
           <View style={[styles.formSection, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: isDark ? colors.border : "#E2E8F0" }]}>
-            <Text style={[styles.sectionHeading, { color: isDark ? colors.textPrimary : "#0F172A" }]}>3. Location & 1-Click GPS Pin</Text>
+            <Text style={[styles.sectionHeading, { color: isDark ? colors.textPrimary : "#0F172A" }]}>3. {t("fieldAgent.gpsPickerTitle")}</Text>
 
-            <Text style={[styles.inputLabel, { color: isDark ? colors.textSecondary : "#334155" }]}>Locality / Area / Sector *</Text>
+            <Text style={[styles.inputLabel, { color: isDark ? colors.textSecondary : "#334155" }]}>{t("fieldAgent.localityLabel")}</Text>
             <View style={[styles.inputBox, { backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC", borderColor: isDark ? colors.border : "#E2E8F0" }]}>
               <Feather name="map-pin" size={17} color="#0D9488" />
               <TextInput
                 style={[styles.input, { color: isDark ? colors.textPrimary : "#0F172A" }]}
-                placeholder="e.g. Sector 62, Noida"
+                placeholder={t("fieldAgent.localityPlaceholder")}
                 placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                 value={locality}
                 onChangeText={setLocality}
@@ -410,13 +412,13 @@ export function AddNewLeadScreen() {
             </View>
 
             <Text style={[styles.inputLabel, { marginTop: 12, color: isDark ? colors.textSecondary : "#334155" }]}>
-              Building / Flat / Tower Address (Optional)
+              {t("fieldAgent.addressLabel")}
             </Text>
             <View style={[styles.inputBox, { backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC", borderColor: isDark ? colors.border : "#E2E8F0" }]}>
               <Feather name="navigation" size={17} color="#0D9488" />
               <TextInput
                 style={[styles.input, { color: isDark ? colors.textPrimary : "#0F172A" }]}
-                placeholder="e.g. Flat 302, Tower 4, Royal Greens"
+                placeholder={t("fieldAgent.addressPlaceholder")}
                 placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                 value={fullAddress}
                 onChangeText={setFullAddress}
@@ -445,12 +447,12 @@ export function AddNewLeadScreen() {
                     gpsLocation && { color: "#059669" },
                   ]}
                 >
-                  {gpsLocation ? "GPS Pin Verified (±3.8m)" : "Capture 1-Click GPS Pin *"}
+                  {gpsLocation ? t("fieldAgent.gpsVerifiedBtn") : t("fieldAgent.captureGpsBtn")}
                 </Text>
                 <Text style={[styles.gpsTriggerSub, { color: isDark ? colors.textMuted : "#64748B" }]} numberOfLines={1}>
                   {gpsLocation
                     ? gpsLocation.formattedAddress
-                    : "Tap to record current live on-site coordinates"}
+                    : t("fieldAgent.gpsSubHint")}
                 </Text>
               </View>
               <Feather name="chevron-right" size={18} color="#94A3B8" />
@@ -460,13 +462,13 @@ export function AddNewLeadScreen() {
           {/* Section 4: Property Photos & Video Tour */}
           <View style={[styles.formSection, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: isDark ? colors.border : "#E2E8F0" }]}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionHeading, { color: isDark ? colors.textPrimary : "#0F172A" }]}>4. Property Photos & Video Tour</Text>
+              <Text style={[styles.sectionHeading, { color: isDark ? colors.textPrimary : "#0F172A" }]}>4. {t("fieldAgent.photosAndTour")}</Text>
               <View style={[styles.photoCountBadge, isDark && { backgroundColor: "rgba(13, 148, 136, 0.25)" }]}>
-                <Text style={[styles.photoCountText, isDark && { color: "#2dd4bf" }]}>{photos.length}/10 Added</Text>
+                <Text style={[styles.photoCountText, isDark && { color: "#2dd4bf" }]}>{t("fieldAgent.photosAddedCount", { count: photos.length })}</Text>
               </View>
             </View>
             <Text style={[styles.photoHelpText, { color: isDark ? colors.textMuted : "#64748B" }]}>
-              Add high-quality photos (living room, bedrooms, kitchen, facade). The 1st photo is your main Cover photo.
+              {t("fieldAgent.photosHelpText")}
             </Text>
 
             {/* Quick Upload Action Buttons */}
@@ -484,8 +486,8 @@ export function AddNewLeadScreen() {
               >
                 <Ionicons name="camera" size={20} color={isDark ? "#2dd4bf" : "#0F766E"} />
                 <View>
-                  <Text style={[styles.photoActionTitle, { color: isDark ? "#2dd4bf" : "#0F766E" }]}>Take Live Photo</Text>
-                  <Text style={[styles.photoActionSub, { color: isDark ? colors.textMuted : "#64748B" }]}>Use Device Camera</Text>
+                  <Text style={[styles.photoActionTitle, { color: isDark ? "#2dd4bf" : "#0F766E" }]}>{t("fieldAgent.takeLivePhoto")}</Text>
+                  <Text style={[styles.photoActionSub, { color: isDark ? colors.textMuted : "#64748B" }]}>{t("fieldAgent.useCamera")}</Text>
                 </View>
               </TouchableOpacity>
 
@@ -502,8 +504,8 @@ export function AddNewLeadScreen() {
               >
                 <Ionicons name="images" size={20} color={isDark ? "#38bdf8" : "#0369A1"} />
                 <View>
-                  <Text style={[styles.photoActionTitle, { color: isDark ? "#38bdf8" : "#0369A1" }]}>Browse Gallery</Text>
-                  <Text style={[styles.photoActionSub, { color: isDark ? colors.textMuted : "#64748B" }]}>Select Multiple</Text>
+                  <Text style={[styles.photoActionTitle, { color: isDark ? "#38bdf8" : "#0369A1" }]}>{t("fieldAgent.browseGallery")}</Text>
+                  <Text style={[styles.photoActionSub, { color: isDark ? colors.textMuted : "#64748B" }]}>{t("fieldAgent.selectMultiple")}</Text>
                 </View>
               </TouchableOpacity>
             </View>
@@ -540,7 +542,7 @@ export function AddNewLeadScreen() {
                         {isCover && (
                           <View style={styles.coverTag}>
                             <Ionicons name="star" size={10} color="#FFFFFF" />
-                            <Text style={styles.coverTagText}>COVER</Text>
+                            <Text style={styles.coverTagText}>{t("fieldAgent.coverTag")}</Text>
                           </View>
                         )}
 
@@ -561,7 +563,7 @@ export function AddNewLeadScreen() {
                     );
                   })}
 
-                  {/* Add More Tile */}
+                  {/* + {t("fieldAgent.selectMultiple")} Tile */}
                   {photos.length < 10 && (
                     <TouchableOpacity
                       activeOpacity={0.75}
@@ -577,7 +579,7 @@ export function AddNewLeadScreen() {
             ) : (
               <View style={[styles.photoEmptyBox, { backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC", borderColor: isDark ? colors.border : "#CBD5E1" }]}>
                 <Ionicons name="cloud-upload-outline" size={32} color={isDark ? "#64748B" : "#94A3B8"} />
-                <Text style={[styles.photoEmptyTitle, { color: isDark ? colors.textPrimary : "#475569" }]}>No Property Photos Added Yet</Text>
+                <Text style={[styles.photoEmptyTitle, { color: isDark ? colors.textPrimary : "#475569" }]}>{t("fieldAgent.noPhotosYet")}</Text>
                 <Text style={[styles.photoEmptySub, { color: isDark ? colors.textMuted : "#94A3B8" }]}>
                   Properties with 3+ clear photos get approved 4x faster by the verification team!
                 </Text>
@@ -586,7 +588,7 @@ export function AddNewLeadScreen() {
 
             {/* Optional Video Tour Link */}
             <Text style={[styles.inputLabel, { marginTop: 14 }]}>
-              Video Tour / 360 Virtual Tour Link (Optional)
+              {t("fieldAgent.videoTourLink")}
             </Text>
             <View style={styles.inputBox}>
               <Ionicons name="videocam-outline" size={18} color="#0D9488" />
@@ -604,11 +606,11 @@ export function AddNewLeadScreen() {
 
           {/* Section 5: Remarks / Key Notes */}
           <View style={[styles.formSection, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: isDark ? colors.border : "#E2E8F0" }]}>
-            <Text style={[styles.sectionHeading, { color: isDark ? colors.textPrimary : "#0F172A" }]}>5. Agent Notes & Key Details</Text>
+            <Text style={[styles.sectionHeading, { color: isDark ? colors.textPrimary : "#0F172A" }]}>5. {t("fieldAgent.agentNotes")}</Text>
             <View style={[styles.inputBox, { backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC", borderColor: isDark ? colors.border : "#E2E8F0", height: 80, alignItems: "flex-start", paddingTop: 10 }]}>
               <TextInput
                 style={[styles.input, { color: isDark ? colors.textPrimary : "#0F172A", height: "100%", textAlignVertical: "top" }]}
-                placeholder="e.g. Keys with security guard, available for immediate occupancy..."
+                placeholder={t("fieldAgent.agentNotesPlaceholder")}
                 placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                 multiline
                 value={remarks}
@@ -626,7 +628,7 @@ export function AddNewLeadScreen() {
           >
             <Ionicons name="rocket-outline" size={20} color="#FFFFFF" />
             <Text style={styles.submitButtonText}>
-              {isSubmitting ? "Submitting Lead..." : "Submit Lead & Claim Commission"}
+              {isSubmitting ? t("fieldAgent.submittingLead") : t("fieldAgent.submitLeadBtn")}
             </Text>
           </TouchableOpacity>
         </ScrollView>

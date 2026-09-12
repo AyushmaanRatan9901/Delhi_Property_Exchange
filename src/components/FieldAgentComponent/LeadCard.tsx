@@ -1,5 +1,6 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import {
   formatCurrency,
@@ -15,6 +16,7 @@ interface LeadCardProps {
 
 export const LeadCard: React.FC<LeadCardProps> = ({ lead, onPress }) => {
   const { isDark, colors, moderateScale } = useResponsiveTheme();
+  const { t } = useTranslation();
 
   const STATUS_CONFIG: Record<
     LeadStatus,
@@ -26,31 +28,31 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onPress }) => {
     }
   > = {
     NEW: {
-      label: "Under Verification",
+      label: t("common.pending"),
       bg: isDark ? "#2E1E08" : "#FEF3C7",
       text: isDark ? "#FCD34D" : "#B45309",
       icon: "time-outline",
     },
     VERIFIED: {
-      label: "Verified & Listed",
+      label: t("common.verified"),
       bg: isDark ? "#082F2C" : "#CCFBF1",
       text: isDark ? "#2DD4BF" : "#0F766E",
       icon: "shield-checkmark-outline",
     },
     RENTED: {
-      label: "Rented Out",
+      label: t("leads.filterRented"),
       bg: isDark ? "#0E2440" : "#DBEAFE",
       text: isDark ? "#60A5FA" : "#1E40AF",
       icon: "key-outline",
     },
     SOLD: {
-      label: "Sold Out",
+      label: t("leads.filterSold"),
       bg: isDark ? "#2E1B4D" : "#F3E8FF",
       text: isDark ? "#C084FC" : "#7E22CE",
       icon: "checkmark-done-circle-outline",
     },
     REJECTED: {
-      label: "Needs Info",
+      label: t("common.rejected"),
       bg: isDark ? "#331111" : "#FEE2E2",
       text: isDark ? "#F87171" : "#B91C1C",
       icon: "alert-circle-outline",
@@ -122,7 +124,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onPress }) => {
                   : styles.rentText,
               ]}
             >
-              {lead.listingType === "SALE" ? "For Sale" : "For Rent"}
+              {lead.listingType === "SALE" ? t("fieldAgent.forSale") : t("fieldAgent.forRent")}
             </Text>
           </View>
         </View>
