@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { GPSLocation } from "../../constants/fieldAgentData";
+import { useResponsiveTheme } from "../../constants/theme";
 
 interface GPSPickerModalProps {
   visible: boolean;
@@ -24,6 +25,7 @@ export const GPSPickerModal: React.FC<GPSPickerModalProps> = ({
   onLocationSelected,
   localityHint,
 }) => {
+  const { isDark, colors } = useResponsiveTheme();
   const [isFetching, setIsFetching] = useState(true);
   const [coords, setCoords] = useState<GPSLocation | null>(null);
 
@@ -68,70 +70,224 @@ export const GPSPickerModal: React.FC<GPSPickerModalProps> = ({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={styles.container}>
+        <View
+          style={[
+            styles.container,
+            { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF" },
+          ]}
+        >
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.gpsTitleRow}>
-              <View style={styles.iconCircle}>
-                <Ionicons name="location" size={20} color="#0D9488" />
+              <View
+                style={[
+                  styles.iconCircle,
+                  { backgroundColor: isDark ? "#082F2C" : "#CCFBF1" },
+                ]}
+              >
+                <Ionicons
+                  name="location"
+                  size={20}
+                  color={isDark ? "#2DD4BF" : "#0D9488"}
+                />
               </View>
               <View>
-                <Text style={styles.title}>1-Click GPS Pin</Text>
-                <Text style={styles.subtitle}>Automatic On-Site Verification</Text>
+                <Text
+                  style={[
+                    styles.title,
+                    { color: isDark ? colors.textPrimary : "#0F172A" },
+                  ]}
+                >
+                  1-Click GPS Pin
+                </Text>
+                <Text
+                  style={[
+                    styles.subtitle,
+                    { color: isDark ? colors.textMuted : "#64748B" },
+                  ]}
+                >
+                  Automatic On-Site Verification
+                </Text>
               </View>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Feather name="x" size={20} color="#64748B" />
+              <Feather
+                name="x"
+                size={20}
+                color={isDark ? colors.textMuted : "#64748B"}
+              />
             </TouchableOpacity>
           </View>
 
           {isFetching ? (
             <View style={styles.loadingBox}>
-              <ActivityIndicator size="large" color="#0D9488" />
-              <Text style={styles.loadingTitle}>Connecting to GPS Satellites...</Text>
-              <Text style={styles.loadingSub}>
+              <ActivityIndicator
+                size="large"
+                color={isDark ? "#2DD4BF" : "#0D9488"}
+              />
+              <Text
+                style={[
+                  styles.loadingTitle,
+                  { color: isDark ? colors.textPrimary : "#0F172A" },
+                ]}
+              >
+                Connecting to GPS Satellites...
+              </Text>
+              <Text
+                style={[
+                  styles.loadingSub,
+                  { color: isDark ? colors.textMuted : "#64748B" },
+                ]}
+              >
                 Obtaining live high-precision coordinates
               </Text>
             </View>
           ) : (
             <View style={styles.coordsBox}>
               {/* Radar Map Graphic Simulation */}
-              <View style={styles.mapSimContainer}>
-                <View style={styles.pulseCircle} />
-                <View style={styles.pinCenter}>
+              <View
+                style={[
+                  styles.mapSimContainer,
+                  {
+                    backgroundColor: isDark ? "#082F2C" : "#F0FDFA",
+                    borderColor: isDark ? "#115E59" : "#CCFBF1",
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.pulseCircle,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(45, 212, 191, 0.15)"
+                        : "rgba(13, 148, 136, 0.15)",
+                    },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.pinCenter,
+                    { backgroundColor: isDark ? "#14B8A6" : "#0D9488" },
+                  ]}
+                >
                   <Ionicons name="navigate" size={18} color="#FFFFFF" />
                 </View>
               </View>
 
               {/* Verified Tag */}
-              <View style={styles.verifiedRow}>
-                <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                <Text style={styles.verifiedText}>High Accuracy (±3.8m)</Text>
+              <View
+                style={[
+                  styles.verifiedRow,
+                  {
+                    backgroundColor: isDark ? "#062A1C" : "#ECFDF5",
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="checkmark-circle"
+                  size={16}
+                  color={isDark ? "#34D399" : "#10B981"}
+                />
+                <Text
+                  style={[
+                    styles.verifiedText,
+                    { color: isDark ? "#34D399" : "#059669" },
+                  ]}
+                >
+                  High Accuracy (±3.8m)
+                </Text>
               </View>
 
               {/* Coordinates Grid */}
               <View style={styles.coordsGrid}>
-                <View style={styles.coordCol}>
-                  <Text style={styles.coordLabel}>Latitude</Text>
-                  <Text style={styles.coordValue}>{coords?.latitude.toFixed(6)}° N</Text>
+                <View
+                  style={[
+                    styles.coordCol,
+                    {
+                      backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC",
+                      borderColor: isDark ? colors.border : "#E2E8F0",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.coordLabel,
+                      { color: isDark ? colors.textMuted : "#64748B" },
+                    ]}
+                  >
+                    Latitude
+                  </Text>
+                  <Text
+                    style={[
+                      styles.coordValue,
+                      { color: isDark ? colors.textPrimary : "#0F172A" },
+                    ]}
+                  >
+                    {coords?.latitude.toFixed(6)}° N
+                  </Text>
                 </View>
-                <View style={styles.coordCol}>
-                  <Text style={styles.coordLabel}>Longitude</Text>
-                  <Text style={styles.coordValue}>{coords?.longitude.toFixed(6)}° E</Text>
+                <View
+                  style={[
+                    styles.coordCol,
+                    {
+                      backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC",
+                      borderColor: isDark ? colors.border : "#E2E8F0",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.coordLabel,
+                      { color: isDark ? colors.textMuted : "#64748B" },
+                    ]}
+                  >
+                    Longitude
+                  </Text>
+                  <Text
+                    style={[
+                      styles.coordValue,
+                      { color: isDark ? colors.textPrimary : "#0F172A" },
+                    ]}
+                  >
+                    {coords?.longitude.toFixed(6)}° E
+                  </Text>
                 </View>
               </View>
 
               {/* Address Preview */}
-              <View style={styles.addressBox}>
-                <Feather name="map" size={14} color="#0D9488" style={{ marginTop: 2 }} />
-                <Text style={styles.addressText}>{coords?.formattedAddress}</Text>
+              <View
+                style={[
+                  styles.addressBox,
+                  {
+                    backgroundColor: isDark ? "#082F2C" : "#F0FDFA",
+                    borderColor: isDark ? "#115E59" : "#CCFBF1",
+                  },
+                ]}
+              >
+                <Feather
+                  name="map"
+                  size={14}
+                  color={isDark ? "#2DD4BF" : "#0D9488"}
+                  style={{ marginTop: 2 }}
+                />
+                <Text
+                  style={[
+                    styles.addressText,
+                    { color: isDark ? "#2DD4BF" : "#0F766E" },
+                  ]}
+                >
+                  {coords?.formattedAddress}
+                </Text>
               </View>
 
               {/* Action Buttons */}
               <TouchableOpacity
                 activeOpacity={0.88}
                 onPress={handleConfirm}
-                style={styles.confirmBtn}
+                style={[
+                  styles.confirmBtn,
+                  { backgroundColor: isDark ? "#14B8A6" : "#0D9488" },
+                ]}
               >
                 <Ionicons name="checkmark-sharp" size={18} color="#FFFFFF" />
                 <Text style={styles.confirmBtnText}>Confirm & Attach GPS Pin</Text>
@@ -147,11 +303,10 @@ export const GPSPickerModal: React.FC<GPSPickerModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    backgroundColor: "rgba(15, 23, 42, 0.65)",
     justifyContent: "flex-end",
   },
   container: {
-    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
@@ -172,18 +327,15 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: "#CCFBF1",
     alignItems: "center",
     justifyContent: "center",
   },
   title: {
     fontSize: 17,
     fontWeight: "800",
-    color: "#0F172A",
   },
   subtitle: {
     fontSize: 12,
-    color: "#64748B",
   },
   closeBtn: {
     padding: 6,
@@ -196,12 +348,10 @@ const styles = StyleSheet.create({
   loadingTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#0F172A",
     marginTop: 14,
   },
   loadingSub: {
     fontSize: 12,
-    color: "#64748B",
     marginTop: 4,
   },
   coordsBox: {
@@ -211,9 +361,7 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: "#F0FDFA",
     borderWidth: 2,
-    borderColor: "#CCFBF1",
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
@@ -224,13 +372,11 @@ const styles = StyleSheet.create({
     width: 70,
     height: 70,
     borderRadius: 35,
-    backgroundColor: "rgba(13, 148, 136, 0.15)",
   },
   pinCenter: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#0D9488",
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#0D9488",
@@ -243,7 +389,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "#ECFDF5",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
@@ -252,7 +397,6 @@ const styles = StyleSheet.create({
   verifiedText: {
     fontSize: 11.5,
     fontWeight: "700",
-    color: "#059669",
   },
   coordsGrid: {
     flexDirection: "row",
@@ -262,28 +406,22 @@ const styles = StyleSheet.create({
   },
   coordCol: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
     padding: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
   },
   coordLabel: {
     fontSize: 11,
-    color: "#64748B",
     fontWeight: "600",
   },
   coordValue: {
     fontSize: 13.5,
     fontWeight: "800",
-    color: "#0F172A",
     marginTop: 2,
   },
   addressBox: {
     flexDirection: "row",
-    backgroundColor: "#F0FDFA",
     borderWidth: 1,
-    borderColor: "#CCFBF1",
     borderRadius: 12,
     padding: 12,
     width: "100%",
@@ -293,7 +431,6 @@ const styles = StyleSheet.create({
   addressText: {
     flex: 1,
     fontSize: 12.5,
-    color: "#0F766E",
     fontWeight: "600",
     lineHeight: 18,
   },
@@ -301,7 +438,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#0D9488",
     height: 50,
     borderRadius: 16,
     width: "100%",

@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GPSPickerModal } from "../../../components/FieldAgentComponent";
+import { useResponsiveTheme } from "../../../constants/theme";
 import {
   GPSLocation,
   ListingType,
@@ -38,6 +39,7 @@ const PROPERTY_TYPES: PropertyType[] = [
 export function AddNewLeadScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { isDark, colors } = useResponsiveTheme();
   const { addNewLead } = useFieldAgent();
 
   // Form Fields
@@ -223,18 +225,18 @@ export function AddNewLeadScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <View style={[styles.container, { backgroundColor: isDark ? colors.background : "#F8FAFC" }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={isDark ? colors.cardBackground : "#FFFFFF"} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 10) + 8, backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderBottomColor: isDark ? colors.border : "#F1F5F9" }]}>
         <TouchableOpacity
           onPress={() => router.back()}
-          style={styles.backBtn}
+          style={[styles.backBtn, { backgroundColor: isDark ? colors.surfaceLight : "#F1F5F9" }]}
         >
-          <Feather name="arrow-left" size={20} color="#0F172A" />
+          <Feather name="arrow-left" size={20} color={isDark ? colors.textPrimary : "#0F172A"} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add New Property Lead</Text>
+        <Text style={[styles.headerTitle, { color: isDark ? colors.textPrimary : "#0F172A" }]}>Add New Property Lead</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -248,70 +250,72 @@ export function AddNewLeadScreen() {
           keyboardShouldPersistTaps="always"
         >
           {/* Top Banner */}
-          <View style={styles.infoBanner}>
-            <Ionicons name="shield-checkmark" size={18} color="#0F766E" />
-            <Text style={styles.infoBannerText}>
+          <View style={[styles.infoBanner, isDark && { backgroundColor: "rgba(13, 148, 136, 0.15)", borderColor: "rgba(13, 148, 136, 0.3)" }]}>
+            <Ionicons name="shield-checkmark" size={18} color={isDark ? "#2dd4bf" : "#0F766E"} />
+            <Text style={[styles.infoBannerText, isDark && { color: "#2dd4bf" }]}>
               Submitting verified leads gives you direct payout commission. Data confidentiality is guaranteed.
             </Text>
           </View>
 
           {/* Section 1: Owner Details */}
-          <View style={styles.formSection}>
-            <Text style={styles.sectionHeading}>1. Owner Contact Information</Text>
+          <View style={[styles.formSection, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: isDark ? colors.border : "#E2E8F0" }]}>
+            <Text style={[styles.sectionHeading, { color: isDark ? colors.textPrimary : "#0F172A" }]}>1. Owner Contact Information</Text>
 
-            <Text style={styles.inputLabel}>Owner Full Name *</Text>
-            <View style={styles.inputBox}>
+            <Text style={[styles.inputLabel, { color: isDark ? colors.textSecondary : "#334155" }]}>Owner Full Name *</Text>
+            <View style={[styles.inputBox, { backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC", borderColor: isDark ? colors.border : "#E2E8F0" }]}>
               <Feather name="user" size={17} color="#0D9488" />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: isDark ? colors.textPrimary : "#0F172A" }]}
                 placeholder="e.g. Ramesh Chandra"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                 value={ownerName}
                 onChangeText={setOwnerName}
               />
             </View>
 
-            <Text style={[styles.inputLabel, { marginTop: 12 }]}>Owner Mobile Number *</Text>
-            <View style={styles.inputBox}>
+            <Text style={[styles.inputLabel, { marginTop: 12, color: isDark ? colors.textSecondary : "#334155" }]}>Owner Mobile Number *</Text>
+            <View style={[styles.inputBox, { backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC", borderColor: isDark ? colors.border : "#E2E8F0" }]}>
               <Feather name="phone" size={17} color="#0D9488" />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: isDark ? colors.textPrimary : "#0F172A" }]}
                 placeholder="10-digit phone (e.g. 9811234567)"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                 keyboardType="phone-pad"
                 maxLength={10}
                 value={ownerPhone}
                 onChangeText={setOwnerPhone}
               />
             </View>
-            <Text style={styles.securityNote}>
+            <Text style={[styles.securityNote, { color: isDark ? colors.textMuted : "#64748B" }]}>
               🔒 Number will be automatically masked once submitted to protect owner privacy.
             </Text>
           </View>
 
           {/* Section 2: Property Type & Listing Info */}
-          <View style={styles.formSection}>
-            <Text style={styles.sectionHeading}>2. Property Specification</Text>
+          <View style={[styles.formSection, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: isDark ? colors.border : "#E2E8F0" }]}>
+            <Text style={[styles.sectionHeading, { color: isDark ? colors.textPrimary : "#0F172A" }]}>2. Property Specification</Text>
 
             {/* Listing Type: Rent vs Sale */}
-            <Text style={styles.inputLabel}>Listing Purpose *</Text>
+            <Text style={[styles.inputLabel, { color: isDark ? colors.textSecondary : "#334155" }]}>Listing Purpose *</Text>
             <View style={styles.listingToggleRow}>
               <TouchableOpacity
                 onPress={() => setListingType("RENT")}
                 style={[
                   styles.listingToggleBtn,
-                  listingType === "RENT" && styles.listingToggleBtnActive,
+                  { backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC", borderColor: isDark ? colors.border : "#E2E8F0" },
+                  listingType === "RENT" && [styles.listingToggleBtnActive, isDark && { backgroundColor: "rgba(13, 148, 136, 0.2)" }],
                 ]}
               >
                 <Ionicons
                   name="key-outline"
                   size={16}
-                  color={listingType === "RENT" ? "#0D9488" : "#64748B"}
+                  color={listingType === "RENT" ? (isDark ? "#2dd4bf" : "#0D9488") : (isDark ? "#94A3B8" : "#64748B")}
                 />
                 <Text
                   style={[
                     styles.listingToggleText,
-                    listingType === "RENT" && styles.listingToggleTextActive,
+                    { color: isDark ? colors.textSecondary : "#64748B" },
+                    listingType === "RENT" && [styles.listingToggleTextActive, isDark && { color: "#2dd4bf" }],
                   ]}
                 >
                   For Rent (Monthly)
@@ -322,18 +326,20 @@ export function AddNewLeadScreen() {
                 onPress={() => setListingType("SALE")}
                 style={[
                   styles.listingToggleBtn,
-                  listingType === "SALE" && styles.listingToggleBtnActive,
+                  { backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC", borderColor: isDark ? colors.border : "#E2E8F0" },
+                  listingType === "SALE" && [styles.listingToggleBtnActive, isDark && { backgroundColor: "rgba(13, 148, 136, 0.2)" }],
                 ]}
               >
                 <Ionicons
                   name="home-outline"
                   size={16}
-                  color={listingType === "SALE" ? "#0D9488" : "#64748B"}
+                  color={listingType === "SALE" ? (isDark ? "#2dd4bf" : "#0D9488") : (isDark ? "#94A3B8" : "#64748B")}
                 />
                 <Text
                   style={[
                     styles.listingToggleText,
-                    listingType === "SALE" && styles.listingToggleTextActive,
+                    { color: isDark ? colors.textSecondary : "#64748B" },
+                    listingType === "SALE" && [styles.listingToggleTextActive, isDark && { color: "#2dd4bf" }],
                   ]}
                 >
                   For Sale (Outright)
@@ -342,7 +348,7 @@ export function AddNewLeadScreen() {
             </View>
 
             {/* Property Type Grid */}
-            <Text style={[styles.inputLabel, { marginTop: 14 }]}>Property Type *</Text>
+            <Text style={[styles.inputLabel, { marginTop: 14, color: isDark ? colors.textSecondary : "#334155" }]}>Property Type *</Text>
             <View style={styles.propTypeGrid}>
               {PROPERTY_TYPES.map((type) => {
                 const isSelected = propertyType === type;
@@ -352,13 +358,15 @@ export function AddNewLeadScreen() {
                     onPress={() => setPropertyType(type)}
                     style={[
                       styles.propTypePill,
-                      isSelected && styles.propTypePillActive,
+                      { backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC", borderColor: isDark ? colors.border : "#E2E8F0" },
+                      isSelected && [styles.propTypePillActive, isDark && { backgroundColor: "rgba(13, 148, 136, 0.25)", borderColor: "#0D9488" }],
                     ]}
                   >
                     <Text
                       style={[
                         styles.propTypeText,
-                        isSelected && styles.propTypeTextActive,
+                        { color: isDark ? colors.textSecondary : "#64748B" },
+                        isSelected && [styles.propTypeTextActive, isDark && { color: "#2dd4bf" }],
                       ]}
                     >
                       {type}
@@ -369,15 +377,15 @@ export function AddNewLeadScreen() {
             </View>
 
             {/* Expected Price */}
-            <Text style={[styles.inputLabel, { marginTop: 14 }]}>
+            <Text style={[styles.inputLabel, { marginTop: 14, color: isDark ? colors.textSecondary : "#334155" }]}>
               {listingType === "RENT" ? "Expected Monthly Rent (₹)" : "Expected Sale Price (₹)"}
             </Text>
-            <View style={styles.inputBox}>
+            <View style={[styles.inputBox, { backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC", borderColor: isDark ? colors.border : "#E2E8F0" }]}>
               <Text style={styles.currencyPrefix}>₹</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: isDark ? colors.textPrimary : "#0F172A" }]}
                 placeholder={listingType === "RENT" ? "e.g. 24000" : "e.g. 7500000"}
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                 keyboardType="numeric"
                 value={expectedPrice}
                 onChangeText={setExpectedPrice}
@@ -386,30 +394,30 @@ export function AddNewLeadScreen() {
           </View>
 
           {/* Section 3: 1-Click GPS Location Pin */}
-          <View style={styles.formSection}>
-            <Text style={styles.sectionHeading}>3. Location & 1-Click GPS Pin</Text>
+          <View style={[styles.formSection, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: isDark ? colors.border : "#E2E8F0" }]}>
+            <Text style={[styles.sectionHeading, { color: isDark ? colors.textPrimary : "#0F172A" }]}>3. Location & 1-Click GPS Pin</Text>
 
-            <Text style={styles.inputLabel}>Locality / Area / Sector *</Text>
-            <View style={styles.inputBox}>
+            <Text style={[styles.inputLabel, { color: isDark ? colors.textSecondary : "#334155" }]}>Locality / Area / Sector *</Text>
+            <View style={[styles.inputBox, { backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC", borderColor: isDark ? colors.border : "#E2E8F0" }]}>
               <Feather name="map-pin" size={17} color="#0D9488" />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: isDark ? colors.textPrimary : "#0F172A" }]}
                 placeholder="e.g. Sector 62, Noida"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                 value={locality}
                 onChangeText={setLocality}
               />
             </View>
 
-            <Text style={[styles.inputLabel, { marginTop: 12 }]}>
+            <Text style={[styles.inputLabel, { marginTop: 12, color: isDark ? colors.textSecondary : "#334155" }]}>
               Building / Flat / Tower Address (Optional)
             </Text>
-            <View style={styles.inputBox}>
+            <View style={[styles.inputBox, { backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC", borderColor: isDark ? colors.border : "#E2E8F0" }]}>
               <Feather name="navigation" size={17} color="#0D9488" />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: isDark ? colors.textPrimary : "#0F172A" }]}
                 placeholder="e.g. Flat 302, Tower 4, Royal Greens"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                 value={fullAddress}
                 onChangeText={setFullAddress}
               />
@@ -421,7 +429,8 @@ export function AddNewLeadScreen() {
               onPress={handleCaptureGps}
               style={[
                 styles.gpsTriggerBtn,
-                gpsLocation && styles.gpsTriggerBtnAttached,
+                isDark && { backgroundColor: "rgba(13, 148, 136, 0.15)", borderColor: "rgba(13, 148, 136, 0.3)" },
+                gpsLocation && [styles.gpsTriggerBtnAttached, isDark && { backgroundColor: "rgba(5, 150, 105, 0.2)", borderColor: "rgba(5, 150, 105, 0.4)" }],
               ]}
             >
               <Ionicons
@@ -438,7 +447,7 @@ export function AddNewLeadScreen() {
                 >
                   {gpsLocation ? "GPS Pin Verified (±3.8m)" : "Capture 1-Click GPS Pin *"}
                 </Text>
-                <Text style={styles.gpsTriggerSub} numberOfLines={1}>
+                <Text style={[styles.gpsTriggerSub, { color: isDark ? colors.textMuted : "#64748B" }]} numberOfLines={1}>
                   {gpsLocation
                     ? gpsLocation.formattedAddress
                     : "Tap to record current live on-site coordinates"}
@@ -449,14 +458,14 @@ export function AddNewLeadScreen() {
           </View>
 
           {/* Section 4: Property Photos & Video Tour */}
-          <View style={styles.formSection}>
+          <View style={[styles.formSection, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: isDark ? colors.border : "#E2E8F0" }]}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionHeading}>4. Property Photos & Video Tour</Text>
-              <View style={styles.photoCountBadge}>
-                <Text style={styles.photoCountText}>{photos.length}/10 Added</Text>
+              <Text style={[styles.sectionHeading, { color: isDark ? colors.textPrimary : "#0F172A" }]}>4. Property Photos & Video Tour</Text>
+              <View style={[styles.photoCountBadge, isDark && { backgroundColor: "rgba(13, 148, 136, 0.25)" }]}>
+                <Text style={[styles.photoCountText, isDark && { color: "#2dd4bf" }]}>{photos.length}/10 Added</Text>
               </View>
             </View>
-            <Text style={styles.photoHelpText}>
+            <Text style={[styles.photoHelpText, { color: isDark ? colors.textMuted : "#64748B" }]}>
               Add high-quality photos (living room, bedrooms, kitchen, facade). The 1st photo is your main Cover photo.
             </Text>
 
@@ -469,13 +478,14 @@ export function AddNewLeadScreen() {
                 style={[
                   styles.photoActionBtn,
                   styles.cameraBtn,
+                  isDark && { backgroundColor: "rgba(13, 148, 136, 0.15)", borderColor: "rgba(13, 148, 136, 0.3)" },
                   photos.length >= 10 && styles.photoBtnDisabled,
                 ]}
               >
-                <Ionicons name="camera" size={20} color="#0F766E" />
+                <Ionicons name="camera" size={20} color={isDark ? "#2dd4bf" : "#0F766E"} />
                 <View>
-                  <Text style={styles.photoActionTitle}>Take Live Photo</Text>
-                  <Text style={styles.photoActionSub}>Use Device Camera</Text>
+                  <Text style={[styles.photoActionTitle, { color: isDark ? "#2dd4bf" : "#0F766E" }]}>Take Live Photo</Text>
+                  <Text style={[styles.photoActionSub, { color: isDark ? colors.textMuted : "#64748B" }]}>Use Device Camera</Text>
                 </View>
               </TouchableOpacity>
 
@@ -486,13 +496,14 @@ export function AddNewLeadScreen() {
                 style={[
                   styles.photoActionBtn,
                   styles.galleryBtn,
+                  isDark && { backgroundColor: "rgba(3, 105, 161, 0.15)", borderColor: "rgba(3, 105, 161, 0.3)" },
                   photos.length >= 10 && styles.photoBtnDisabled,
                 ]}
               >
-                <Ionicons name="images" size={20} color="#0369A1" />
+                <Ionicons name="images" size={20} color={isDark ? "#38bdf8" : "#0369A1"} />
                 <View>
-                  <Text style={[styles.photoActionTitle, { color: "#0369A1" }]}>Browse Gallery</Text>
-                  <Text style={styles.photoActionSub}>Select Multiple</Text>
+                  <Text style={[styles.photoActionTitle, { color: isDark ? "#38bdf8" : "#0369A1" }]}>Browse Gallery</Text>
+                  <Text style={[styles.photoActionSub, { color: isDark ? colors.textMuted : "#64748B" }]}>Select Multiple</Text>
                 </View>
               </TouchableOpacity>
             </View>
@@ -507,7 +518,7 @@ export function AddNewLeadScreen() {
             {/* Photos Preview Thumbnails */}
             {photos.length > 0 ? (
               <View style={styles.photoPreviewSection}>
-                <Text style={styles.previewLabel}>
+                <Text style={[styles.previewLabel, { color: isDark ? colors.textMuted : "#64748B" }]}>
                   Tap any photo to set as Cover Photo ({photos.length} uploaded)
                 </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoThumbList}>
@@ -555,19 +566,19 @@ export function AddNewLeadScreen() {
                     <TouchableOpacity
                       activeOpacity={0.75}
                       onPress={handlePickFromGallery}
-                      style={styles.addMoreThumbTile}
+                      style={[styles.addMoreThumbTile, isDark && { backgroundColor: "rgba(13, 148, 136, 0.15)", borderColor: "#0D9488" }]}
                     >
                       <Feather name="plus" size={24} color="#0D9488" />
-                      <Text style={styles.addMoreThumbText}>Add More</Text>
+                      <Text style={[styles.addMoreThumbText, isDark && { color: "#2dd4bf" }]}>Add More</Text>
                     </TouchableOpacity>
                   )}
                 </ScrollView>
               </View>
             ) : (
-              <View style={styles.photoEmptyBox}>
-                <Ionicons name="cloud-upload-outline" size={32} color="#94A3B8" />
-                <Text style={styles.photoEmptyTitle}>No Property Photos Added Yet</Text>
-                <Text style={styles.photoEmptySub}>
+              <View style={[styles.photoEmptyBox, { backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC", borderColor: isDark ? colors.border : "#CBD5E1" }]}>
+                <Ionicons name="cloud-upload-outline" size={32} color={isDark ? "#64748B" : "#94A3B8"} />
+                <Text style={[styles.photoEmptyTitle, { color: isDark ? colors.textPrimary : "#475569" }]}>No Property Photos Added Yet</Text>
+                <Text style={[styles.photoEmptySub, { color: isDark ? colors.textMuted : "#94A3B8" }]}>
                   Properties with 3+ clear photos get approved 4x faster by the verification team!
                 </Text>
               </View>
@@ -592,13 +603,13 @@ export function AddNewLeadScreen() {
           </View>
 
           {/* Section 5: Remarks / Key Notes */}
-          <View style={styles.formSection}>
-            <Text style={styles.sectionHeading}>5. Agent Notes & Key Details</Text>
-            <View style={[styles.inputBox, { height: 80, alignItems: "flex-start", paddingTop: 10 }]}>
+          <View style={[styles.formSection, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: isDark ? colors.border : "#E2E8F0" }]}>
+            <Text style={[styles.sectionHeading, { color: isDark ? colors.textPrimary : "#0F172A" }]}>5. Agent Notes & Key Details</Text>
+            <View style={[styles.inputBox, { backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC", borderColor: isDark ? colors.border : "#E2E8F0", height: 80, alignItems: "flex-start", paddingTop: 10 }]}>
               <TextInput
-                style={[styles.input, { height: "100%", textAlignVertical: "top" }]}
+                style={[styles.input, { color: isDark ? colors.textPrimary : "#0F172A", height: "100%", textAlignVertical: "top" }]}
                 placeholder="e.g. Keys with security guard, available for immediate occupancy..."
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                 multiline
                 value={remarks}
                 onChangeText={setRemarks}

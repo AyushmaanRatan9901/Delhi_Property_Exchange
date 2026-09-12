@@ -1,5 +1,4 @@
 import { Tabs } from "expo-router";
-import React from "react";
 import {
   FloatingTabBar,
   tabIcon,
@@ -33,7 +32,7 @@ export default function FieldAgentTabsLayout() {
         />
 
         <Tabs.Screen
-          name="visits"
+          name="addLead"
           options={{
             title: "Add Lead",
             tabBarIcon: tabIcon("add-circle", "ionicons"),
@@ -41,7 +40,7 @@ export default function FieldAgentTabsLayout() {
         />
 
         <Tabs.Screen
-          name="properties"
+          name="wallet"
           options={{
             title: "Wallet",
             tabBarIcon: tabIcon("wallet", "ionicons"),
@@ -53,7 +52,7 @@ export default function FieldAgentTabsLayout() {
           options={{
             title: "Profile",
             tabBarIcon: tabProfileAvatar(
-              "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=180&q=80"
+              "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=180&q=80",
             ),
           }}
         />

@@ -1,16 +1,21 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { BankDetails, formatCurrency } from "../../constants/fieldAgentData";
+import { useResponsiveTheme } from "../../constants/theme";
 
 interface PayoutRequestModalProps {
   visible: boolean;
@@ -27,9 +32,16 @@ export const PayoutRequestModal: React.FC<PayoutRequestModalProps> = ({
   bankDetails,
   onRequestPayout,
 }) => {
+  const { isDark, colors } = useResponsiveTheme();
   const [amountStr, setAmountStr] = useState(availableBalance.toString());
   const [selectedMethod, setSelectedMethod] = useState<"UPI" | "BANK">("UPI");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      setAmountStr(availableBalance > 0 ? availableBalance.toString() : "");
+    }
+  }, [visible, availableBalance]);
 
   const parsedAmount = parseInt(amountStr, 10) || 0;
 
@@ -44,7 +56,7 @@ export const PayoutRequestModal: React.FC<PayoutRequestModalProps> = ({
     }
 
     setIsSubmitting(true);
-    const methodDesc = selectedMethod === "UPI" ? `UPI (${bankDetails.upiId})` : `Bank (${bankDetails.bankName})`;
+    const methodDesc = selectedMethod === "UPI" ? `UPI (${bankDetails?.upiId || ''})` : `Bank (${bankDetails?.bankName || ''})`;
     await onRequestPayout(parsedAmount, methodDesc);
     setIsSubmitting(false);
 
@@ -66,31 +78,113 @@ export const PayoutRequestModal: React.FC<PayoutRequestModalProps> = ({
       transparent
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
-        <View style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardView}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={onClose}
+          style={styles.overlay}
+        >
+          <TouchableWithoutFeedback>
+            <View
+              style={[
+                styles.container,
+                { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF" },
+              ]}
+            >
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                bounces={false}
+              >
           <View style={styles.header}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Ionicons name="flash" size={20} color="#0D9488" />
-              <Text style={styles.title}>Instant Commission Payout</Text>
+              <Ionicons
+                name="flash"
+                size={20}
+                color={isDark ? "#2DD4BF" : "#0D9488"}
+              />
+              <Text
+                style={[
+                  styles.title,
+                  { color: isDark ? colors.textPrimary : "#0F172A" },
+                ]}
+              >
+                Instant Commission Payout
+              </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Feather name="x" size={20} color="#0F172A" />
+              <Feather
+                name="x"
+                size={20}
+                color={isDark ? colors.textMuted : "#0F172A"}
+              />
             </TouchableOpacity>
           </View>
 
-          <View style={styles.availBox}>
-            <Text style={styles.availLabel}>Available Balance:</Text>
-            <Text style={styles.availValue}>{formatCurrency(availableBalance)}</Text>
+          <View
+            style={[
+              styles.availBox,
+              {
+                backgroundColor: isDark ? "#082F2C" : "#F0FDFA",
+                borderColor: isDark ? "#115E59" : "#CCFBF1",
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.availLabel,
+                { color: isDark ? "#2DD4BF" : "#0F766E" },
+              ]}
+            >
+              Available Balance:
+            </Text>
+            <Text
+              style={[
+                styles.availValue,
+                { color: isDark ? "#34D399" : "#0D9488" },
+              ]}
+            >
+              {formatCurrency(availableBalance)}
+            </Text>
           </View>
 
-          <Text style={styles.inputLabel}>Enter Amount to Withdraw</Text>
-          <View style={styles.amountInputBox}>
-            <Text style={styles.currencyPrefix}>₹</Text>
+          <Text
+            style={[
+              styles.inputLabel,
+              { color: isDark ? colors.textSecondary : "#475569" },
+            ]}
+          >
+            Enter Amount to Withdraw
+          </Text>
+          <View
+            style={[
+              styles.amountInputBox,
+              {
+                backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC",
+                borderColor: isDark ? colors.border : "#E2E8F0",
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.currencyPrefix,
+                { color: isDark ? "#2DD4BF" : "#0D9488" },
+              ]}
+            >
+              ₹
+            </Text>
             <TextInput
-              style={styles.amountInput}
+              style={[
+                styles.amountInput,
+                { color: isDark ? colors.textPrimary : "#0F172A" },
+              ]}
               keyboardType="numeric"
               value={amountStr}
               onChangeText={setAmountStr}
+              placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
             />
           </View>
 
@@ -100,31 +194,85 @@ export const PayoutRequestModal: React.FC<PayoutRequestModalProps> = ({
               <TouchableOpacity
                 key={i}
                 onPress={() => setAmountStr(preset.toString())}
-                style={styles.presetPill}
+                style={[
+                  styles.presetPill,
+                  {
+                    backgroundColor: isDark ? colors.surfaceLight : "#F1F5F9",
+                  },
+                ]}
               >
-                <Text style={styles.presetText}>{formatCurrency(preset)}</Text>
+                <Text
+                  style={[
+                    styles.presetText,
+                    { color: isDark ? colors.textSecondary : "#475569" },
+                  ]}
+                >
+                  {formatCurrency(preset)}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
 
           {/* Method Selection */}
-          <Text style={[styles.inputLabel, { marginTop: 14 }]}>Payout Destination</Text>
+          <Text
+            style={[
+              styles.inputLabel,
+              { marginTop: 14, color: isDark ? colors.textSecondary : "#475569" },
+            ]}
+          >
+            Payout Destination
+          </Text>
           <TouchableOpacity
             onPress={() => setSelectedMethod("UPI")}
             style={[
               styles.methodOption,
-              selectedMethod === "UPI" && styles.methodOptionActive,
+              {
+                backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC",
+                borderColor: isDark ? colors.border : "#E2E8F0",
+              },
+              selectedMethod === "UPI" && {
+                borderColor: isDark ? "#2DD4BF" : "#0D9488",
+                backgroundColor: isDark ? "#082F2C" : "#F0FDFA",
+              },
             ]}
           >
-            <Ionicons name="phone-portrait-outline" size={20} color="#0D9488" />
+            <Ionicons
+              name="phone-portrait-outline"
+              size={20}
+              color={isDark ? "#2DD4BF" : "#0D9488"}
+            />
             <View style={{ flex: 1 }}>
-              <Text style={styles.methodTitle}>UPI Instant Transfer</Text>
-              <Text style={styles.methodSub}>{bankDetails.upiId}</Text>
+              <Text
+                style={[
+                  styles.methodTitle,
+                  { color: isDark ? colors.textPrimary : "#0F172A" },
+                ]}
+              >
+                UPI Instant Transfer
+              </Text>
+              <Text
+                style={[
+                  styles.methodSub,
+                  { color: isDark ? colors.textMuted : "#64748B" },
+                ]}
+              >
+                {bankDetails?.upiId || "Not Linked"}
+              </Text>
             </View>
             <Ionicons
-              name={selectedMethod === "UPI" ? "checkmark-circle" : "ellipse-outline"}
+              name={
+                selectedMethod === "UPI" ? "checkmark-circle" : "ellipse-outline"
+              }
               size={20}
-              color={selectedMethod === "UPI" ? "#0D9488" : "#94A3B8"}
+              color={
+                selectedMethod === "UPI"
+                  ? isDark
+                    ? "#2DD4BF"
+                    : "#0D9488"
+                  : isDark
+                  ? "#64748B"
+                  : "#94A3B8"
+              }
             />
           </TouchableOpacity>
 
@@ -132,18 +280,56 @@ export const PayoutRequestModal: React.FC<PayoutRequestModalProps> = ({
             onPress={() => setSelectedMethod("BANK")}
             style={[
               styles.methodOption,
-              selectedMethod === "BANK" && styles.methodOptionActive,
+              {
+                backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC",
+                borderColor: isDark ? colors.border : "#E2E8F0",
+              },
+              selectedMethod === "BANK" && {
+                borderColor: isDark ? "#2DD4BF" : "#0D9488",
+                backgroundColor: isDark ? "#082F2C" : "#F0FDFA",
+              },
             ]}
           >
-            <Ionicons name="business-outline" size={20} color="#0D9488" />
+            <Ionicons
+              name="business-outline"
+              size={20}
+              color={isDark ? "#2DD4BF" : "#0D9488"}
+            />
             <View style={{ flex: 1 }}>
-              <Text style={styles.methodTitle}>Direct Bank Account</Text>
-              <Text style={styles.methodSub}>{bankDetails.bankName} • {bankDetails.accountNumber}</Text>
+              <Text
+                style={[
+                  styles.methodTitle,
+                  { color: isDark ? colors.textPrimary : "#0F172A" },
+                ]}
+              >
+                Direct Bank Account
+              </Text>
+              <Text
+                style={[
+                  styles.methodSub,
+                  { color: isDark ? colors.textMuted : "#64748B" },
+                ]}
+              >
+                {bankDetails?.bankName || "Bank"}{" "}
+                {bankDetails?.accountNumber
+                  ? `• ${String(bankDetails.accountNumber).slice(-4)}`
+                  : ""}
+              </Text>
             </View>
             <Ionicons
-              name={selectedMethod === "BANK" ? "checkmark-circle" : "ellipse-outline"}
+              name={
+                selectedMethod === "BANK" ? "checkmark-circle" : "ellipse-outline"
+              }
               size={20}
-              color={selectedMethod === "BANK" ? "#0D9488" : "#94A3B8"}
+              color={
+                selectedMethod === "BANK"
+                  ? isDark
+                    ? "#2DD4BF"
+                    : "#0D9488"
+                  : isDark
+                  ? "#64748B"
+                  : "#94A3B8"
+              }
             />
           </TouchableOpacity>
 
@@ -151,26 +337,36 @@ export const PayoutRequestModal: React.FC<PayoutRequestModalProps> = ({
             activeOpacity={0.88}
             onPress={handleWithdraw}
             disabled={isSubmitting}
-            style={styles.submitBtn}
+            style={[
+              styles.submitBtn,
+              { backgroundColor: isDark ? "#14B8A6" : "#0D9488" },
+            ]}
           >
             <Text style={styles.submitBtnText}>
-              {isSubmitting ? "Processing..." : `Withdraw ${formatCurrency(parsedAmount)}`}
+              {isSubmitting
+                ? "Processing..."
+                : `Withdraw ${formatCurrency(parsedAmount)}`}
             </Text>
           </TouchableOpacity>
-        </View>
-      </View>
+              </ScrollView>
+            </View>
+          </TouchableWithoutFeedback>
+        </TouchableOpacity>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  keyboardView: {
+    flex: 1,
+  },
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    backgroundColor: "rgba(15, 23, 42, 0.65)",
     justifyContent: "flex-end",
   },
   container: {
-    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
@@ -185,7 +381,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16.5,
     fontWeight: "800",
-    color: "#0F172A",
   },
   closeBtn: {
     padding: 6,
@@ -194,35 +389,28 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#F0FDFA",
     borderWidth: 1,
-    borderColor: "#CCFBF1",
     padding: 12,
     borderRadius: 14,
     marginBottom: 12,
   },
   availLabel: {
     fontSize: 13,
-    color: "#0F766E",
     fontWeight: "600",
   },
   availValue: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#0D9488",
   },
   inputLabel: {
     fontSize: 12.5,
     fontWeight: "700",
-    color: "#475569",
     marginBottom: 6,
   },
   amountInputBox: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
     borderWidth: 1.5,
-    borderColor: "#E2E8F0",
     borderRadius: 14,
     paddingHorizontal: 14,
     height: 54,
@@ -230,14 +418,12 @@ const styles = StyleSheet.create({
   currencyPrefix: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#0D9488",
     marginRight: 6,
   },
   amountInput: {
     flex: 1,
     fontSize: 22,
     fontWeight: "800",
-    color: "#0F172A",
   },
   presetsRow: {
     flexDirection: "row",
@@ -245,7 +431,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   presetPill: {
-    backgroundColor: "#F1F5F9",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
@@ -253,34 +438,24 @@ const styles = StyleSheet.create({
   presetText: {
     fontSize: 11.5,
     fontWeight: "700",
-    color: "#475569",
   },
   methodOption: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
     borderWidth: 1.2,
-    borderColor: "#E2E8F0",
     borderRadius: 14,
     padding: 12,
     gap: 10,
     marginTop: 6,
   },
-  methodOptionActive: {
-    borderColor: "#0D9488",
-    backgroundColor: "#F0FDFA",
-  },
   methodTitle: {
     fontSize: 13.5,
     fontWeight: "700",
-    color: "#0F172A",
   },
   methodSub: {
     fontSize: 11.5,
-    color: "#64748B",
   },
   submitBtn: {
-    backgroundColor: "#0D9488",
     height: 52,
     borderRadius: 16,
     alignItems: "center",

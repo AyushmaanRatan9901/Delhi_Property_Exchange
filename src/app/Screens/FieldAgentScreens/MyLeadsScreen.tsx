@@ -1,10 +1,11 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
   RefreshControl,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -15,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LeadCard, LeadDetailModal } from "../../../components/FieldAgentComponent";
 import { LeadItem, LeadStatus, useFieldAgent } from "../../../constants/fieldAgentData";
+import { useResponsiveTheme } from "../../../constants/theme";
 
 const FILTER_TABS: Array<{ id: string; label: string; status?: LeadStatus }> = [
   { id: "ALL", label: "All Leads" },
@@ -27,6 +29,7 @@ const FILTER_TABS: Array<{ id: string; label: string; status?: LeadStatus }> = [
 export function MyLeadsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { isDark, colors } = useResponsiveTheme();
   const { leads } = useFieldAgent();
 
   const [selectedFilter, setSelectedFilter] = useState("ALL");
@@ -62,23 +65,114 @@ export function MyLeadsScreen() {
     }, 700);
   };
 
-  const handleLeadPress = (lead: LeadItem) => {
+  const handleLeadPress = useCallback((lead: LeadItem) => {
     try {
       Haptics.selectionAsync();
     } catch {}
     setSelectedLead(lead);
     setIsDetailModalVisible(true);
-  };
+  }, []);
+
+  const renderLeadItem = useCallback(
+    ({ item }: { item: LeadItem }) => (
+      <LeadCard lead={item} onPress={handleLeadPress} />
+    ),
+    [handleLeadPress]
+  );
+
+  const keyExtractor = useCallback(
+    (item: LeadItem) => item.id || item._id || `${item.ownerPhone}-${item.submissionDate}`,
+    []
+  );
+
+  const renderEmptyComponent = useMemo(
+    () => (
+      <View style={styles.emptyContainer}>
+        <View
+          style={[
+            styles.emptyIconBox,
+            { backgroundColor: isDark ? colors.surfaceLight : "#F1F5F9" },
+          ]}
+        >
+          <Feather
+            name="folder"
+            size={36}
+            color={isDark ? colors.textMuted : "#94A3B8"}
+          />
+        </View>
+        <Text
+          style={[
+            styles.emptyTitle,
+            { color: isDark ? colors.textPrimary : "#0F172A" },
+          ]}
+        >
+          No Leads Found
+        </Text>
+        <Text
+          style={[
+            styles.emptySub,
+            { color: isDark ? colors.textMuted : "#64748B" },
+          ]}
+        >
+          {searchQuery
+            ? "Try searching with a different locality or name."
+            : "You haven't submitted any leads under this filter yet."}
+        </Text>
+        <TouchableOpacity
+          onPress={() => router.push("/FiledAgentPanel/(tabs)/visits" as any)}
+          style={[
+            styles.emptyAddBtn,
+            { backgroundColor: isDark ? "#14B8A6" : "#0D9488" },
+          ]}
+        >
+          <Ionicons name="add-circle" size={18} color="#FFFFFF" />
+          <Text style={styles.emptyAddBtnText}>Submit Your First Lead</Text>
+        </TouchableOpacity>
+      </View>
+    ),
+    [searchQuery, router, isDark, colors]
+  );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: isDark ? colors.background : "#F8FAFC",
+        },
+      ]}
+    >
+      <StatusBar
+        barStyle={isDark ? "light-content" : "dark-content"}
+        backgroundColor={isDark ? colors.cardBackground : "#FFFFFF"}
+      />
 
       {/* Top Header */}
-      <View style={styles.header}>
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: Math.max(insets.top, 10) + 8,
+            backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+            borderBottomColor: isDark ? colors.border : "#F1F5F9",
+          },
+        ]}
+      >
         <View>
-          <Text style={styles.headerTitle}>My Submitted Leads</Text>
-          <Text style={styles.headerSub}>
+          <Text
+            style={[
+              styles.headerTitle,
+              { color: isDark ? colors.textPrimary : "#0F172A" },
+            ]}
+          >
+            My Submitted Leads
+          </Text>
+          <Text
+            style={[
+              styles.headerSub,
+              { color: isDark ? colors.textMuted : "#64748B" },
+            ]}
+          >
             Tracking {leads.length} properties submitted by you
           </Text>
         </View>
@@ -91,7 +185,10 @@ export function MyLeadsScreen() {
             } catch {}
             router.push("/FiledAgentPanel/(tabs)/visits" as any);
           }}
-          style={styles.addBtn}
+          style={[
+            styles.addBtn,
+            { backgroundColor: isDark ? "#14B8A6" : "#0D9488" },
+          ]}
         >
           <Ionicons name="add" size={18} color="#FFFFFF" />
           <Text style={styles.addBtnText}>New Lead</Text>
@@ -99,33 +196,65 @@ export function MyLeadsScreen() {
       </View>
 
       {/* Search Input Bar */}
-      <View style={styles.searchBarContainer}>
-        <View style={styles.searchBox}>
-          <Feather name="search" size={18} color="#94A3B8" />
+      <View
+        style={[
+          styles.searchBarContainer,
+          { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF" },
+        ]}
+      >
+        <View
+          style={[
+            styles.searchBox,
+            {
+              backgroundColor: isDark ? colors.surfaceLight : "#F1F5F9",
+              borderColor: isDark ? colors.border : "transparent",
+              borderWidth: isDark ? 1 : 0,
+            },
+          ]}
+        >
+          <Feather
+            name="search"
+            size={18}
+            color={isDark ? colors.textMuted : "#94A3B8"}
+          />
           <TextInput
-            style={styles.searchInput}
+            style={[
+              styles.searchInput,
+              { color: isDark ? colors.textPrimary : "#0F172A" },
+            ]}
             placeholder="Search by owner, locality, 2BHK, ID..."
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery("")}>
-              <Feather name="x-circle" size={16} color="#94A3B8" />
+              <Feather
+                name="x-circle"
+                size={16}
+                color={isDark ? colors.textMuted : "#94A3B8"}
+              />
             </TouchableOpacity>
           )}
         </View>
       </View>
 
       {/* Filter Tabs */}
-      <View style={styles.filtersWrapper}>
-        <FlatList
+      <View
+        style={[
+          styles.filtersWrapper,
+          {
+            backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+            borderBottomColor: isDark ? colors.border : "#E2E8F0",
+          },
+        ]}
+      >
+        <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          data={FILTER_TABS}
-          keyExtractor={(item) => item.id}
           contentContainerStyle={styles.filterScroll}
-          renderItem={({ item }) => {
+        >
+          {FILTER_TABS.map((item) => {
             const isSelected = selectedFilter === item.id;
             const count =
               item.id === "ALL"
@@ -134,6 +263,7 @@ export function MyLeadsScreen() {
 
             return (
               <TouchableOpacity
+                key={item.id}
                 activeOpacity={0.75}
                 onPress={() => {
                   try {
@@ -143,12 +273,20 @@ export function MyLeadsScreen() {
                 }}
                 style={[
                   styles.filterTab,
-                  isSelected && styles.filterTabActive,
+                  {
+                    backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC",
+                    borderColor: isDark ? colors.border : "#E2E8F0",
+                  },
+                  isSelected && {
+                    backgroundColor: isDark ? "#0D9488" : "#0D9488",
+                    borderColor: isDark ? "#14B8A6" : "#0D9488",
+                  },
                 ]}
               >
                 <Text
                   style={[
                     styles.filterTabText,
+                    { color: isDark ? colors.textSecondary : "#64748B" },
                     isSelected && styles.filterTabTextActive,
                   ]}
                 >
@@ -157,12 +295,18 @@ export function MyLeadsScreen() {
                 <View
                   style={[
                     styles.countPill,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(255, 255, 255, 0.12)"
+                        : "#E2E8F0",
+                    },
                     isSelected && styles.countPillActive,
                   ]}
                 >
                   <Text
                     style={[
                       styles.countText,
+                      { color: isDark ? colors.textPrimary : "#475569" },
                       isSelected && styles.countTextActive,
                     ]}
                   >
@@ -171,14 +315,14 @@ export function MyLeadsScreen() {
                 </View>
               </TouchableOpacity>
             );
-          }}
-        />
+          })}
+        </ScrollView>
       </View>
 
       {/* Leads FlatList */}
       <FlatList
         data={filteredLeads}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -189,29 +333,8 @@ export function MyLeadsScreen() {
             tintColor="#0D9488"
           />
         }
-        renderItem={({ item }) => (
-          <LeadCard lead={item} onPress={handleLeadPress} />
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconBox}>
-              <Feather name="folder" size={36} color="#94A3B8" />
-            </View>
-            <Text style={styles.emptyTitle}>No Leads Found</Text>
-            <Text style={styles.emptySub}>
-              {searchQuery
-                ? "Try searching with a different locality or name."
-                : "You haven't submitted any leads under this filter yet."}
-            </Text>
-            <TouchableOpacity
-              onPress={() => router.push("/FiledAgentPanel/(tabs)/visits" as any)}
-              style={styles.emptyAddBtn}
-            >
-              <Ionicons name="add-circle" size={18} color="#FFFFFF" />
-              <Text style={styles.emptyAddBtnText}>Submit Your First Lead</Text>
-            </TouchableOpacity>
-          </View>
-        }
+        renderItem={renderLeadItem}
+        ListEmptyComponent={renderEmptyComponent}
       />
 
       {/* Lead Detail Sheet */}
@@ -227,7 +350,6 @@ export function MyLeadsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
   },
   header: {
     flexDirection: "row",
@@ -235,24 +357,19 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 14,
-    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "900",
-    color: "#0F172A",
   },
   headerSub: {
     fontSize: 11.5,
-    color: "#64748B",
     marginTop: 2,
   },
   addBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#0D9488",
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 12,
@@ -266,12 +383,10 @@ const styles = StyleSheet.create({
   searchBarContainer: {
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: "#FFFFFF",
   },
   searchBox: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F1F5F9",
     borderRadius: 12,
     paddingHorizontal: 12,
     height: 42,
@@ -280,14 +395,11 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 13.5,
-    color: "#0F172A",
     fontWeight: "500",
   },
   filtersWrapper: {
-    backgroundColor: "#FFFFFF",
     paddingBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
   },
   filterScroll: {
     paddingHorizontal: 20,
@@ -296,28 +408,20 @@ const styles = StyleSheet.create({
   filterTab: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
     borderWidth: 1,
-    borderColor: "#E2E8F0",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     gap: 6,
   },
-  filterTabActive: {
-    backgroundColor: "#0D9488",
-    borderColor: "#0D9488",
-  },
   filterTabText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#64748B",
   },
   filterTabTextActive: {
     color: "#FFFFFF",
   },
   countPill: {
-    backgroundColor: "#E2E8F0",
     paddingHorizontal: 6,
     paddingVertical: 1.5,
     borderRadius: 10,
@@ -328,7 +432,6 @@ const styles = StyleSheet.create({
   countText: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#475569",
   },
   countTextActive: {
     color: "#FFFFFF",
@@ -346,7 +449,6 @@ const styles = StyleSheet.create({
     width: 70,
     height: 70,
     borderRadius: 35,
-    backgroundColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 14,
@@ -354,11 +456,9 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#0F172A",
   },
   emptySub: {
     fontSize: 12.5,
-    color: "#64748B",
     textAlign: "center",
     marginTop: 4,
     maxWidth: "80%",
@@ -367,7 +467,6 @@ const styles = StyleSheet.create({
   emptyAddBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#0D9488",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 14,

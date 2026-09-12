@@ -1,16 +1,21 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { BankDetails } from "../../constants/fieldAgentData";
+import { useResponsiveTheme } from "../../constants/theme";
 
 interface BankDetailsModalProps {
   visible: boolean;
@@ -25,11 +30,23 @@ export const BankDetailsModal: React.FC<BankDetailsModalProps> = ({
   bankDetails,
   onSave,
 }) => {
-  const [upiId, setUpiId] = useState(bankDetails.upiId);
-  const [accountHolder, setAccountHolder] = useState(bankDetails.accountHolder);
-  const [bankName, setBankName] = useState(bankDetails.bankName);
-  const [accountNumber, setAccountNumber] = useState(bankDetails.accountNumber);
-  const [ifsc, setIfsc] = useState(bankDetails.ifsc);
+  const { isDark, colors } = useResponsiveTheme();
+  const [upiId, setUpiId] = useState(bankDetails?.upiId || "");
+  const [accountHolder, setAccountHolder] = useState(bankDetails?.accountHolder || "");
+  const [bankName, setBankName] = useState(bankDetails?.bankName || "");
+  const [accountNumber, setAccountNumber] = useState(bankDetails?.accountNumber || "");
+  const [ifsc, setIfsc] = useState(bankDetails?.ifsc || "");
+
+  // Sync / autofill state whenever modal becomes visible or bankDetails prop updates
+  useEffect(() => {
+    if (visible && bankDetails) {
+      setUpiId(bankDetails.upiId || "");
+      setAccountHolder(bankDetails.accountHolder || "");
+      setBankName(bankDetails.bankName || "");
+      setAccountNumber(bankDetails.accountNumber || "");
+      setIfsc(bankDetails.ifsc || "");
+    }
+  }, [visible, bankDetails]);
 
   const handleSave = () => {
     if (!upiId.trim()) {
@@ -57,96 +74,239 @@ export const BankDetailsModal: React.FC<BankDetailsModalProps> = ({
       transparent
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
-        <View style={styles.container}>
-          <View style={styles.header}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Ionicons name="card" size={20} color="#0D9488" />
-              <Text style={styles.title}>Payout Bank & UPI Details</Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardView}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={onClose}
+          style={styles.overlay}
+        >
+          <TouchableWithoutFeedback>
+            <View
+              style={[
+                styles.container,
+                { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF" },
+              ]}
+            >
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                bounces={false}
+              >
+                <View style={styles.header}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <Ionicons
+                      name="card"
+                      size={20}
+                      color={isDark ? "#2DD4BF" : "#0D9488"}
+                    />
+                    <Text
+                      style={[
+                        styles.title,
+                        { color: isDark ? colors.textPrimary : "#0F172A" },
+                      ]}
+                    >
+                      Payout Bank & UPI Details
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                    <Feather
+                      name="x"
+                      size={20}
+                      color={isDark ? colors.textMuted : "#0F172A"}
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                <Text
+                  style={[
+                    styles.label,
+                    { color: isDark ? colors.textSecondary : "#475569" },
+                  ]}
+                >
+                  Primary UPI ID (Instant Payouts) *
+                </Text>
+                <View
+                  style={[
+                    styles.inputBox,
+                    {
+                      backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC",
+                      borderColor: isDark ? colors.border : "#E2E8F0",
+                    },
+                  ]}
+                >
+                  <TextInput
+                    style={[
+                      styles.input,
+                      { color: isDark ? colors.textPrimary : "#0F172A" },
+                    ]}
+                    value={upiId}
+                    onChangeText={setUpiId}
+                    placeholder="e.g. yourname@okaxis"
+                    placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+                    autoCapitalize="none"
+                  />
+                </View>
+
+                <Text
+                  style={[
+                    styles.label,
+                    { color: isDark ? colors.textSecondary : "#475569" },
+                  ]}
+                >
+                  Account Holder Name
+                </Text>
+                <View
+                  style={[
+                    styles.inputBox,
+                    {
+                      backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC",
+                      borderColor: isDark ? colors.border : "#E2E8F0",
+                    },
+                  ]}
+                >
+                  <TextInput
+                    style={[
+                      styles.input,
+                      { color: isDark ? colors.textPrimary : "#0F172A" },
+                    ]}
+                    value={accountHolder}
+                    onChangeText={setAccountHolder}
+                    placeholder="Full name as in bank"
+                    placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+                  />
+                </View>
+
+                <Text
+                  style={[
+                    styles.label,
+                    { color: isDark ? colors.textSecondary : "#475569" },
+                  ]}
+                >
+                  Bank Name
+                </Text>
+                <View
+                  style={[
+                    styles.inputBox,
+                    {
+                      backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC",
+                      borderColor: isDark ? colors.border : "#E2E8F0",
+                    },
+                  ]}
+                >
+                  <TextInput
+                    style={[
+                      styles.input,
+                      { color: isDark ? colors.textPrimary : "#0F172A" },
+                    ]}
+                    value={bankName}
+                    onChangeText={setBankName}
+                    placeholder="e.g. HDFC Bank"
+                    placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+                  />
+                </View>
+
+                <View style={styles.rowInputs}>
+                  <View style={{ flex: 1.4 }}>
+                    <Text
+                      style={[
+                        styles.label,
+                        { color: isDark ? colors.textSecondary : "#475569" },
+                      ]}
+                    >
+                      Account Number
+                    </Text>
+                    <View
+                      style={[
+                        styles.inputBox,
+                        {
+                          backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC",
+                          borderColor: isDark ? colors.border : "#E2E8F0",
+                        },
+                      ]}
+                    >
+                      <TextInput
+                        style={[
+                          styles.input,
+                          { color: isDark ? colors.textPrimary : "#0F172A" },
+                        ]}
+                        value={accountNumber}
+                        onChangeText={setAccountNumber}
+                        placeholder="Account Number"
+                        placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[
+                        styles.label,
+                        { color: isDark ? colors.textSecondary : "#475569" },
+                      ]}
+                    >
+                      IFSC Code
+                    </Text>
+                    <View
+                      style={[
+                        styles.inputBox,
+                        {
+                          backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC",
+                          borderColor: isDark ? colors.border : "#E2E8F0",
+                        },
+                      ]}
+                    >
+                      <TextInput
+                        style={[
+                          styles.input,
+                          { color: isDark ? colors.textPrimary : "#0F172A" },
+                        ]}
+                        value={ifsc}
+                        onChangeText={setIfsc}
+                        placeholder="IFSC"
+                        placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+                        autoCapitalize="characters"
+                      />
+                    </View>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  activeOpacity={0.88}
+                  onPress={handleSave}
+                  style={[
+                    styles.saveBtn,
+                    { backgroundColor: isDark ? "#14B8A6" : "#0D9488" },
+                  ]}
+                >
+                  <Text style={styles.saveBtnText}>Save Payout Details</Text>
+                </TouchableOpacity>
+              </ScrollView>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Feather name="x" size={20} color="#0F172A" />
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.label}>Primary UPI ID (Instant Payouts) *</Text>
-          <View style={styles.inputBox}>
-            <TextInput
-              style={styles.input}
-              value={upiId}
-              onChangeText={setUpiId}
-              placeholder="e.g. yourname@okaxis"
-              autoCapitalize="none"
-            />
-          </View>
-
-          <Text style={styles.label}>Account Holder Name</Text>
-          <View style={styles.inputBox}>
-            <TextInput
-              style={styles.input}
-              value={accountHolder}
-              onChangeText={setAccountHolder}
-              placeholder="Full name as in bank"
-            />
-          </View>
-
-          <Text style={styles.label}>Bank Name</Text>
-          <View style={styles.inputBox}>
-            <TextInput
-              style={styles.input}
-              value={bankName}
-              onChangeText={setBankName}
-              placeholder="e.g. HDFC Bank"
-            />
-          </View>
-
-          <View style={styles.rowInputs}>
-            <View style={{ flex: 1.4 }}>
-              <Text style={styles.label}>Account Number</Text>
-              <View style={styles.inputBox}>
-                <TextInput
-                  style={styles.input}
-                  value={accountNumber}
-                  onChangeText={setAccountNumber}
-                  placeholder="Account Number"
-                />
-              </View>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>IFSC Code</Text>
-              <View style={styles.inputBox}>
-                <TextInput
-                  style={styles.input}
-                  value={ifsc}
-                  onChangeText={setIfsc}
-                  placeholder="IFSC"
-                  autoCapitalize="characters"
-                />
-              </View>
-            </View>
-          </View>
-
-          <TouchableOpacity activeOpacity={0.88} onPress={handleSave} style={styles.saveBtn}>
-            <Text style={styles.saveBtnText}>Save Payout Details</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+          </TouchableWithoutFeedback>
+        </TouchableOpacity>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  keyboardView: {
+    flex: 1,
+  },
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    backgroundColor: "rgba(15, 23, 42, 0.65)",
     justifyContent: "flex-end",
   },
   container: {
-    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
     paddingBottom: 34,
+    maxHeight: "90%",
   },
   header: {
     flexDirection: "row",
@@ -157,7 +317,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16.5,
     fontWeight: "800",
-    color: "#0F172A",
   },
   closeBtn: {
     padding: 6,
@@ -165,14 +324,11 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#475569",
     marginTop: 10,
     marginBottom: 4,
   },
   inputBox: {
-    backgroundColor: "#F8FAFC",
     borderWidth: 1.2,
-    borderColor: "#E2E8F0",
     borderRadius: 12,
     paddingHorizontal: 12,
     height: 46,
@@ -181,14 +337,12 @@ const styles = StyleSheet.create({
   input: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#0F172A",
   },
   rowInputs: {
     flexDirection: "row",
     gap: 10,
   },
   saveBtn: {
-    backgroundColor: "#0D9488",
     height: 50,
     borderRadius: 16,
     alignItems: "center",

@@ -1,7 +1,8 @@
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { formatCurrency } from "../../constants/fieldAgentData";
+import { useResponsiveTheme } from "../../constants/theme";
 
 interface StatsGridProps {
   totalLeads: number;
@@ -18,6 +19,8 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
   availableBalance,
   onCardPress,
 }) => {
+  const { isDark, colors, moderateScale } = useResponsiveTheme();
+
   const stats = [
     {
       id: "total",
@@ -25,9 +28,9 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
       value: totalLeads.toString(),
       sub: "Submitted by you",
       icon: "file-text" as const,
-      color: "#0D9488",
-      bg: "#F0FDFA",
-      border: "#CCFBF1",
+      color: isDark ? "#2DD4BF" : "#0D9488",
+      bg: isDark ? "#082F2C" : "#F0FDFA",
+      border: isDark ? "#115E59" : "#CCFBF1",
     },
     {
       id: "verified",
@@ -35,9 +38,9 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
       value: verifiedLeads.toString(),
       sub: "Active on platform",
       icon: "check-circle" as const,
-      color: "#2563EB",
-      bg: "#EFF6FF",
-      border: "#DBEAFE",
+      color: isDark ? "#60A5FA" : "#2563EB",
+      bg: isDark ? "#0E2440" : "#EFF6FF",
+      border: isDark ? "#1E40AF" : "#DBEAFE",
     },
     {
       id: "converted",
@@ -45,9 +48,9 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
       value: convertedLeads.toString(),
       sub: "Commission earned",
       icon: "award" as const,
-      color: "#D97706",
-      bg: "#FFFBEB",
-      border: "#FEF3C7",
+      color: isDark ? "#FBBF24" : "#D97706",
+      bg: isDark ? "#2E1E08" : "#FFFBEB",
+      border: isDark ? "#78350F" : "#FEF3C7",
     },
     {
       id: "wallet",
@@ -55,9 +58,9 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
       value: formatCurrency(availableBalance),
       sub: "Ready for payout",
       icon: "dollar-sign" as const,
-      color: "#059669",
-      bg: "#ECFDF5",
-      border: "#D1FAE5",
+      color: isDark ? "#34D399" : "#059669",
+      bg: isDark ? "#062A1C" : "#ECFDF5",
+      border: isDark ? "#065F46" : "#D1FAE5",
     },
   ];
 
@@ -75,15 +78,32 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
         >
           <View style={styles.cardHeader}>
             <View style={[styles.iconWrapper, { backgroundColor: item.color }]}>
-              <Feather name={item.icon} size={15} color="#FFFFFF" />
+              <Feather name={item.icon} size={moderateScale(14)} color="#FFFFFF" />
             </View>
-            <Text style={styles.cardLabel}>{item.label}</Text>
+            <Text
+              style={[
+                styles.cardLabel,
+                { color: isDark ? colors.textSecondary : "#475569" },
+              ]}
+              numberOfLines={1}
+            >
+              {item.label}
+            </Text>
           </View>
 
-          <Text style={[styles.cardValue, { color: item.color }]} numberOfLines={1}>
+          <Text
+            style={[styles.cardValue, { color: item.color }]}
+            numberOfLines={1}
+          >
             {item.value}
           </Text>
-          <Text style={styles.cardSub} numberOfLines={1}>
+          <Text
+            style={[
+              styles.cardSub,
+              { color: isDark ? colors.textMuted : "#64748B" },
+            ]}
+            numberOfLines={1}
+          >
             {item.sub}
           </Text>
         </TouchableOpacity>
@@ -96,7 +116,8 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
+    justifyContent: "space-between",
+    rowGap: 10,
     paddingHorizontal: 20,
     marginTop: 14,
   },
@@ -122,7 +143,7 @@ const styles = StyleSheet.create({
   cardLabel: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#475569",
+    flex: 1,
   },
   cardValue: {
     fontSize: 18,
@@ -131,7 +152,6 @@ const styles = StyleSheet.create({
   },
   cardSub: {
     fontSize: 10.5,
-    color: "#64748B",
     marginTop: 2,
   },
 });

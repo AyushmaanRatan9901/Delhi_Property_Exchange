@@ -1,18 +1,13 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React from "react";
-import {
-  Alert,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AgentProfile } from "../../constants/fieldAgentData";
+import { useResponsiveTheme } from "../../constants/theme";
 
 interface AgentHeaderProps {
-  profile: AgentProfile;
+  profile?: AgentProfile;
   onNotificationPress?: () => void;
   onProfilePress?: () => void;
 }
@@ -22,54 +17,78 @@ export const AgentHeader: React.FC<AgentHeaderProps> = ({
   onNotificationPress,
   onProfilePress,
 }) => {
-  const handleCopyId = () => {
-    try {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch {}
-    Alert.alert("Agent ID Copied", `Your unique Field Agent ID ${profile.id} is copied to clipboard.`);
-  };
+  const insets = useSafeAreaInsets();
+  const { isDark, colors } = useResponsiveTheme();
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+          borderBottomColor: isDark ? colors.border : "#F1F5F9",
+          paddingTop: Math.max(insets.top, 10) + 8,
+        },
+      ]}
+    >
+      {/* Company Brand & Logo Section */}
       <TouchableOpacity
-        activeOpacity={0.8}
+        activeOpacity={0.85}
         onPress={onProfilePress}
-        style={styles.profileSection}
+        style={styles.brandSection}
       >
-        <View style={styles.avatarWrapper}>
-          <Image source={{ uri: profile.avatar }} style={styles.avatar} />
-          <View style={styles.onlineBadge} />
+        <View style={styles.logoWrapper}>
+          <Image
+            source={require("../../../assets/images/logo.png")}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </View>
 
         <View style={styles.textContainer}>
-          <View style={styles.nameRow}>
-            <Text style={styles.greetingText}>Namaste, {profile.name.split(" ")[0]} 👋</Text>
-          </View>
-          <View style={styles.badgesRow}>
-            <TouchableOpacity
-              onPress={handleCopyId}
-              style={styles.agentIdBadge}
-              activeOpacity={0.7}
+          <View style={styles.titleRow}>
+            <Text
+              style={[
+                styles.brandTitleText,
+                { color: isDark ? colors.textPrimary : "#0F172A" },
+              ]}
+              numberOfLines={1}
             >
-              <Feather name="shield" size={11} color="#0D9488" />
-              <Text style={styles.agentIdText}>{profile.id}</Text>
-              <Feather name="copy" size={10} color="#0D9488" style={{ marginLeft: 2 }} />
-            </TouchableOpacity>
-
-            <View style={styles.tierBadge}>
-              <Ionicons name="star" size={10} color="#D97706" />
-              <Text style={styles.tierBadgeText}>{profile.tier}</Text>
+              Delhi Property{" "}
+              <Text style={styles.brandHighlightText}>Exchange</Text>
+            </Text>
+          </View>
+          <View style={styles.subRow}>
+            <View style={styles.badgePill}>
+              <Ionicons name="shield-checkmark" size={10} color="#0D9488" />
+              <Text style={styles.badgePillText}>Field Partner Portal</Text>
             </View>
           </View>
         </View>
       </TouchableOpacity>
 
+      {/* Notification Bell Button */}
       <TouchableOpacity
-        onPress={onNotificationPress}
-        style={styles.notifButton}
-        activeOpacity={0.7}
+        onPress={() => {
+          try {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          } catch {}
+          onNotificationPress?.();
+        }}
+        style={[
+          styles.notifButton,
+          {
+            backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC",
+            borderColor: isDark ? colors.border : "#E2E8F0",
+          },
+        ]}
+        activeOpacity={0.75}
       >
-        <Feather name="bell" size={20} color="#0F172A" />
+        <Feather
+          name="bell"
+          size={19}
+          color={isDark ? colors.textPrimary : "#0F172A"}
+        />
         <View style={styles.notifDot} />
       </TouchableOpacity>
     </View>
@@ -82,105 +101,93 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: "#FFFFFF",
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
   },
-  profileSection: {
+  brandSection: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
-  },
-  avatarWrapper: {
-    position: "relative",
     marginRight: 12,
   },
-  avatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    borderWidth: 2,
-    borderColor: "#0D9488",
+  logoWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: "#F0FDFA",
+    borderWidth: 1.2,
+    borderColor: "#CCFBF1",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+    overflow: "hidden",
   },
-  onlineBadge: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: 13,
-    height: 13,
-    borderRadius: 6.5,
-    backgroundColor: "#10B981",
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
+  logoImage: {
+    width: 34,
+    height: 34,
   },
   textContainer: {
     flex: 1,
+    justifyContent: "center",
   },
-  nameRow: {
+  titleRow: {
     flexDirection: "row",
     alignItems: "center",
   },
-  greetingText: {
+  brandTitleText: {
     fontSize: 16.5,
-    fontWeight: "800",
-    color: "#0F172A",
-    letterSpacing: -0.2,
+    fontWeight: "900",
+    letterSpacing: -0.3,
   },
-  badgesRow: {
+  brandHighlightText: {
+    color: "#0D9488",
+    fontWeight: "900",
+  },
+  subRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    marginTop: 4,
-    flexWrap: "wrap",
+    marginTop: 3,
   },
-  agentIdBadge: {
+  badgePill: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#CCFBF1",
+    backgroundColor: "#F0FDFA",
     paddingHorizontal: 7,
-    paddingVertical: 2.5,
-    borderRadius: 8,
-    gap: 3,
+    paddingVertical: 2,
+    borderRadius: 6,
+    gap: 4,
+    borderWidth: 0.8,
+    borderColor: "#CCFBF1",
   },
-  agentIdText: {
-    fontSize: 10.5,
+  badgePillText: {
+    fontSize: 10,
     fontWeight: "700",
     color: "#0F766E",
     letterSpacing: 0.2,
   },
-  tierBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FEF3C7",
-    paddingHorizontal: 7,
-    paddingVertical: 2.5,
-    borderRadius: 8,
-    gap: 3,
-  },
-  tierBadgeText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#B45309",
-  },
   notifButton: {
     width: 40,
     height: 40,
-    borderRadius: 12,
-    backgroundColor: "#F8FAFC",
+    borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderWidth: 1.2,
     position: "relative",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   notifDot: {
     position: "absolute",
     top: 9,
-    right: 10,
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
+    right: 9,
+    width: 7.5,
+    height: 7.5,
+    borderRadius: 4,
     backgroundColor: "#EF4444",
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
   },
 });

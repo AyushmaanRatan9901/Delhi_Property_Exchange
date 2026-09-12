@@ -7,3 +7,4 @@ export * from "./LeadDetailModal";
 export * from "./PayoutHistoryItem";
 export * from "./BankDetailsModal";
 export * from "./PayoutRequestModal";
+export * from "./AgentQRCode";

@@ -1,4 +1,4 @@
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -10,6 +10,7 @@ interface CommissionCardProps {
   pendingApproval: number;
   onWithdrawPress?: () => void;
   onBankDetailsPress?: () => void;
+  style?: any;
 }
 
 export const CommissionCard: React.FC<CommissionCardProps> = ({
@@ -18,13 +19,14 @@ export const CommissionCard: React.FC<CommissionCardProps> = ({
   pendingApproval,
   onWithdrawPress,
   onBankDetailsPress,
+  style,
 }) => {
   return (
     <LinearGradient
       colors={["#0D9488", "#0F766E"]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
-      style={styles.card}
+      style={[styles.card, style]}
     >
       {/* Top Row: Wallet Title + Bank Setup Pill */}
       <View style={styles.topRow}>
@@ -48,21 +50,27 @@ export const CommissionCard: React.FC<CommissionCardProps> = ({
       {/* Main Balance */}
       <View style={styles.balanceContainer}>
         <Text style={styles.balanceLabel}>Available for Withdrawal</Text>
-        <Text style={styles.balanceValue}>{formatCurrency(availableBalance)}</Text>
+        <Text style={styles.balanceValue}>
+          {formatCurrency(availableBalance)}
+        </Text>
       </View>
 
       {/* Sub Stats Row */}
       <View style={styles.subStatsRow}>
         <View style={styles.subStatItem}>
           <Text style={styles.subStatLabel}>Total Earned</Text>
-          <Text style={styles.subStatValue}>{formatCurrency(totalEarnings)}</Text>
+          <Text style={styles.subStatValue}>
+            {formatCurrency(totalEarnings)}
+          </Text>
         </View>
 
         <View style={styles.subStatDivider} />
 
         <View style={styles.subStatItem}>
           <Text style={styles.subStatLabel}>Pending Approval</Text>
-          <Text style={styles.subStatValue}>{formatCurrency(pendingApproval)}</Text>
+          <Text style={styles.subStatValue}>
+            {formatCurrency(pendingApproval)}
+          </Text>
         </View>
       </View>
 
@@ -83,8 +91,6 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 22,
     padding: 18,
-    marginHorizontal: 20,
-    marginTop: 14,
     shadowColor: "#0D9488",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,

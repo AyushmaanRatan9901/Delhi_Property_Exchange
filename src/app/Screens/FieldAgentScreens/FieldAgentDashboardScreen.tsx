@@ -2,7 +2,7 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Alert,
   RefreshControl,
@@ -24,16 +24,22 @@ import {
   StatsGrid,
 } from "../../../components/FieldAgentComponent";
 import { LeadItem, useFieldAgent } from "../../../constants/fieldAgentData";
+import { useResponsiveTheme } from "../../../constants/theme";
+import { useAppSelector } from "../../../Redux/hooks";
 
 export function FieldAgentDashboardScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const reduxUser = useAppSelector((state) => state.auth.user);
+  const { isDark, colors } = useResponsiveTheme();
+
   const {
     agentProfile,
     leads,
     availableBalance,
     totalEarnings,
     pendingApproval,
+    refreshLeads,
     requestPayout,
     updateBankDetails,
   } = useFieldAgent();
@@ -44,20 +50,80 @@ export function FieldAgentDashboardScreen() {
   const [isWithdrawModalVisible, setIsWithdrawModalVisible] = useState(false);
   const [isBankModalVisible, setIsBankModalVisible] = useState(false);
 
+  // Real live profile from logged-in user
+  const liveProfile = {
+    id:
+      (reduxUser as any)?.staffId ||
+      (reduxUser as any)?.recordCode ||
+      (reduxUser as any)?.id ||
+      (reduxUser as any)?._id ||
+      agentProfile.id ||
+      "AGT-7821",
+    name: reduxUser?.name || agentProfile.name || "Field Agent",
+    phone: reduxUser?.phone || agentProfile.phone || "",
+    email: reduxUser?.email || agentProfile.email || "",
+    tier: ((reduxUser?.role || "Field Agent") as string).replace(/_/g, " "),
+    tierLevel: agentProfile.tierLevel || 1,
+    assignedLocality:
+      (reduxUser as any)?.address?.city ||
+      (reduxUser as any)?.city ||
+      agentProfile.assignedLocality ||
+      "Delhi NCR",
+    joinedDate: (reduxUser as any)?.createdAt
+      ? new Date((reduxUser as any).createdAt).toLocaleDateString("en-IN", {
+          month: "short",
+          year: "numeric",
+        })
+      : agentProfile.joinedDate,
+    kycStatus: ((reduxUser as any)?.isVerified !== false
+      ? "VERIFIED"
+      : "PENDING") as "VERIFIED" | "PENDING",
+    avatar:
+      (reduxUser as any)?.profilePhoto ||
+      (reduxUser as any)?.avatar ||
+      agentProfile.avatar,
+    bankDetails: {
+      upiId:
+        (reduxUser as any)?.bankDetails?.upiId ||
+        agentProfile.bankDetails?.upiId ||
+        "",
+      accountHolder:
+        (reduxUser as any)?.bankDetails?.accountHolder ||
+        (reduxUser as any)?.bankDetails?.accountHolderName ||
+        agentProfile.bankDetails?.accountHolder ||
+        reduxUser?.name ||
+        "",
+      bankName:
+        (reduxUser as any)?.bankDetails?.bankName ||
+        agentProfile.bankDetails?.bankName ||
+        "",
+      accountNumber:
+        (reduxUser as any)?.bankDetails?.accountNumber ||
+        agentProfile.bankDetails?.accountNumber ||
+        "",
+      ifsc:
+        (reduxUser as any)?.bankDetails?.ifsc ||
+        (reduxUser as any)?.bankDetails?.ifscCode ||
+        agentProfile.bankDetails?.ifsc ||
+        "",
+    },
+  };
+
   const totalCount = leads.length;
   const verifiedCount = leads.filter((l) => l.status === "VERIFIED").length;
-  const convertedCount = leads.filter((l) => l.status === "RENTED" || l.status === "SOLD").length;
+  const convertedCount = leads.filter(
+    (l) => l.status === "RENTED" || l.status === "SOLD",
+  ).length;
 
   const recentLeads = leads.slice(0, 3);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (refreshLeads) await refreshLeads();
     } catch {}
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 800);
+    setRefreshing(false);
   };
 
   const handleLeadPress = (lead: LeadItem) => {
@@ -74,19 +140,29 @@ export function FieldAgentDashboardScreen() {
     } catch {}
     Alert.alert(
       "Agent Notifications 🔔",
-      "• Lead #LD-9038 was approved by verification staff! Commission added to wallet.\n• Payout of ₹6,000 processed to your UPI."
+      "• Welcome to your Field Agent Portal!\n• Verified property leads earn instant commissions.",
     );
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: isDark ? colors.background : "#F8FAFC" },
+      ]}
+    >
+      <StatusBar
+        barStyle={isDark ? "light-content" : "dark-content"}
+        backgroundColor={isDark ? colors.cardBackground : "#FFFFFF"}
+      />
 
       {/* Top Header */}
       <AgentHeader
-        profile={agentProfile}
+        profile={liveProfile}
         onNotificationPress={handleNotificationPress}
-        onProfilePress={() => router.push("/FiledAgentPanel/(tabs)/profile" as any)}
+        onProfilePress={() =>
+          router.push("/FiledAgentPanel/(tabs)/profile" as any)
+        }
       />
 
       <ScrollView
@@ -109,12 +185,12 @@ export function FieldAgentDashboardScreen() {
               try {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
               } catch {}
-              router.push("/FiledAgentPanel/(tabs)/visits" as any);
+              router.push("/FiledAgentPanel/(tabs)/addLead" as any);
             }}
             style={styles.heroBtnWrapper}
           >
             <LinearGradient
-              colors={["#0F766E", "#0D9488"]}
+              colors={isDark ? ["#0F766E", "#042F2E"] : ["#0F766E", "#0D9488"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.heroGradient}
@@ -156,29 +232,45 @@ export function FieldAgentDashboardScreen() {
         />
 
         {/* Commission Wallet Snapshot */}
-        <CommissionCard
-          availableBalance={availableBalance}
-          totalEarnings={totalEarnings}
-          pendingApproval={pendingApproval}
-          onWithdrawPress={() => {
-            try {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            } catch {}
-            setIsWithdrawModalVisible(true);
-          }}
-          onBankDetailsPress={() => {
-            try {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            } catch {}
-            setIsBankModalVisible(true);
-          }}
-        />
+        <View style={styles.commissionCardWrapper}>
+          <CommissionCard
+            availableBalance={availableBalance}
+            totalEarnings={totalEarnings}
+            pendingApproval={pendingApproval}
+            onWithdrawPress={() => {
+              try {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              } catch {}
+              setIsWithdrawModalVisible(true);
+            }}
+            onBankDetailsPress={() => {
+              try {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              } catch {}
+              setIsBankModalVisible(true);
+            }}
+          />
+        </View>
 
         {/* Recent Submissions Header */}
         <View style={styles.sectionHeaderRow}>
           <View>
-            <Text style={styles.sectionTitle}>Recent Submitted Leads</Text>
-            <Text style={styles.sectionSub}>Only your personally submitted leads</Text>
+            <Text
+              style={[
+                styles.sectionTitle,
+                { color: isDark ? colors.textPrimary : "#0F172A" },
+              ]}
+            >
+              Recent Submitted Leads
+            </Text>
+            <Text
+              style={[
+                styles.sectionSub,
+                { color: isDark ? colors.textMuted : "#64748B" },
+              ]}
+            >
+              Only your personally submitted leads
+            </Text>
           </View>
 
           <TouchableOpacity
@@ -186,7 +278,11 @@ export function FieldAgentDashboardScreen() {
             style={styles.viewAllBtn}
           >
             <Text style={styles.viewAllText}>View All ({leads.length})</Text>
-            <Feather name="chevron-right" size={14} color="#0D9488" />
+            <Feather
+              name="chevron-right"
+              size={14}
+              color={isDark ? "#2DD4BF" : "#0D9488"}
+            />
           </TouchableOpacity>
         </View>
 
@@ -198,14 +294,40 @@ export function FieldAgentDashboardScreen() {
         </View>
 
         {/* Partner Tip / Incentive Card */}
-        <View style={styles.tipCard}>
-          <View style={styles.tipIconBox}>
+        <View
+          style={[
+            styles.tipCard,
+            {
+              backgroundColor: isDark ? "#2E1E08" : "#FEF3C7",
+              borderColor: isDark ? "#78350F" : "#FDE68A",
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.tipIconBox,
+              { backgroundColor: isDark ? "#451A03" : "#FFFFFF" },
+            ]}
+          >
             <Ionicons name="sparkles" size={20} color="#D97706" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.tipTitle}>Monthly Partner Bonus 🏆</Text>
-            <Text style={styles.tipDesc}>
-              Submit 5 verified leads this month and receive an extra ₹2,500 bonus directly in your UPI wallet!
+            <Text
+              style={[
+                styles.tipTitle,
+                { color: isDark ? "#FCD34D" : "#92400E" },
+              ]}
+            >
+              Monthly Partner Bonus 🏆
+            </Text>
+            <Text
+              style={[
+                styles.tipDesc,
+                { color: isDark ? "#FBBF24" : "#B45309" },
+              ]}
+            >
+              Submit 5 verified leads this month and receive an extra ₹2,500
+              bonus directly in your UPI wallet!
             </Text>
           </View>
         </View>
@@ -241,12 +363,15 @@ export function FieldAgentDashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
   },
   scrollContent: {
     paddingBottom: 110,
   },
   heroActionContainer: {
+    paddingHorizontal: 20,
+    marginTop: 14,
+  },
+  commissionCardWrapper: {
     paddingHorizontal: 20,
     marginTop: 14,
   },
@@ -303,11 +428,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#0F172A",
   },
   sectionSub: {
     fontSize: 11.5,
-    color: "#64748B",
     marginTop: 1,
   },
   viewAllBtn: {
@@ -326,9 +449,7 @@ const styles = StyleSheet.create({
   tipCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FEF3C7",
     borderWidth: 1,
-    borderColor: "#FDE68A",
     borderRadius: 18,
     padding: 14,
     marginHorizontal: 20,
@@ -339,18 +460,15 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
   },
   tipTitle: {
     fontSize: 13.5,
     fontWeight: "800",
-    color: "#92400E",
   },
   tipDesc: {
     fontSize: 11.5,
-    color: "#B45309",
     marginTop: 2,
     lineHeight: 16,
   },

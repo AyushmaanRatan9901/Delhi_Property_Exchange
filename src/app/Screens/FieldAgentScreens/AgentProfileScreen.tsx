@@ -1,10 +1,13 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Image,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -13,24 +16,129 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BankDetailsModal } from "../../../components/FieldAgentComponent";
-import { useFieldAgent } from "../../../constants/fieldAgentData";
-import { useAppDispatch } from "../../../Redux/hooks";
+import {
+  AgentQRCode,
+  BankDetailsModal,
+} from "../../../components/FieldAgentComponent";
+import { useResponsiveTheme } from "../../../constants/theme";
+import apiClient from "../../../Redux/api/axiosInstance";
 import { logout } from "../../../Redux/Auth/authActions";
+import { useAppDispatch, useAppSelector } from "../../../Redux/hooks";
 
 export function AgentProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
-  const { agentProfile, updateBankDetails } = useFieldAgent();
+  const reduxUser = useAppSelector((state) => state.auth.user);
 
+  const [realUser, setRealUser] = useState<any>(reduxUser);
+  const [isLoading, setIsLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [isBankModalVisible, setIsBankModalVisible] = useState(false);
+
+  // Fetch real profile from backend /auth/me
+  const fetchRealProfile = useCallback(async () => {
+    try {
+      const res = await apiClient.get("/auth/me");
+      if (res.data?.data) {
+        setRealUser(res.data.data);
+      }
+    } catch (err) {
+      console.log("[AgentProfileScreen] fetch profile error:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRealProfile();
+  }, [fetchRealProfile]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchRealProfile();
+    setRefreshing(false);
+  };
+
+  const currentUser = realUser || reduxUser || {};
+
+  // Formatted Profile Data
+  const displayName = currentUser.name || "Field Partner";
+  const displayPhone = currentUser.phone
+    ? `+91 ${currentUser.phone.replace(/\D/g, "").slice(-10)}`
+    : "Phone Not Set";
+  const displayEmail = currentUser.email || "No email registered";
+  const displayStaffId =
+    currentUser.staffId ||
+    currentUser.recordCode ||
+    currentUser.id ||
+    currentUser._id ||
+    "AGT-PENDING";
+  const displayRole = (currentUser.role || "FIELD_AGENT")
+    .replace(/_/g, " ")
+    .toUpperCase();
+  const displayLocality = currentUser.address?.city
+    ? `${currentUser.address.street ? currentUser.address.street + ", " : ""}${currentUser.address.city}`
+    : currentUser.address?.fullAddress || "Delhi NCR Region";
+  const displayJoined = currentUser.createdAt
+    ? new Date(currentUser.createdAt).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : "Active";
+  const displayAvatar =
+    currentUser.profilePhoto ||
+    currentUser.avatar ||
+    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80";
+
+  const bankDetails = {
+    upiId: currentUser.bankDetails?.upiId || currentUser.upiId || "",
+    accountHolder:
+      currentUser.bankDetails?.accountHolder ||
+      currentUser.bankDetails?.accountHolderName ||
+      currentUser.name ||
+      "",
+    bankName: currentUser.bankDetails?.bankName || "",
+    accountNumber: currentUser.bankDetails?.accountNumber || "",
+    ifsc:
+      currentUser.bankDetails?.ifsc || currentUser.bankDetails?.ifscCode || "",
+  };
 
   const handleCopyId = () => {
     try {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {}
-    Alert.alert("Agent ID Copied", `Agent ID ${agentProfile.id} copied to clipboard.`);
+    Alert.alert("Staff / Agent ID", `Your ID: ${displayStaffId}`);
+  };
+
+  const handleUpdateBank = async (details: any) => {
+    try {
+      setIsLoading(true);
+      const res = await apiClient.put("/auth/profile", {
+        upiId: details.upiId,
+        bankDetails: {
+          upiId: details.upiId,
+          accountHolder: details.accountHolder,
+          accountHolderName: details.accountHolder,
+          bankName: details.bankName,
+          accountNumber: details.accountNumber,
+          ifsc: details.ifsc,
+          ifscCode: details.ifsc,
+        },
+      });
+
+      if (res.data?.data) {
+        setRealUser(res.data.data);
+      }
+      setIsBankModalVisible(false);
+      // Alert.alert("Saved Successfully", "Your payout account details have been updated.");
+    } catch (err: any) {
+      Alert.alert(
+        "Update Error",
+        err.message || "Could not save payout details.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleLogout = () => {
@@ -50,131 +158,487 @@ export function AgentProfileScreen() {
             router.replace("/(auth)/login" as any);
           },
         },
-      ]
+      ],
     );
   };
 
+  const { isDark, colors } = useResponsiveTheme();
+
+  // Theme Gradients
+  const primaryGradient = isDark
+    ? (["#14b8a6", "#0d9488"] as const)
+    : (["#0d9488", "#0f766e"] as const);
+
+  const purpleGradient = isDark
+    ? (["#0f766e", "#115e59"] as const)
+    : (["#0d9488", "#0f766e"] as const);
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: isDark ? colors.background : "#F8FAFC" },
+      ]}
+    >
+      <StatusBar
+        barStyle={isDark ? "light-content" : "dark-content"}
+        backgroundColor={isDark ? colors.cardBackground : "#FFFFFF"}
+      />
 
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Field Agent Profile</Text>
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: Math.max(insets.top, 10) + 8,
+            backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+            borderBottomColor: isDark ? colors.border : "#F1F5F9",
+          },
+        ]}
+      >
+        <Text
+          style={[
+            styles.headerTitle,
+            { color: isDark ? colors.textPrimary : "#0F172A" },
+          ]}
+        >
+          My Field Agent Profile
+        </Text>
+        {isLoading && <ActivityIndicator size="small" color="#0D9488" />}
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#0D9488"]}
+          />
+        }
+      >
         {/* Agent ID Badge Card */}
-        <View style={styles.idCard}>
+        <LinearGradient
+          colors={primaryGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.idCard}
+        >
+          {/* Top Row: Official Badge Tag + Status */}
           <View style={styles.idTopRow}>
-            <Image source={{ uri: agentProfile.avatar }} style={styles.avatar} />
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Text style={styles.agentName}>{agentProfile.name}</Text>
-                <Ionicons name="checkmark-circle" size={16} color="#0D9488" />
+            <View style={styles.officialBadge}>
+              <Ionicons name="shield-checkmark" size={13} color="#FFFFFF" />
+              <Text style={styles.officialBadgeText}>
+                VERIFIED FIELD PARTNER
+              </Text>
+            </View>
+            <View style={styles.statusPill}>
+              <View style={styles.liveDot} />
+              <Text style={styles.statusPillText}>
+                {currentUser.isActive !== false ? "ACTIVE" : "PENDING"}
+              </Text>
+            </View>
+          </View>
+
+          {/* Main Info Row: Avatar + Agent Details + QR at Right */}
+          <View style={styles.idMainRow}>
+            <View style={styles.avatarWrapper}>
+              <Image source={{ uri: displayAvatar }} style={styles.avatar} />
+              <View style={styles.verifiedCheckBadge}>
+                <Ionicons name="checkmark" size={10} color="#FFFFFF" />
               </View>
-              <Text style={styles.agentTierText}>⭐ {agentProfile.tier}</Text>
-              <Text style={styles.agentJoined}>Partner since {agentProfile.joinedDate}</Text>
+            </View>
+
+            <View style={styles.agentInfoBlock}>
+              <Text style={styles.agentName} numberOfLines={1}>
+                {displayName}
+              </Text>
+              <View style={styles.agentTierBadge}>
+                <Text style={styles.agentTierText}>⭐ {displayRole}</Text>
+              </View>
+              <Text style={styles.agentJoined}>Reg: {displayJoined}</Text>
+            </View>
+
+            {/* QR Code Container at Right Side */}
+            <View style={styles.qrBox}>
+              <AgentQRCode
+                value={displayStaffId}
+                size={60}
+                color="#0F766E"
+                backgroundColor="#FFFFFF"
+              />
+              <Text style={styles.qrScanText}>SCAN ID</Text>
             </View>
           </View>
 
           <View style={styles.idDivider} />
 
+          {/* Bottom Row: Staff ID & Copy button */}
           <View style={styles.idBottomRow}>
             <View>
-              <Text style={styles.idLabel}>UNIQUE AGENT ID</Text>
-              <Text style={styles.idNumber}>{agentProfile.id}</Text>
+              <Text style={styles.idLabel}>UNIQUE AGENT / STAFF ID</Text>
+              <Text style={styles.idNumber}>{displayStaffId}</Text>
             </View>
 
-            <TouchableOpacity onPress={handleCopyId} style={styles.copyIdBtn}>
-              <Feather name="copy" size={14} color="#0D9488" />
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={handleCopyId}
+              style={styles.copyIdBtn}
+            >
+              <Feather name="copy" size={13} color="#FFFFFF" />
               <Text style={styles.copyIdText}>Copy ID</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </LinearGradient>
 
-        {/* Contact Information */}
-        <View style={styles.cardSection}>
-          <Text style={styles.cardHeader}>Personal Details</Text>
+        {/* Real Contact Information */}
+        <View
+          style={[
+            styles.cardSection,
+            {
+              backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+              borderColor: isDark ? colors.border : "#E2E8F0",
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.cardHeader,
+              { color: isDark ? colors.textPrimary : "#0F172A" },
+            ]}
+          >
+            Personal Details
+          </Text>
           <View style={styles.row}>
-            <Text style={styles.label}>Mobile Phone</Text>
-            <Text style={styles.val}>{agentProfile.phone}</Text>
+            <Text
+              style={[
+                styles.label,
+                { color: isDark ? colors.textMuted : "#64748B" },
+              ]}
+            >
+              Mobile Phone
+            </Text>
+            <Text
+              style={[
+                styles.val,
+                { color: isDark ? colors.textPrimary : "#0F172A" },
+              ]}
+            >
+              {displayPhone}
+            </Text>
           </View>
-          <View style={styles.divider} />
+          <View
+            style={[
+              styles.divider,
+              { backgroundColor: isDark ? colors.border : "#F1F5F9" },
+            ]}
+          />
           <View style={styles.row}>
-            <Text style={styles.label}>Email Address</Text>
-            <Text style={styles.val}>{agentProfile.email}</Text>
+            <Text
+              style={[
+                styles.label,
+                { color: isDark ? colors.textMuted : "#64748B" },
+              ]}
+            >
+              Email Address
+            </Text>
+            <Text
+              style={[
+                styles.val,
+                { color: isDark ? colors.textPrimary : "#0F172A" },
+              ]}
+            >
+              {displayEmail}
+            </Text>
           </View>
-          <View style={styles.divider} />
+          <View
+            style={[
+              styles.divider,
+              { backgroundColor: isDark ? colors.border : "#F1F5F9" },
+            ]}
+          />
           <View style={styles.row}>
-            <Text style={styles.label}>Assigned Territory</Text>
-            <Text style={styles.val}>{agentProfile.assignedLocality}</Text>
+            <Text
+              style={[
+                styles.label,
+                { color: isDark ? colors.textMuted : "#64748B" },
+              ]}
+            >
+              Assigned Territory
+            </Text>
+            <Text
+              style={[
+                styles.val,
+                { color: isDark ? colors.textPrimary : "#0F172A" },
+              ]}
+            >
+              {displayLocality}
+            </Text>
           </View>
-          <View style={styles.divider} />
+          <View
+            style={[
+              styles.divider,
+              { backgroundColor: isDark ? colors.border : "#F1F5F9" },
+            ]}
+          />
           <View style={styles.row}>
-            <Text style={styles.label}>KYC Verification</Text>
-            <View style={styles.verifiedTag}>
+            <Text
+              style={[
+                styles.label,
+                { color: isDark ? colors.textMuted : "#64748B" },
+              ]}
+            >
+              Account Status
+            </Text>
+            <View
+              style={[
+                styles.verifiedTag,
+                isDark && { backgroundColor: "rgba(5, 150, 105, 0.2)" },
+              ]}
+            >
               <Ionicons name="checkmark-circle" size={14} color="#059669" />
-              <Text style={styles.verifiedTagText}>Verified (Aadhaar/PAN)</Text>
+              <Text
+                style={[styles.verifiedTagText, isDark && { color: "#34D399" }]}
+              >
+                {currentUser.isActive !== false
+                  ? "Active & Verified"
+                  : "Under Review"}
+              </Text>
             </View>
           </View>
         </View>
 
-        {/* Bank & UPI Payout Info */}
-        <View style={styles.cardSection}>
+        {/* Real Bank & UPI Payout Info */}
+        <View
+          style={[
+            styles.cardSection,
+            {
+              backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+              borderColor: isDark ? colors.border : "#E2E8F0",
+            },
+          ]}
+        >
           <View style={styles.cardHeaderWithAction}>
-            <Text style={styles.cardHeader}>Payout Account Details</Text>
+            <Text
+              style={[
+                styles.cardHeader,
+                { color: isDark ? colors.textPrimary : "#0F172A" },
+              ]}
+            >
+              Payout Account Details
+            </Text>
             <TouchableOpacity onPress={() => setIsBankModalVisible(true)}>
-              <Text style={styles.editActionText}>Update</Text>
+              <Text
+                style={[styles.editActionText, isDark && { color: "#2dd4bf" }]}
+              >
+                {bankDetails.upiId ||
+                bankDetails.accountNumber ||
+                bankDetails.bankName
+                  ? "Update"
+                  : "+ Add"}
+              </Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.row}>
-            <Text style={styles.label}>UPI ID (Instant)</Text>
-            <Text style={styles.valHighlight}>{agentProfile.bankDetails.upiId}</Text>
+            <Text
+              style={[
+                styles.label,
+                { color: isDark ? colors.textMuted : "#64748B" },
+              ]}
+            >
+              UPI ID (Instant)
+            </Text>
+            <Text style={[styles.valHighlight, isDark && { color: "#2dd4bf" }]}>
+              {bankDetails.upiId || "Not Linked"}
+            </Text>
           </View>
-          <View style={styles.divider} />
+          <View
+            style={[
+              styles.divider,
+              { backgroundColor: isDark ? colors.border : "#F1F5F9" },
+            ]}
+          />
           <View style={styles.row}>
-            <Text style={styles.label}>Bank Name</Text>
-            <Text style={styles.val}>{agentProfile.bankDetails.bankName}</Text>
+            <Text
+              style={[
+                styles.label,
+                { color: isDark ? colors.textMuted : "#64748B" },
+              ]}
+            >
+              Bank Name
+            </Text>
+            <Text
+              style={[
+                styles.val,
+                { color: isDark ? colors.textPrimary : "#0F172A" },
+              ]}
+            >
+              {bankDetails.bankName || "Not Linked"}
+            </Text>
           </View>
-          <View style={styles.divider} />
+          <View
+            style={[
+              styles.divider,
+              { backgroundColor: isDark ? colors.border : "#F1F5F9" },
+            ]}
+          />
           <View style={styles.row}>
-            <Text style={styles.label}>Account Number</Text>
-            <Text style={styles.val}>{agentProfile.bankDetails.accountNumber}</Text>
+            <Text
+              style={[
+                styles.label,
+                { color: isDark ? colors.textMuted : "#64748B" },
+              ]}
+            >
+              Account Number
+            </Text>
+            <Text
+              style={[
+                styles.val,
+                { color: isDark ? colors.textPrimary : "#0F172A" },
+              ]}
+            >
+              {bankDetails.accountNumber
+                ? `•••• ${String(bankDetails.accountNumber).slice(-4)}`
+                : "Not Linked"}
+            </Text>
           </View>
+          {bankDetails.ifsc ? (
+            <>
+              <View
+                style={[
+                  styles.divider,
+                  { backgroundColor: isDark ? colors.border : "#F1F5F9" },
+                ]}
+              />
+              <View style={styles.row}>
+                <Text
+                  style={[
+                    styles.label,
+                    { color: isDark ? colors.textMuted : "#64748B" },
+                  ]}
+                >
+                  IFSC Code
+                </Text>
+                <Text
+                  style={[
+                    styles.val,
+                    { color: isDark ? colors.textPrimary : "#0F172A" },
+                  ]}
+                >
+                  {bankDetails.ifsc}
+                </Text>
+              </View>
+            </>
+          ) : null}
         </View>
 
         {/* Security & Access Notice */}
-        <View style={styles.securityBox}>
-          <Feather name="shield" size={18} color="#0F766E" />
+        <View
+          style={[
+            styles.securityBox,
+            isDark && {
+              backgroundColor: "rgba(13, 148, 136, 0.15)",
+              borderColor: "rgba(13, 148, 136, 0.3)",
+            },
+          ]}
+        >
+          <Feather
+            name="shield"
+            size={18}
+            color={isDark ? "#2dd4bf" : "#0F766E"}
+          />
           <View style={{ flex: 1 }}>
-            <Text style={styles.securityTitle}>Partner Mode Data Policy</Text>
-            <Text style={styles.securityDesc}>
-              • You can only view leads personally submitted by you.\n• Owner & tenant contact numbers are auto-masked once submitted to safeguard privacy.\n• Direct commission is calculated and disbursed automatically.
+            <Text
+              style={[styles.securityTitle, isDark && { color: "#2dd4bf" }]}
+            >
+              Partner Privacy & Security
+            </Text>
+            <Text style={[styles.securityDesc, isDark && { color: "#99F6E4" }]}>
+              • You can only view leads personally submitted by you.{"\n"}•
+              Owner contact numbers are automatically masked once submitted to
+              protect privacy.{"\n"}• Commission payouts are credited directly
+              to your registered UPI / Bank account.
             </Text>
           </View>
         </View>
 
         {/* Support & Helpline */}
-        <View style={styles.cardSection}>
-          <Text style={styles.cardHeader}>Field Agent Support</Text>
+        <View
+          style={[
+            styles.cardSection,
+            {
+              backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+              borderColor: isDark ? colors.border : "#E2E8F0",
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.cardHeader,
+              { color: isDark ? colors.textPrimary : "#0F172A" },
+            ]}
+          >
+            Field Agent Support
+          </Text>
           <TouchableOpacity
-            onPress={() => Alert.alert("WhatsApp Support", "Connecting to Field Ops Manager on WhatsApp...")}
+            onPress={() =>
+              Alert.alert(
+                "WhatsApp Support",
+                "Connecting to Field Coordinator on WhatsApp...",
+              )
+            }
             style={styles.supportRow}
           >
             <Ionicons name="logo-whatsapp" size={18} color="#16A34A" />
-            <Text style={styles.supportText}>Chat with Field Coordinator</Text>
-            <Feather name="chevron-right" size={16} color="#94A3B8" />
+            <Text
+              style={[
+                styles.supportText,
+                { color: isDark ? colors.textSecondary : "#334155" },
+              ]}
+            >
+              Chat with Field Coordinator
+            </Text>
+            <Feather
+              name="chevron-right"
+              size={16}
+              color={isDark ? colors.textMuted : "#94A3B8"}
+            />
           </TouchableOpacity>
-          <View style={styles.divider} />
+          <View
+            style={[
+              styles.divider,
+              { backgroundColor: isDark ? colors.border : "#F1F5F9" },
+            ]}
+          />
           <TouchableOpacity
-            onPress={() => Alert.alert("Agent Helpline", "Toll-free Field Agent Helpline: 1800-419-8800")}
+            onPress={() =>
+              Alert.alert(
+                "Agent Helpline",
+                "Toll-free Agent Helpline: 1800-419-8800",
+              )
+            }
             style={styles.supportRow}
           >
-            <Feather name="phone-call" size={17} color="#0D9488" />
-            <Text style={styles.supportText}>Agent Priority Helpline (Toll-Free)</Text>
-            <Feather name="chevron-right" size={16} color="#94A3B8" />
+            <Feather
+              name="phone-call"
+              size={17}
+              color={isDark ? "#2dd4bf" : "#0D9488"}
+            />
+            <Text
+              style={[
+                styles.supportText,
+                { color: isDark ? colors.textSecondary : "#334155" },
+              ]}
+            >
+              Agent Priority Helpline (Toll-Free)
+            </Text>
+            <Feather
+              name="chevron-right"
+              size={16}
+              color={isDark ? colors.textMuted : "#94A3B8"}
+            />
           </TouchableOpacity>
         </View>
 
@@ -182,10 +646,18 @@ export function AgentProfileScreen() {
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={handleLogout}
-          style={styles.logoutBtn}
+          style={[
+            styles.logoutBtn,
+            isDark && {
+              backgroundColor: "rgba(220, 38, 38, 0.15)",
+              borderColor: "rgba(220, 38, 38, 0.3)",
+            },
+          ]}
         >
-          <Feather name="log-out" size={18} color="#DC2626" />
-          <Text style={styles.logoutBtnText}>Log Out from Agent Portal</Text>
+          <Feather name="log-out" size={18} color="#EF4444" />
+          <Text style={[styles.logoutBtnText, isDark && { color: "#F87171" }]}>
+            Log Out from Agent Portal
+          </Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -193,8 +665,8 @@ export function AgentProfileScreen() {
       <BankDetailsModal
         visible={isBankModalVisible}
         onClose={() => setIsBankModalVisible(false)}
-        bankDetails={agentProfile.bankDetails}
-        onSave={updateBankDetails}
+        bankDetails={bankDetails}
+        onSave={handleUpdateBank}
       />
     </View>
   );
@@ -206,6 +678,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8FAFC",
   },
   header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 14,
     backgroundColor: "#FFFFFF",
@@ -214,88 +689,176 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: "900",
+    fontWeight: "800",
     color: "#0F172A",
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 120,
+    paddingBottom: 100,
   },
   idCard: {
-    backgroundColor: "#0F766E",
     borderRadius: 22,
     padding: 18,
     marginBottom: 16,
-    shadowColor: "#0F766E",
+    shadowColor: "#0D9488",
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 4,
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    elevation: 5,
   },
   idTopRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  officialBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  officialBadgeText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "rgba(255, 255, 255, 0.92)",
+    letterSpacing: 0.8,
+  },
+  statusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    gap: 5,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#4ADE80",
+  },
+  statusPillText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#FFFFFF",
+    letterSpacing: 0.5,
+  },
+  idMainRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  avatarWrapper: {
+    position: "relative",
   },
   avatar: {
     width: 58,
     height: 58,
     borderRadius: 29,
-    borderWidth: 2.5,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    borderWidth: 2,
+    borderColor: "rgba(255, 255, 255, 0.85)",
+  },
+  verifiedCheckBadge: {
+    position: "absolute",
+    bottom: -1,
+    right: -1,
+    backgroundColor: "#059669",
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
     borderColor: "#FFFFFF",
   },
+  agentInfoBlock: {
+    flex: 1,
+    justifyContent: "center",
+  },
   agentName: {
-    fontSize: 17,
-    fontWeight: "900",
+    fontSize: 16,
+    fontWeight: "800",
     color: "#FFFFFF",
+    letterSpacing: 0.2,
+  },
+  agentTierBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginTop: 4,
   },
   agentTierText: {
-    fontSize: 12,
+    fontSize: 11,
+    color: "#FFFFFF",
     fontWeight: "700",
-    color: "#FEF08A",
-    marginTop: 2,
   },
   agentJoined: {
-    fontSize: 11,
-    color: "#CCFBF1",
-    marginTop: 2,
+    fontSize: 10.5,
+    color: "rgba(255, 255, 255, 0.8)",
+    marginTop: 3,
+    fontWeight: "500",
+  },
+  qrBox: {
+    backgroundColor: "#FFFFFF",
+    padding: 5,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  qrScanText: {
+    fontSize: 8.5,
+    fontWeight: "800",
+    color: "#0F766E",
+    marginTop: 3,
+    letterSpacing: 0.5,
   },
   idDivider: {
     height: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: "rgba(255, 255, 255, 0.22)",
     marginVertical: 14,
   },
   idBottomRow: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
+    alignItems: "center",
   },
   idLabel: {
-    fontSize: 10,
+    fontSize: 9.5,
+    color: "rgba(255, 255, 255, 0.8)",
     fontWeight: "700",
-    color: "rgba(255, 255, 255, 0.7)",
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
   },
   idNumber: {
     fontSize: 15,
     fontWeight: "900",
     color: "#FFFFFF",
-    letterSpacing: 0.5,
     marginTop: 2,
+    letterSpacing: 0.5,
   },
   copyIdBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "rgba(255, 255, 255, 0.24)",
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 12,
-    gap: 4,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.35)",
   },
   copyIdText: {
     fontSize: 12,
-    fontWeight: "800",
-    color: "#0F766E",
+    fontWeight: "700",
+    color: "#FFFFFF",
   },
   cardSection: {
     backgroundColor: "#FFFFFF",
@@ -303,22 +866,22 @@ const styles = StyleSheet.create({
     borderWidth: 1.2,
     borderColor: "#E2E8F0",
     padding: 16,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   cardHeader: {
     fontSize: 14,
     fontWeight: "800",
     color: "#0F172A",
-    marginBottom: 10,
+    marginBottom: 12,
   },
   cardHeaderWithAction: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 12,
   },
   editActionText: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontWeight: "800",
     color: "#0D9488",
   },
@@ -326,7 +889,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 5,
+    paddingVertical: 4,
   },
   label: {
     fontSize: 12.5,
@@ -345,44 +908,44 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#0D9488",
   },
-  verifiedTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#ECFDF5",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    gap: 4,
-  },
-  verifiedTagText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#059669",
-  },
   divider: {
     height: 1,
     backgroundColor: "#F1F5F9",
-    marginVertical: 4,
+    marginVertical: 8,
+  },
+  verifiedTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#DCFCE7",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  verifiedTagText: {
+    fontSize: 11.5,
+    fontWeight: "800",
+    color: "#16A34A",
   },
   securityBox: {
     flexDirection: "row",
     backgroundColor: "#F0FDFA",
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: "#CCFBF1",
-    borderRadius: 16,
     padding: 14,
     gap: 10,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   securityTitle: {
     fontSize: 13,
     fontWeight: "800",
     color: "#0F766E",
+    marginBottom: 4,
   },
   securityDesc: {
     fontSize: 11.5,
-    color: "#0D9488",
-    marginTop: 4,
+    color: "#0F766E",
     lineHeight: 16,
   },
   supportRow: {
@@ -394,7 +957,7 @@ const styles = StyleSheet.create({
   supportText: {
     flex: 1,
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "600",
     color: "#334155",
   },
   logoutBtn: {
@@ -403,11 +966,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#FEF2F2",
     borderWidth: 1.2,
-    borderColor: "#FECACA",
+    borderColor: "#FEE2E2",
     height: 50,
     borderRadius: 16,
-    marginTop: 8,
     gap: 8,
+    marginTop: 8,
   },
   logoutBtnText: {
     fontSize: 14,
