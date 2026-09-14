@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
@@ -13,6 +14,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -23,6 +25,7 @@ import {
 } from "../../../components/FieldAgentComponent";
 import { useResponsiveTheme } from "../../../constants/theme";
 import apiClient from "../../../Redux/api/axiosInstance";
+import { API_BASE_URL } from "../../../Redux/api/apiConfig";
 import { logout } from "../../../Redux/Auth/authActions";
 import { useAppDispatch, useAppSelector } from "../../../Redux/hooks";
 
@@ -36,6 +39,21 @@ export function AgentProfileScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [isBankModalVisible, setIsBankModalVisible] = useState(false);
+
+  // KYC States (Aadhaar & PAN)
+  const [aadhaarDoc, setAadhaarDoc] = useState<string>(
+    (reduxUser as any)?.kyc?.aadhaarDoc || (reduxUser as any)?.aadhaarCard || (reduxUser as any)?.documents?.aadhaar || ""
+  );
+  const [panDoc, setPanDoc] = useState<string>(
+    (reduxUser as any)?.kyc?.panDoc || (reduxUser as any)?.panCard || (reduxUser as any)?.documents?.pan || ""
+  );
+  const [aadhaarNumber, setAadhaarNumber] = useState<string>(
+    (reduxUser as any)?.kyc?.aadhaarNumber || (reduxUser as any)?.aadhaarNumber || ""
+  );
+  const [panNumber, setPanNumber] = useState<string>(
+    (reduxUser as any)?.kyc?.panNumber || (reduxUser as any)?.panNumber || ""
+  );
+  const [isSavingKyc, setIsSavingKyc] = useState(false);
 
   // Fetch real profile from backend /auth/me
   const fetchRealProfile = useCallback(async () => {
@@ -52,6 +70,21 @@ export function AgentProfileScreen() {
   useEffect(() => {
     fetchRealProfile();
   }, [fetchRealProfile]);
+
+  // Sync KYC states when realUser loads
+  useEffect(() => {
+    if (realUser) {
+      const aDoc = realUser.kyc?.aadhaarDoc || realUser.aadhaarCard || realUser.documents?.aadhaar;
+      const pDoc = realUser.kyc?.panDoc || realUser.panCard || realUser.documents?.pan;
+      const aNum = realUser.kyc?.aadhaarNumber || realUser.aadhaarNumber;
+      const pNum = realUser.kyc?.panNumber || realUser.panNumber;
+
+      if (aDoc) setAadhaarDoc(aDoc);
+      if (pDoc) setPanDoc(pDoc);
+      if (aNum) setAadhaarNumber(aNum);
+      if (pNum) setPanNumber(pNum);
+    }
+  }, [realUser]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -139,6 +172,189 @@ export function AgentProfileScreen() {
       );
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Document Upload Handlers (Aadhaar & PAN)
+  const handlePickDocument = async (type: "aadhaar" | "pan", source: "camera" | "gallery") => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      if (source === "camera") {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert(
+            "Camera Permission Required",
+            "Please allow camera access in your device settings to photograph your ID document."
+          );
+          return;
+        }
+
+        const result = await ImagePicker.launchCameraAsync({
+          allowsEditing: true,
+          aspect: [16, 10],
+          quality: 0.85,
+        });
+
+        if (!result.canceled && result.assets && result.assets.length > 0) {
+          const uri = result.assets[0].uri;
+          if (type === "aadhaar") setAadhaarDoc(uri);
+          else setPanDoc(uri);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert(
+            "Gallery Permission Required",
+            "Please allow media access in your device settings to select your document photo."
+          );
+          return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+          allowsEditing: true,
+          aspect: [16, 10],
+          quality: 0.85,
+        });
+
+        if (!result.canceled && result.assets && result.assets.length > 0) {
+          const uri = result.assets[0].uri;
+          if (type === "aadhaar") setAadhaarDoc(uri);
+          else setPanDoc(uri);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      }
+    } catch (err) {
+      console.log("[AgentProfileScreen] document picker error:", err);
+      Alert.alert("Picker Error", "Could not load selected document image.");
+    }
+  };
+
+  const getDocUri = (uri?: string) => {
+    if (!uri) return "";
+    if (uri.startsWith("http://") || uri.startsWith("https://") || uri.startsWith("file://")) {
+      return uri;
+    }
+    const serverHost = API_BASE_URL.replace("/api/v1", "");
+    return `${serverHost}${uri.startsWith("/") ? "" : "/"}${uri}`;
+  };
+
+  const uploadDocumentFile = async (localUri: string, docType: "aadhaar" | "pan"): Promise<string> => {
+    if (localUri.startsWith("http://") || localUri.startsWith("https://") || localUri.startsWith("/uploads/")) {
+      return localUri;
+    }
+
+    const formData = new FormData();
+    const filename = localUri.split("/").pop() || `${docType}_${Date.now()}.jpg`;
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1].toLowerCase()}` : "image/jpeg";
+
+    formData.append("document", {
+      uri: localUri,
+      name: filename,
+      type,
+    } as any);
+    formData.append("docType", docType);
+
+    const res = await apiClient.post("/auth/kyc/upload", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    if (res.data?.data?.url) {
+      return res.data.data.url;
+    }
+    return localUri;
+  };
+
+  const handleDocumentAction = (type: "aadhaar" | "pan") => {
+    const isAadhaar = type === "aadhaar";
+    const currentDoc = isAadhaar ? aadhaarDoc : panDoc;
+    const title = isAadhaar ? t("profile.aadhaarCardTitle") : t("profile.panCardTitle");
+
+    const buttons: any[] = [
+      {
+        text: t("profile.takePhoto"),
+        onPress: () => handlePickDocument(type, "camera"),
+      },
+      {
+        text: t("profile.chooseFromGallery"),
+        onPress: () => handlePickDocument(type, "gallery"),
+      },
+    ];
+
+    if (currentDoc) {
+      buttons.push({
+        text: "Remove Photo",
+        style: "destructive",
+        onPress: () => {
+          if (isAadhaar) setAadhaarDoc("");
+          else setPanDoc("");
+        },
+      });
+    }
+
+    buttons.push({ text: t("common.cancel"), style: "cancel" });
+
+    Alert.alert(title, "Select photo source for verification document:", buttons);
+  };
+
+  const handleSaveKyc = async () => {
+    if (!aadhaarDoc && !panDoc && !aadhaarNumber.trim() && !panNumber.trim()) {
+      Alert.alert("No Changes", "Please upload Aadhaar or PAN card to save.");
+      return;
+    }
+
+    try {
+      setIsSavingKyc(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      let finalAadhaarUrl = aadhaarDoc;
+      let finalPanUrl = panDoc;
+
+      if (aadhaarDoc && (aadhaarDoc.startsWith("file://") || aadhaarDoc.startsWith("content://"))) {
+        try {
+          finalAadhaarUrl = await uploadDocumentFile(aadhaarDoc, "aadhaar");
+          setAadhaarDoc(finalAadhaarUrl);
+        } catch (uploadErr) {
+          console.log("[AgentProfileScreen] Aadhaar upload error:", uploadErr);
+        }
+      }
+
+      if (panDoc && (panDoc.startsWith("file://") || panDoc.startsWith("content://"))) {
+        try {
+          finalPanUrl = await uploadDocumentFile(panDoc, "pan");
+          setPanDoc(finalPanUrl);
+        } catch (uploadErr) {
+          console.log("[AgentProfileScreen] PAN upload error:", uploadErr);
+        }
+      }
+
+      const res = await apiClient.put("/auth/kyc", {
+        aadhaarDoc: finalAadhaarUrl,
+        panDoc: finalPanUrl,
+        aadhaarNumber: aadhaarNumber.trim(),
+        panNumber: panNumber.trim().toUpperCase(),
+      });
+
+      if (res.data?.data) {
+        setRealUser(res.data.data);
+      }
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(
+        t("profile.docUploadSuccess"),
+        t("profile.kycSavedSuccess")
+      );
+    } catch (err: any) {
+      Alert.alert(
+        "KYC Update Failed",
+        err.message || "Could not save verification documents."
+      );
+    } finally {
+      setIsSavingKyc(false);
     }
   };
 
@@ -534,6 +750,364 @@ export function AgentProfileScreen() {
               </View>
             </>
           ) : null}
+        </View>
+
+        {/* KYC & Identity Verification Section */}
+        <View
+          style={[
+            styles.cardSection,
+            {
+              backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+              borderColor: isDark ? colors.border : "#E2E8F0",
+            },
+          ]}
+        >
+          <View style={styles.cardHeaderWithAction}>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Ionicons
+                  name="shield-checkmark"
+                  size={18}
+                  color={isDark ? "#2DD4BF" : "#0D9488"}
+                />
+                <Text
+                  style={[
+                    styles.cardHeader,
+                    { color: isDark ? colors.textPrimary : "#0F172A", marginBottom: 0 },
+                  ]}
+                >
+                  {t("profile.kycSectionTitle")}
+                </Text>
+              </View>
+              <Text
+                style={[
+                  styles.kycSub,
+                  { color: isDark ? colors.textMuted : "#64748B" },
+                ]}
+              >
+                {t("profile.kycSectionSub")}
+              </Text>
+            </View>
+          </View>
+
+          {/* Documents Cards */}
+          <View style={styles.kycGrid}>
+            {/* 1. Aadhaar Card Card */}
+            <View
+              style={[
+                styles.kycDocCard,
+                {
+                  backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC",
+                  borderColor: isDark ? colors.border : "#E2E8F0",
+                },
+              ]}
+            >
+              <View style={styles.kycDocTopRow}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+                  <View
+                    style={[
+                      styles.kycIconBox,
+                      { backgroundColor: isDark ? "#082F2C" : "#E6FFFA" },
+                    ]}
+                  >
+                    <Ionicons
+                      name="card-outline"
+                      size={16}
+                      color={isDark ? "#2DD4BF" : "#0D9488"}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[
+                        styles.kycDocTitle,
+                        { color: isDark ? colors.textPrimary : "#0F172A" },
+                      ]}
+                    >
+                      {t("profile.aadhaarCardTitle")}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.kycDocSub,
+                        { color: isDark ? colors.textMuted : "#64748B" },
+                      ]}
+                    >
+                      {t("profile.aadhaarCardSub")}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Status Badge */}
+                <View
+                  style={[
+                    styles.kycStatusBadge,
+                    aadhaarDoc
+                      ? {
+                          backgroundColor: isDark ? "rgba(5, 150, 105, 0.2)" : "#DCFCE7",
+                          borderColor: isDark ? "#065F46" : "#86EFAC",
+                        }
+                      : {
+                          backgroundColor: isDark ? "rgba(100, 116, 139, 0.2)" : "#F1F5F9",
+                          borderColor: isDark ? "#334155" : "#CBD5E1",
+                        },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.kycStatusBadgeText,
+                      aadhaarDoc
+                        ? { color: isDark ? "#34D399" : "#16A34A" }
+                        : { color: isDark ? "#94A3B8" : "#64748B" },
+                    ]}
+                  >
+                    {aadhaarDoc ? t("profile.underReviewBadge") : t("profile.notUploadedBadge")}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Aadhaar Preview or Upload Area */}
+              {aadhaarDoc ? (
+                <View style={styles.previewContainer}>
+                  <Image source={{ uri: getDocUri(aadhaarDoc) }} style={styles.docImagePreview} resizeMode="cover" />
+                  <View style={styles.previewActionOverlay}>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => handleDocumentAction("aadhaar")}
+                      style={styles.reuploadPill}
+                    >
+                      <Feather name="refresh-cw" size={12} color="#FFFFFF" />
+                      <Text style={styles.reuploadPillText}>{t("profile.changeDoc")}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => handleDocumentAction("aadhaar")}
+                  style={[
+                    styles.uploadPlaceholder,
+                    {
+                      backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+                      borderColor: isDark ? colors.border : "#CBD5E1",
+                    },
+                  ]}
+                >
+                  <Ionicons name="cloud-upload-outline" size={24} color={isDark ? "#2DD4BF" : "#0D9488"} />
+                  <Text
+                    style={[
+                      styles.uploadPlaceholderText,
+                      { color: isDark ? "#2DD4BF" : "#0D9488" },
+                    ]}
+                  >
+                    {t("profile.uploadDoc")}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.uploadPlaceholderSub,
+                      { color: isDark ? colors.textMuted : "#94A3B8" },
+                    ]}
+                  >
+                    JPG, PNG • Max 5MB
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Aadhaar Number Input */}
+              <View style={styles.docInputContainer}>
+                <Text
+                  style={[
+                    styles.docInputLabel,
+                    { color: isDark ? colors.textMuted : "#64748B" },
+                  ]}
+                >
+                  {t("profile.aadhaarNumber")}
+                </Text>
+                <TextInput
+                  value={aadhaarNumber}
+                  onChangeText={setAadhaarNumber}
+                  placeholder={t("profile.enterAadhaarPlaceholder")}
+                  placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+                  keyboardType="numeric"
+                  maxLength={16}
+                  style={[
+                    styles.docTextInput,
+                    {
+                      backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+                      borderColor: isDark ? colors.border : "#E2E8F0",
+                      color: isDark ? colors.textPrimary : "#0F172A",
+                    },
+                  ]}
+                />
+              </View>
+            </View>
+
+            {/* 2. PAN Card Card */}
+            <View
+              style={[
+                styles.kycDocCard,
+                {
+                  backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC",
+                  borderColor: isDark ? colors.border : "#E2E8F0",
+                },
+              ]}
+            >
+              <View style={styles.kycDocTopRow}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+                  <View
+                    style={[
+                      styles.kycIconBox,
+                      { backgroundColor: isDark ? "#082F2C" : "#E6FFFA" },
+                    ]}
+                  >
+                    <Ionicons
+                      name="document-text-outline"
+                      size={16}
+                      color={isDark ? "#2DD4BF" : "#0D9488"}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[
+                        styles.kycDocTitle,
+                        { color: isDark ? colors.textPrimary : "#0F172A" },
+                      ]}
+                    >
+                      {t("profile.panCardTitle")}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.kycDocSub,
+                        { color: isDark ? colors.textMuted : "#64748B" },
+                      ]}
+                    >
+                      {t("profile.panCardSub")}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Status Badge */}
+                <View
+                  style={[
+                    styles.kycStatusBadge,
+                    panDoc
+                      ? {
+                          backgroundColor: isDark ? "rgba(5, 150, 105, 0.2)" : "#DCFCE7",
+                          borderColor: isDark ? "#065F46" : "#86EFAC",
+                        }
+                      : {
+                          backgroundColor: isDark ? "rgba(100, 116, 139, 0.2)" : "#F1F5F9",
+                          borderColor: isDark ? "#334155" : "#CBD5E1",
+                        },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.kycStatusBadgeText,
+                      panDoc
+                        ? { color: isDark ? "#34D399" : "#16A34A" }
+                        : { color: isDark ? "#94A3B8" : "#64748B" },
+                    ]}
+                  >
+                    {panDoc ? t("profile.underReviewBadge") : t("profile.notUploadedBadge")}
+                  </Text>
+                </View>
+              </View>
+
+              {/* PAN Preview or Upload Area */}
+              {panDoc ? (
+                <View style={styles.previewContainer}>
+                  <Image source={{ uri: getDocUri(panDoc) }} style={styles.docImagePreview} resizeMode="cover" />
+                  <View style={styles.previewActionOverlay}>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => handleDocumentAction("pan")}
+                      style={styles.reuploadPill}
+                    >
+                      <Feather name="refresh-cw" size={12} color="#FFFFFF" />
+                      <Text style={styles.reuploadPillText}>{t("profile.changeDoc")}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => handleDocumentAction("pan")}
+                  style={[
+                    styles.uploadPlaceholder,
+                    {
+                      backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+                      borderColor: isDark ? colors.border : "#CBD5E1",
+                    },
+                  ]}
+                >
+                  <Ionicons name="cloud-upload-outline" size={24} color={isDark ? "#2DD4BF" : "#0D9488"} />
+                  <Text
+                    style={[
+                      styles.uploadPlaceholderText,
+                      { color: isDark ? "#2DD4BF" : "#0D9488" },
+                    ]}
+                  >
+                    {t("profile.uploadDoc")}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.uploadPlaceholderSub,
+                      { color: isDark ? colors.textMuted : "#94A3B8" },
+                    ]}
+                  >
+                    JPG, PNG • Max 5MB
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {/* PAN Number Input */}
+              <View style={styles.docInputContainer}>
+                <Text
+                  style={[
+                    styles.docInputLabel,
+                    { color: isDark ? colors.textMuted : "#64748B" },
+                  ]}
+                >
+                  {t("profile.panNumber")}
+                </Text>
+                <TextInput
+                  value={panNumber}
+                  onChangeText={(text) => setPanNumber(text.toUpperCase())}
+                  placeholder={t("profile.enterPanPlaceholder")}
+                  placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+                  autoCapitalize="characters"
+                  maxLength={10}
+                  style={[
+                    styles.docTextInput,
+                    {
+                      backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+                      borderColor: isDark ? colors.border : "#E2E8F0",
+                      color: isDark ? colors.textPrimary : "#0F172A",
+                    },
+                  ]}
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* Save KYC Button */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={handleSaveKyc}
+            disabled={isSavingKyc}
+            style={[
+              styles.saveKycBtn,
+              { backgroundColor: isDark ? "#0D9488" : "#0F766E" },
+            ]}
+          >
+            {isSavingKyc ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons name="shield-checkmark-outline" size={17} color="#FFFFFF" />
+                <Text style={styles.saveKycBtnText}>{t("profile.saveKycBtn")}</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Security & Access Notice */}
@@ -978,5 +1552,129 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "800",
     color: "#DC2626",
+  },
+  kycSub: {
+    fontSize: 11.5,
+    marginTop: 2,
+    fontWeight: "500",
+  },
+  kycGrid: {
+    gap: 14,
+    marginTop: 14,
+  },
+  kycDocCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+  },
+  kycDocTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  kycIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  kycDocTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  kycDocSub: {
+    fontSize: 10.5,
+    fontWeight: "500",
+  },
+  kycStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  kycStatusBadgeText: {
+    fontSize: 9.5,
+    fontWeight: "800",
+    letterSpacing: 0.4,
+  },
+  previewContainer: {
+    height: 120,
+    borderRadius: 10,
+    overflow: "hidden",
+    position: "relative",
+    marginVertical: 6,
+  },
+  docImagePreview: {
+    width: "100%",
+    height: "100%",
+  },
+  previewActionOverlay: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+  },
+  reuploadPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(15, 23, 42, 0.8)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    gap: 4,
+  },
+  reuploadPillText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  uploadPlaceholder: {
+    height: 96,
+    borderRadius: 10,
+    borderWidth: 1.2,
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 6,
+    gap: 4,
+  },
+  uploadPlaceholderText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  uploadPlaceholderSub: {
+    fontSize: 10,
+    fontWeight: "500",
+  },
+  docInputContainer: {
+    marginTop: 8,
+  },
+  docInputLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  docTextInput: {
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  saveKycBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 46,
+    borderRadius: 14,
+    marginTop: 14,
+    gap: 8,
+  },
+  saveKycBtnText: {
+    color: "#FFFFFF",
+    fontSize: 13.5,
+    fontWeight: "800",
   },
 });

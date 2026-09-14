@@ -69,10 +69,8 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
   const { t } = useTranslation();
   const { leads: allLeads } = useFieldAgent();
 
-  if (!lead) return null;
-
   // Compute initial date from real lead submission
-  const leadDateInfo = useMemo(() => parseLeadDate(lead.submissionDate), [lead.submissionDate]);
+  const leadDateInfo = useMemo(() => parseLeadDate(lead?.submissionDate), [lead?.submissionDate]);
 
   // Calendar navigation state
   const [currentDate, setCurrentDate] = useState(() => new Date(leadDateInfo.year, leadDateInfo.month, 1));
@@ -127,7 +125,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
       }
     });
 
-    if (leadDateInfo.year === year && leadDateInfo.month === month) {
+    if (lead && leadDateInfo.year === year && leadDateInfo.month === month) {
       const list = map.get(leadDateInfo.day) || [];
       if (!list.some((l) => l.id === lead.id)) {
         list.push(lead);
@@ -165,14 +163,15 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
     if (selectedDayLeads.length > 0) {
       return selectedDayLeads.reduce((acc, curr) => acc + (curr.commissionAmount || 0), 0);
     }
-    if (isSelectedLeadDay) {
+    if (isSelectedLeadDay && lead) {
       return lead.commissionAmount || 0;
     }
     return 0;
-  }, [selectedDayLeads, isSelectedLeadDay, lead.commissionAmount]);
+  }, [selectedDayLeads, isSelectedLeadDay, lead]);
 
   // Commission status color & label for selected lead
   const getCommissionBadgeStyle = () => {
+    if (!lead) return { bg: "", text: "", border: "", label: "" };
     if (lead.commissionStatus === "PAID") {
       return {
         bg: isDark ? "#062A1C" : "#DCFCE7",
@@ -198,6 +197,8 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
   };
 
   const commBadge = getCommissionBadgeStyle();
+
+  if (!lead) return null;
 
   return (
     <Modal
