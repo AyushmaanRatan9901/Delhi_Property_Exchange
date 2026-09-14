@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Switch,
 } from "react-native";
 import { Feather, Ionicons, FontAwesome5, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -20,6 +21,21 @@ import { useResponsiveTheme } from "../../constants/theme";
 import apiClient from "../../Redux/api/axiosInstance";
 
 const { width } = Dimensions.get("window");
+
+// Helper: Convert Lat/Lng to Slippy Map Tile Coordinates
+function latLngToTile(lat: number, lon: number, zoom: number) {
+  const x = Math.floor(((lon + 180) / 360) * Math.pow(2, zoom));
+  const rad = (lat * Math.PI) / 180;
+  const y = Math.floor(
+    ((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * Math.pow(2, zoom)
+  );
+  const fullX = ((lon + 180) / 360) * Math.pow(2, zoom);
+  const fullY =
+    ((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * Math.pow(2, zoom);
+  const offsetX = (fullX - x) * 256;
+  const offsetY = (fullY - y) * 256;
+  return { x, y, offsetX, offsetY };
+}
 
 interface Props {
   visible: boolean;
@@ -32,6 +48,8 @@ interface Props {
   onStatusChange?: () => void;
 }
 
+type EditTab = "basic" | "financials" | "location" | "specs" | "owner" | "tenant" | "media";
+
 export const SuperAdminLeadDetailModal: React.FC<Props> = ({
   visible,
   lead: initialLead,
@@ -43,8 +61,109 @@ export const SuperAdminLeadDetailModal: React.FC<Props> = ({
   onStatusChange,
 }) => {
   const { colors, isDark } = useResponsiveTheme();
+  const textPrimary = colors.textPrimary || (isDark ? "#FFFFFF" : "#0F172A");
+  const textSecondary = colors.textSecondary || (isDark ? "#94A3B8" : "#475569");
+  const borderCol = colors.border || (isDark ? "#334155" : "#E2E8F0");
+
   const [lead, setLead] = useState<any>(initialLead);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
+
+  // Map state
+  const [mapZoom, setMapZoom] = useState(16);
+  const [mapType, setMapType] = useState<"roadmap" | "satellite" | "hybrid" | "terrain">("roadmap");
+
+  // Sub-modal: Full Property Edit Modal
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [editActiveTab, setEditActiveTab] = useState<EditTab>("basic");
+  const [savingProperty, setSavingProperty] = useState(false);
+
+  // Form State: 1. Basic & Overview
+  const [editTitle, setEditTitle] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editPropertyType, setEditPropertyType] = useState("2BHK");
+  const [editListingType, setEditListingType] = useState("rent");
+  const [editStatus, setEditStatus] = useState("new");
+  const [editFurnishing, setEditFurnishing] = useState("unfurnished");
+  const [editAvailableFrom, setEditAvailableFrom] = useState("");
+  const [editRemarks, setEditRemarks] = useState("");
+
+  // Form State: 2. Financials
+  const [editPrice, setEditPrice] = useState("");
+  const [editDeposit, setEditDeposit] = useState("");
+  const [editMaintenance, setEditMaintenance] = useState("");
+  const [editMinNegotiable, setEditMinNegotiable] = useState("");
+  const [editCommissionEst, setEditCommissionEst] = useState("");
+  const [editCommissionApproved, setEditCommissionApproved] = useState("");
+  const [editCommissionPct, setEditCommissionPct] = useState("");
+  const [editCommissionStatus, setEditCommissionStatus] = useState("pending");
+
+  // Form State: 3. Location & GPS
+  const [editLocality, setEditLocality] = useState("");
+  const [editStreet, setEditStreet] = useState("");
+  const [editLandmark, setEditLandmark] = useState("");
+  const [editCity, setEditCity] = useState("Delhi NCR");
+  const [editState, setEditState] = useState("Delhi");
+  const [editPincode, setEditPincode] = useState("");
+  const [editFullAddress, setEditFullAddress] = useState("");
+  const [editLatitude, setEditLatitude] = useState("");
+  const [editLongitude, setEditLongitude] = useState("");
+
+  // Form State: 4. Specs & Physical Inspection
+  const [editCarpetArea, setEditCarpetArea] = useState("");
+  const [editBedrooms, setEditBedrooms] = useState("");
+  const [editBathrooms, setEditBathrooms] = useState("");
+  const [editBalconies, setEditBalconies] = useState("");
+  const [editFloorNo, setEditFloorNo] = useState("");
+  const [editTotalFloors, setEditTotalFloors] = useState("");
+  const [editCondition, setEditCondition] = useState("good");
+  const [editKeysAvailable, setEditKeysAvailable] = useState(false);
+  const [editPhysicalVisitDone, setEditPhysicalVisitDone] = useState(false);
+  const [editOwnershipDocsVerified, setEditOwnershipDocsVerified] = useState(false);
+  const [editElectricityBillChecked, setEditElectricityBillChecked] = useState(false);
+  const [editStaffRemarks, setEditStaffRemarks] = useState("");
+
+  // Form State: 5. Owner Details & Banking
+  const [editOwnerName, setEditOwnerName] = useState("");
+  const [editOwnerPhone, setEditOwnerPhone] = useState("");
+  const [editAltPhone, setEditAltPhone] = useState("");
+  const [editOwnerEmail, setEditOwnerEmail] = useState("");
+  const [editOwnerAadhaar, setEditOwnerAadhaar] = useState("");
+  const [editOwnerPan, setEditOwnerPan] = useState("");
+  const [editOwnerHouseNo, setEditOwnerHouseNo] = useState("");
+  const [editOwnerStreet, setEditOwnerStreet] = useState("");
+  const [editOwnerCity, setEditOwnerCity] = useState("");
+  const [editOwnerState, setEditOwnerState] = useState("");
+  const [editOwnerPincode, setEditOwnerPincode] = useState("");
+  const [editAccountHolder, setEditAccountHolder] = useState("");
+  const [editBankName, setEditBankName] = useState("");
+  const [editAccountNumber, setEditAccountNumber] = useState("");
+  const [editIfscCode, setEditIfscCode] = useState("");
+  const [editUpiId, setEditUpiId] = useState("");
+  const [editOwnerKycStatus, setEditOwnerKycStatus] = useState("not_submitted");
+  const [editOwnerNotes, setEditOwnerNotes] = useState("");
+
+  // Form State: 6. Tenant & Booking (Deal)
+  const [editTenantName, setEditTenantName] = useState("");
+  const [editTenantPhone, setEditTenantPhone] = useState("");
+  const [editTenantAadhaar, setEditTenantAadhaar] = useState("");
+  const [editDealPrice, setEditDealPrice] = useState("");
+  const [editDealDeposit, setEditDealDeposit] = useState("");
+  const [editLeaseMonths, setEditLeaseMonths] = useState("11");
+  const [editAgreementNumber, setEditAgreementNumber] = useState("");
+  const [editPoliceStatus, setEditPoliceStatus] = useState("pending");
+  const [editDealClosed, setEditDealClosed] = useState(false);
+  const [editDealNotes, setEditDealNotes] = useState("");
+
+  // Form State: 7. Media Links
+  const [editCoverPhoto, setEditCoverPhoto] = useState("");
+  const [editVideoUrl, setEditVideoUrl] = useState("");
+  const [editVirtualTour, setEditVirtualTour] = useState("");
+  const [editPhotosListStr, setEditPhotosListStr] = useState("");
+
+  // Sub-modal: Delete Property Confirmation
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deletingProperty, setDeletingProperty] = useState(false);
 
   // Sub-modal for Recording Tenant Rent Payment
   const [isTenantRentModalVisible, setIsTenantRentModalVisible] = useState(false);
@@ -64,59 +183,326 @@ export const SuperAdminLeadDetailModal: React.FC<Props> = ({
   const [payoutRemarks, setPayoutRemarks] = useState("");
   const [savingPayout, setSavingPayout] = useState(false);
 
-  // Sub-modal for Editing Owner Details
-  const [isEditOwnerModalVisible, setIsEditOwnerModalVisible] = useState(false);
-  const [editOwnerName, setEditOwnerName] = useState("");
-  const [editOwnerPhone, setEditOwnerPhone] = useState("");
-  const [editAltPhone, setEditAltPhone] = useState("");
-  const [editOwnerEmail, setEditOwnerEmail] = useState("");
-  const [editOwnerAadhaar, setEditOwnerAadhaar] = useState("");
-  const [editOwnerPan, setEditOwnerPan] = useState("");
-  const [editHouseNo, setEditHouseNo] = useState("");
-  const [editStreet, setEditStreet] = useState("");
-  const [editCity, setEditCity] = useState("");
-  const [editState, setEditState] = useState("");
-  const [editPincode, setEditPincode] = useState("");
-  const [editAccountHolder, setEditAccountHolder] = useState("");
-  const [editBankName, setEditBankName] = useState("");
-  const [editAccountNumber, setEditAccountNumber] = useState("");
-  const [editIfscCode, setEditIfscCode] = useState("");
-  const [editUpiId, setEditUpiId] = useState("");
-  const [editOwnerNotes, setEditOwnerNotes] = useState("");
-  const [savingOwnerDetails, setSavingOwnerDetails] = useState(false);
+  // Populate state when lead changes
+  const populateFormValues = (currentLead: any) => {
+    if (!currentLead) return;
+    
+    // 1. Basic
+    setEditTitle(currentLead.title || "");
+    setEditDesc(currentLead.description || "");
+    setEditPropertyType(currentLead.propertyType || "2BHK");
+    setEditListingType(currentLead.listingType || "rent");
+    setEditStatus(currentLead.status || "new");
+    setEditFurnishing(currentLead.furnishing || "unfurnished");
+    setEditAvailableFrom(currentLead.availableFrom ? new Date(currentLead.availableFrom).toISOString().split("T")[0] : "");
+    setEditRemarks(currentLead.remarks || "");
 
-  React.useEffect(() => {
+    // 2. Financials
+    setEditPrice(String(currentLead.expectedPrice || ""));
+    setEditDeposit(String(currentLead.securityDeposit || ""));
+    setEditMaintenance(String(currentLead.maintenanceCharge || ""));
+    setEditMinNegotiable(String(currentLead.inspectionDetails?.negotiablePriceMin || ""));
+    setEditCommissionEst(String(currentLead.commission?.estimatedAmount || ""));
+    setEditCommissionApproved(String(currentLead.commission?.approvedAmount || ""));
+    setEditCommissionPct(String(currentLead.commission?.percentage || ""));
+    setEditCommissionStatus(currentLead.commission?.status || "pending");
+
+    // 3. Location & GPS
+    setEditLocality(currentLead.locality || "");
+    setEditStreet(currentLead.address?.street || "");
+    setEditLandmark(currentLead.address?.landmark || "");
+    setEditCity(currentLead.address?.city || "Delhi NCR");
+    setEditState(currentLead.address?.state || "Delhi");
+    setEditPincode(currentLead.address?.pincode || "");
+    setEditFullAddress(currentLead.address?.fullAddress || "");
+    
+    const lat = currentLead.gpsDetails?.latitude || (currentLead.location?.coordinates?.[1]) || currentLead.latitude || "";
+    const lng = currentLead.gpsDetails?.longitude || (currentLead.location?.coordinates?.[0]) || currentLead.longitude || "";
+    setEditLatitude(lat ? String(lat) : "");
+    setEditLongitude(lng ? String(lng) : "");
+
+    // 4. Specs & Inspection
+    setEditCarpetArea(String(currentLead.inspectionDetails?.actualCarpetAreaSqFt || ""));
+    setEditBedrooms(String(currentLead.inspectionDetails?.actualBedrooms || ""));
+    setEditBathrooms(String(currentLead.inspectionDetails?.actualBathrooms || ""));
+    setEditBalconies(String(currentLead.inspectionDetails?.actualBalconies || ""));
+    setEditFloorNo(String(currentLead.inspectionDetails?.floorNumber || ""));
+    setEditTotalFloors(String(currentLead.inspectionDetails?.totalFloors || ""));
+    setEditCondition(currentLead.inspectionDetails?.propertyCondition || "good");
+    setEditKeysAvailable(Boolean(currentLead.inspectionDetails?.keysAvailable));
+    setEditPhysicalVisitDone(Boolean(currentLead.inspectionDetails?.physicalVisitDone));
+    setEditOwnershipDocsVerified(Boolean(currentLead.inspectionDetails?.ownershipDocsVerified));
+    setEditElectricityBillChecked(Boolean(currentLead.inspectionDetails?.electricityBillChecked));
+    setEditStaffRemarks(currentLead.inspectionDetails?.staffChecklistRemarks || "");
+
+    // 5. Owner
+    setEditOwnerName(currentLead.ownerName || "");
+    setEditOwnerPhone(currentLead.ownerPhone || "");
+    setEditAltPhone(currentLead.alternatePhone || "");
+    setEditOwnerEmail(currentLead.ownerEmail || "");
+    setEditOwnerAadhaar(currentLead.ownerAadhaarLast4 || "");
+    setEditOwnerPan(currentLead.ownerPanCard || "");
+    setEditOwnerHouseNo(currentLead.ownerAddress?.houseNo || "");
+    setEditOwnerStreet(currentLead.ownerAddress?.street || "");
+    setEditOwnerCity(currentLead.ownerAddress?.city || "");
+    setEditOwnerState(currentLead.ownerAddress?.state || "");
+    setEditOwnerPincode(currentLead.ownerAddress?.pincode || "");
+    setEditAccountHolder(currentLead.ownerBankDetails?.accountHolderName || currentLead.ownerName || "");
+    setEditBankName(currentLead.ownerBankDetails?.bankName || "");
+    setEditAccountNumber(currentLead.ownerBankDetails?.accountNumber || "");
+    setEditIfscCode(currentLead.ownerBankDetails?.ifscCode || "");
+    setEditUpiId(currentLead.ownerBankDetails?.upiId || "");
+    setEditOwnerKycStatus(currentLead.ownerKYC?.status || "not_submitted");
+    setEditOwnerNotes(currentLead.ownerNotes || "");
+
+    // 6. Tenant & Deal
+    setEditTenantName(currentLead.deal?.tenantName || "");
+    setEditTenantPhone(currentLead.deal?.tenantPhone || "");
+    setEditTenantAadhaar(currentLead.deal?.tenantAadhaarLast4 || "");
+    setEditDealPrice(String(currentLead.deal?.finalPrice || currentLead.expectedPrice || ""));
+    setEditDealDeposit(String(currentLead.deal?.deposit || currentLead.securityDeposit || ""));
+    setEditLeaseMonths(String(currentLead.deal?.leaseDurationMonths || "11"));
+    setEditAgreementNumber(currentLead.deal?.agreementNumber || "");
+    setEditPoliceStatus(currentLead.deal?.policeVerificationStatus || "pending");
+    setEditDealClosed(Boolean(currentLead.deal?.isClosed || currentLead.status === "rented" || currentLead.status === "sold"));
+    setEditDealNotes(currentLead.deal?.notes || "");
+
+    // 7. Media
+    setEditCoverPhoto(currentLead.coverPhoto || "");
+    setEditVideoUrl(currentLead.videoUrl || currentLead.videoLink || "");
+    setEditVirtualTour(currentLead.virtualTourLink || "");
+    const photosArr = currentLead.photos?.map((p: any) => (typeof p === "string" ? p : p.url)) || currentLead.images || [];
+    setEditPhotosListStr(photosArr.join("\n"));
+  };
+
+  useEffect(() => {
     setLead(initialLead);
     if (initialLead) {
+      populateFormValues(initialLead);
       const currentM = new Date().toLocaleString("default", { month: "short", year: "numeric" });
       setRentMonth(currentM);
       setPayoutMonth(currentM);
-      const rentVal = String(initialLead.deal?.finalPrice || initialLead.expectedPrice || initialLead.rentAmount || "");
+      const rentVal = String(initialLead.deal?.finalPrice || initialLead.expectedPrice || "");
       setRentAmount(rentVal);
       setPayoutAmount(String(Math.round((Number(rentVal) || 0) * 0.95) || ""));
-
-      // Populate Edit Owner State
-      setEditOwnerName(initialLead.ownerName || "");
-      setEditOwnerPhone(initialLead.ownerPhone || "");
-      setEditAltPhone(initialLead.alternatePhone || "");
-      setEditOwnerEmail(initialLead.ownerEmail || "");
-      setEditOwnerAadhaar(initialLead.ownerAadhaarLast4 || "");
-      setEditOwnerPan(initialLead.ownerPanCard || "");
-      setEditHouseNo(initialLead.ownerAddress?.houseNo || "");
-      setEditStreet(initialLead.ownerAddress?.street || "");
-      setEditCity(initialLead.ownerAddress?.city || "");
-      setEditState(initialLead.ownerAddress?.state || "");
-      setEditPincode(initialLead.ownerAddress?.pincode || "");
-      setEditAccountHolder(initialLead.ownerBankDetails?.accountHolderName || initialLead.ownerName || "");
-      setEditBankName(initialLead.ownerBankDetails?.bankName || "");
-      setEditAccountNumber(initialLead.ownerBankDetails?.accountNumber || "");
-      setEditIfscCode(initialLead.ownerBankDetails?.ifscCode || "");
-      setEditUpiId(initialLead.ownerBankDetails?.upiId || "");
-      setEditOwnerNotes(initialLead.ownerNotes || "");
     }
   }, [initialLead]);
 
   if (!lead) return null;
+
+  // Open Edit Modal with a specific active tab
+  const handleOpenEditModalWithTab = (tab: EditTab = "basic") => {
+    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+    populateFormValues(lead);
+    setEditActiveTab(tab);
+    setIsEditModalVisible(true);
+  };
+
+  // Master Save Handler for Entire Property
+  const handleSaveFullProperty = async () => {
+    if (!editLocality.trim()) {
+      Alert.alert("Validation Error", "Locality is required.");
+      setEditActiveTab("location");
+      return;
+    }
+    if (!editOwnerName.trim()) {
+      Alert.alert("Validation Error", "Owner Name is required.");
+      setEditActiveTab("owner");
+      return;
+    }
+    if (!editOwnerPhone.trim()) {
+      Alert.alert("Validation Error", "Owner Phone Number is required.");
+      setEditActiveTab("owner");
+      return;
+    }
+
+    setSavingProperty(true);
+    try {
+      const photosArray = editPhotosListStr
+        .split("\n")
+        .map((u) => u.trim())
+        .filter((u) => u.length > 5);
+
+      const payload: any = {
+        title: editTitle.trim(),
+        description: editDesc.trim(),
+        propertyType: editPropertyType,
+        listingType: editListingType,
+        status: editStatus,
+        furnishing: editFurnishing,
+        expectedPrice: Number(editPrice) || 0,
+        securityDeposit: Number(editDeposit) || 0,
+        maintenanceCharge: Number(editMaintenance) || 0,
+        availableFrom: editAvailableFrom ? new Date(editAvailableFrom) : undefined,
+        remarks: editRemarks.trim(),
+
+        // Location & GPS
+        locality: editLocality.trim(),
+        address: {
+          street: editStreet.trim(),
+          landmark: editLandmark.trim(),
+          city: editCity.trim(),
+          state: editState.trim(),
+          pincode: editPincode.trim(),
+          fullAddress: editFullAddress.trim() || [editStreet, editLandmark, editLocality, editCity].filter(Boolean).join(", "),
+        },
+
+        // Owner Info
+        ownerName: editOwnerName.trim(),
+        ownerPhone: editOwnerPhone.replace(/\D/g, ""),
+        alternatePhone: editAltPhone.trim(),
+        ownerEmail: editOwnerEmail.trim().toLowerCase(),
+        ownerAadhaarLast4: editOwnerAadhaar.trim().slice(-4),
+        ownerPanCard: editOwnerPan.trim().toUpperCase(),
+        ownerAddress: {
+          houseNo: editOwnerHouseNo.trim(),
+          street: editOwnerStreet.trim(),
+          city: editOwnerCity.trim(),
+          state: editOwnerState.trim(),
+          pincode: editOwnerPincode.trim(),
+          fullAddress: [editOwnerHouseNo, editOwnerStreet, editOwnerCity, editOwnerState, editOwnerPincode].filter(Boolean).join(", "),
+        },
+        ownerBankDetails: {
+          accountHolderName: editAccountHolder.trim() || editOwnerName.trim(),
+          bankName: editBankName.trim(),
+          accountNumber: editAccountNumber.trim(),
+          ifscCode: editIfscCode.trim().toUpperCase(),
+          accountType: "Savings",
+          upiId: editUpiId.trim(),
+        },
+        ownerKYC: {
+          ...lead.ownerKYC,
+          status: editOwnerKycStatus,
+        },
+        ownerNotes: editOwnerNotes.trim(),
+
+        // Physical Inspection & Specs
+        inspectionDetails: {
+          ...lead.inspectionDetails,
+          actualCarpetAreaSqFt: Number(editCarpetArea) || undefined,
+          actualBedrooms: Number(editBedrooms) || undefined,
+          actualBathrooms: Number(editBathrooms) || undefined,
+          actualBalconies: Number(editBalconies) || undefined,
+          floorNumber: Number(editFloorNo) || undefined,
+          totalFloors: Number(editTotalFloors) || undefined,
+          propertyCondition: editCondition,
+          negotiablePriceMin: Number(editMinNegotiable) || undefined,
+          keysAvailable: editKeysAvailable,
+          physicalVisitDone: editPhysicalVisitDone,
+          ownershipDocsVerified: editOwnershipDocsVerified,
+          electricityBillChecked: editElectricityBillChecked,
+          staffChecklistRemarks: editStaffRemarks.trim(),
+        },
+
+        // Tenant Deal Info
+        deal: {
+          ...lead.deal,
+          tenantName: editTenantName.trim(),
+          tenantPhone: editTenantPhone.trim(),
+          tenantAadhaarLast4: editTenantAadhaar.trim().slice(-4),
+          finalPrice: Number(editDealPrice) || Number(editPrice) || 0,
+          deposit: Number(editDealDeposit) || Number(editDeposit) || 0,
+          leaseDurationMonths: Number(editLeaseMonths) || 11,
+          agreementNumber: editAgreementNumber.trim(),
+          policeVerificationStatus: editPoliceStatus,
+          isClosed: editDealClosed,
+          notes: editDealNotes.trim(),
+        },
+
+        // Commission Tracking
+        commission: {
+          ...lead.commission,
+          estimatedAmount: Number(editCommissionEst) || 0,
+          approvedAmount: Number(editCommissionApproved) || 0,
+          percentage: Number(editCommissionPct) || 0,
+          status: editCommissionStatus,
+        },
+
+        // Media Links
+        coverPhoto: editCoverPhoto.trim() || (photosArray[0] || undefined),
+        videoUrl: editVideoUrl.trim(),
+        videoLink: editVideoUrl.trim(),
+        virtualTourLink: editVirtualTour.trim(),
+      };
+
+      if (photosArray.length > 0) {
+        payload.photos = photosArray.map((url, idx) => ({
+          url,
+          caption: "Photo " + (idx + 1),
+          isCover: idx === 0,
+        }));
+        payload.images = photosArray;
+      }
+
+      if (editLatitude && editLongitude) {
+        payload.latitude = Number(editLatitude);
+        payload.longitude = Number(editLongitude);
+        payload.gpsDetails = {
+          latitude: Number(editLatitude),
+          longitude: Number(editLongitude),
+          accuracy: 3.5,
+          reverseGeocodedAddress: editFullAddress.trim() || editLocality.trim(),
+        };
+      }
+
+      const res = await apiClient.patch("/leads/" + lead._id, payload);
+      if (res.data?.data) {
+        setLead(res.data.data);
+      }
+      setIsEditModalVisible(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert("Success 🎉", "Entire property has been updated successfully!");
+      onStatusChange?.();
+    } catch (err: any) {
+      Alert.alert("Update Failed", err?.response?.data?.message || "Could not update property details.");
+    } finally {
+      setSavingProperty(false);
+    }
+  };
+
+  // Extract Exact GPS Coordinates for Map View
+  const latitude =
+    Number(lead.gpsDetails?.latitude) ||
+    (Array.isArray(lead.location?.coordinates) && lead.location.coordinates[1] ? Number(lead.location.coordinates[1]) : null) ||
+    Number(lead.latitude) ||
+    28.633298;
+
+  const longitude =
+    Number(lead.gpsDetails?.longitude) ||
+    (Array.isArray(lead.location?.coordinates) && lead.location.coordinates[0] ? Number(lead.location.coordinates[0]) : null) ||
+    Number(lead.longitude) ||
+    77.36787;
+
+  const gpsAccuracy = lead.gpsDetails?.accuracy || 3.8;
+  const hasCapturedGps = Boolean(lead.gpsDetails?.latitude || (Array.isArray(lead.location?.coordinates) && lead.location.coordinates.length >= 2));
+
+  // High-Res Slippy Map Tile Calculations
+  const containerW = Math.min(width - 48, 480);
+  const containerH = 200;
+  const tileInfo = latLngToTile(latitude, longitude, mapZoom);
+
+  const getTileUrl = (tx: number, ty: number) => {
+    if (mapType === "satellite" || mapType === "hybrid") {
+      return "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/" + mapZoom + "/" + ty + "/" + tx;
+    }
+    return "https://a.basemaps.cartocdn.com/rastertiles/voyager/" + mapZoom + "/" + tx + "/" + ty + "@2x.png";
+  };
+
+  const tiles = [];
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const tx = tileInfo.x + dx;
+      const ty = tileInfo.y + dy;
+      const left = containerW / 2 - tileInfo.offsetX + dx * 256;
+      const top = containerH / 2 - tileInfo.offsetY + dy * 256;
+      tiles.push({
+        key: mapZoom + "-" + tx + "-" + ty,
+        url: getTileUrl(tx, ty),
+        left,
+        top,
+      });
+    }
+  }
 
   const photos = lead.photos && lead.photos.length > 0
     ? lead.photos.map((p: any) => (typeof p === "string" ? p : p.url))
@@ -159,55 +545,37 @@ export const SuperAdminLeadDetailModal: React.FC<Props> = ({
     } catch {}
   };
 
-  // Handler: Save Edited Owner Details
-  const handleSaveOwnerDetails = async () => {
-    if (!editOwnerName.trim()) {
-      Alert.alert("Required", "Owner Name cannot be empty.");
-      return;
-    }
-    if (!editOwnerPhone.trim()) {
-      Alert.alert("Required", "Owner Mobile Number cannot be empty.");
-      return;
-    }
-    setSavingOwnerDetails(true);
-    try {
-      const payload = {
-        ownerName: editOwnerName.trim(),
-        ownerPhone: editOwnerPhone.replace(/\D/g, ""),
-        alternatePhone: editAltPhone.trim(),
-        ownerEmail: editOwnerEmail.trim().toLowerCase(),
-        ownerAadhaarLast4: editOwnerAadhaar.trim().slice(-4),
-        ownerPanCard: editOwnerPan.trim().toUpperCase(),
-        ownerAddress: {
-          houseNo: editHouseNo.trim(),
-          street: editStreet.trim(),
-          city: editCity.trim(),
-          state: editState.trim(),
-          pincode: editPincode.trim(),
-          fullAddress: [editHouseNo, editStreet, editCity, editState, editPincode].filter(Boolean).join(", "),
-        },
-        ownerBankDetails: {
-          accountHolderName: editAccountHolder.trim(),
-          bankName: editBankName.trim(),
-          accountNumber: editAccountNumber.trim(),
-          ifscCode: editIfscCode.trim().toUpperCase(),
-          accountType: "Savings",
-          upiId: editUpiId.trim(),
-        },
-        ownerNotes: editOwnerNotes.trim(),
-      };
+  const openInGoogleMaps = () => {
+    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch {}
+    const query = latitude + "," + longitude;
+    const label = encodeURIComponent(lead.title || lead.locality || "Property Location");
+    const url = "https://www.google.com/maps/search/?api=1&query=" + query + "&query_place_id=" + label;
+    Linking.openURL(url);
+  };
 
-      const res = await apiClient.patch("/leads/" + lead._id, payload);
-      if (res.data?.data) {
-        setLead(res.data.data);
-      }
-      setIsEditOwnerModalVisible(false);
-      Alert.alert("Success", "Owner details updated successfully.");
+  const openDirections = () => {
+    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch {}
+    const destination = latitude + "," + longitude;
+    const url = "https://www.google.com/maps/dir/?api=1&destination=" + destination;
+    Linking.openURL(url);
+  };
+
+  // Handler: Delete Property
+  const handleDeleteProperty = async () => {
+    setDeletingProperty(true);
+    try {
+      await apiClient.delete("/leads/" + lead._id, {
+        data: { reason: deleteReason.trim() || "Deleted by Super Admin" },
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setIsDeleteModalVisible(false);
+      onClose();
+      Alert.alert("Deleted", "Property " + (lead.leadId || "") + " has been successfully deleted.");
       onStatusChange?.();
     } catch (err: any) {
-      Alert.alert("Error", err?.response?.data?.message || "Failed to update owner details.");
+      Alert.alert("Error", err?.response?.data?.message || "Failed to delete property.");
     } finally {
-      setSavingOwnerDetails(false);
+      setDeletingProperty(false);
     }
   };
 
@@ -312,1147 +680,1556 @@ export const SuperAdminLeadDetailModal: React.FC<Props> = ({
       case "sold": return "#0D9488";
       case "under_verification":
       case "assigned": return "#F59E0B";
-      case "rejected": return "#EF4444";
+      case "rejected":
+      case "cancelled": return "#EF4444";
       default: return "#3B82F6";
     }
   };
 
   const statusColor = getStatusColor(lead.status);
-  const ownerInitials = (lead.ownerName || "O").split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
+
+  // Reusable Pill / Option Selector for Edit Form
+  const renderOptionSelector = (
+    label: string,
+    options: { label: string; value: string }[],
+    selectedValue: string,
+    onSelect: (val: string) => void
+  ) => (
+    <View style={styles.formGroup}>
+      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>{label}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillRow}>
+        {options.map((opt) => {
+          const isSelected = selectedValue.toLowerCase() === opt.value.toLowerCase();
+          return (
+            <TouchableOpacity
+              key={opt.value}
+              onPress={() => {
+                try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+                onSelect(opt.value);
+              }}
+              style={[
+                styles.optionPill,
+                isSelected && styles.optionPillActive,
+                {
+                  backgroundColor: isSelected
+                    ? "#0D9488"
+                    : isDark
+                    ? "#1E293B"
+                    : "#F1F5F9",
+                  borderColor: isSelected ? "#0D9488" : borderCol,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.optionPillText,
+                  { color: isSelected ? "#FFFFFF" : isDark ? "#E2E8F0" : "#334155" },
+                ]}
+              >
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <View style={[styles.modalSheet, { backgroundColor: isDark ? "#0F172A" : "#FFFFFF" }]}>
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalContainer, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC" }]}>
           {/* Header */}
-          <View style={[styles.header, { borderBottomColor: isDark ? "#1E293B" : "#F1F5F9" }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: borderCol, backgroundColor: isDark ? "#1E293B" : "#FFFFFF" }]}>
             <View style={{ flex: 1 }}>
-              <View style={styles.leadIdBadge}>
-                <Text style={styles.leadIdText}>{lead.leadId || "LEAD-DIR"}</Text>
-                <View style={[styles.statusPill, { backgroundColor: statusColor + "20" }]}>
-                  <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+              <View style={styles.headerBadgeRow}>
+                <View style={[styles.statusBadge, { backgroundColor: statusColor + "20" }]}>
                   <Text style={[styles.statusText, { color: statusColor }]}>
-                    {(lead.status || "NEW").toUpperCase().replace("_", " ")}
+                    {(lead.status || "NEW").toUpperCase()}
                   </Text>
                 </View>
+                <Text style={[styles.leadIdText, { color: textSecondary }]}>{lead.leadId || "LEAD"}</Text>
               </View>
-              <Text style={[styles.title, { color: isDark ? "#FFFFFF" : "#0F172A" }]} numberOfLines={1}>
-                {lead.title || (lead.propertyType + " in " + lead.locality)}
+              <Text style={[styles.headerTitle, { color: textPrimary }]} numberOfLines={1}>
+                {lead.title || `${lead.propertyType || "Property"} in ${lead.locality || "Delhi"}`}
               </Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={[styles.closeBtn, { backgroundColor: isDark ? "#1E293B" : "#F1F5F9" }]}>
-              <Feather name="x" size={20} color={isDark ? "#94A3B8" : "#64748B"} />
-            </TouchableOpacity>
+
+            {/* Header Action Buttons */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              {/* Full Edit Property Button */}
+              <TouchableOpacity
+                onPress={() => handleOpenEditModalWithTab("basic")}
+                style={[styles.headerIconButton, { backgroundColor: "#0D948815", borderColor: "#0D948850" }]}
+              >
+                <Feather name="edit-3" size={17} color="#0D9488" />
+              </TouchableOpacity>
+
+              {/* Delete Property Button */}
+              <TouchableOpacity
+                onPress={() => setIsDeleteModalVisible(true)}
+                style={[styles.headerIconButton, { backgroundColor: "#EF444415", borderColor: "#EF444450" }]}
+              >
+                <Feather name="trash-2" size={17} color="#EF4444" />
+              </TouchableOpacity>
+
+              {/* Close Button */}
+              <TouchableOpacity onPress={onClose} style={[styles.closeButton, { backgroundColor: isDark ? "#334155" : "#E2E8F0" }]}>
+                <Feather name="x" size={20} color={textPrimary} />
+              </TouchableOpacity>
+            </View>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollBody}>
-            {/* Duplicate Flag Alert */}
-            {lead.duplicateFlag?.isDuplicate && (
-              <View style={[styles.duplicateAlert, { backgroundColor: isDark ? "#451A03" : "#FEF3C7", borderColor: "#F59E0B" }]}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <Ionicons name="warning" size={20} color="#D97706" />
-                  <Text style={[styles.duplicateTitle, { color: isDark ? "#FCD34D" : "#92400E" }]}>
-                    Duplicate Listing Detected
-                  </Text>
-                </View>
-                <Text style={[styles.duplicateDesc, { color: isDark ? "#FDE68A" : "#B45309" }]}>
-                  {lead.duplicateFlag.duplicateReason || "Matches an existing property by phone/address."}
-                </Text>
-                {onResolveDuplicate && lead.duplicateFlag.status !== "resolved" && (
-                  <TouchableOpacity onPress={() => onResolveDuplicate(lead)} style={styles.resolveBtn}>
-                    <Text style={styles.resolveBtnText}>Resolve Duplicate</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-
-            {/* Photos Carousel */}
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+            {/* 1. Photos Carousel */}
             {photos.length > 0 ? (
-              <View style={styles.photoSection}>
+              <View style={styles.carouselContainer}>
                 <Image source={{ uri: photos[activePhotoIdx] }} style={styles.mainImage} resizeMode="cover" />
+                <View style={styles.photoCountBadge}>
+                  <Feather name="camera" size={12} color="#FFFFFF" />
+                  <Text style={styles.photoCountText}>{activePhotoIdx + 1}/{photos.length}</Text>
+                </View>
                 {photos.length > 1 && (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbRow}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbStrip}>
                     {photos.map((p: string, idx: number) => (
-                      <TouchableOpacity key={idx} onPress={() => setActivePhotoIdx(idx)}>
-                        <Image
-                          source={{ uri: p }}
-                          style={[styles.thumb, idx === activePhotoIdx && { borderColor: "#0D9488", borderWidth: 2 }]}
-                        />
+                      <TouchableOpacity
+                        key={idx}
+                        onPress={() => setActivePhotoIdx(idx)}
+                        style={[styles.thumbWrap, idx === activePhotoIdx && styles.thumbWrapActive]}
+                      >
+                        <Image source={{ uri: p }} style={styles.thumbImage} resizeMode="cover" />
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
                 )}
               </View>
-            ) : null}
-
-            {/* Financial Overview / Rent Reconciliation Banner */}
-            {isRented && (
-              <View style={[styles.financeCard, { backgroundColor: isDark ? "#1E293B" : "#F0FDFA", borderColor: "#0D9488" }]}>
-                <View style={styles.financeHeader}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Ionicons name="receipt-outline" size={18} color="#0D9488" />
-                    <Text style={[styles.financeTitle, { color: isDark ? "#5EEAD4" : "#0F766E" }]}>
-                      Rent Reconciliation Balance
-                    </Text>
-                  </View>
-                  <View style={[styles.rentLiveBadge, { backgroundColor: hasCurrentMonthPaid ? "#DCFCE7" : "#FEF3C7" }]}>
-                    <Text style={{ fontSize: 10, fontWeight: "700", color: hasCurrentMonthPaid ? "#166534" : "#92400E" }}>
-                      {hasCurrentMonthPaid ? "RENT CURRENT" : "RENT PENDING"}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.financeMetricsRow}>
-                  <View style={styles.financeMetricBox}>
-                    <Text style={styles.financeMetricLabel}>Tenant Paid</Text>
-                    <Text style={[styles.financeMetricVal, { color: "#10B981" }]}>
-                      ₹{totalRentCollected.toLocaleString("en-IN")}
-                    </Text>
-                  </View>
-                  <View style={styles.metricDivider} />
-                  <View style={styles.financeMetricBox}>
-                    <Text style={styles.financeMetricLabel}>Owner Disbursed</Text>
-                    <Text style={[styles.financeMetricVal, { color: "#0D9488" }]}>
-                      ₹{totalOwnerDisbursed.toLocaleString("en-IN")}
-                    </Text>
-                  </View>
-                  <View style={styles.metricDivider} />
-                  <View style={styles.financeMetricBox}>
-                    <Text style={styles.financeMetricLabel}>Platform Margin</Text>
-                    <Text style={[styles.financeMetricVal, { color: isDark ? "#38BDF8" : "#0284C7" }]}>
-                      ₹{(totalRentCollected - totalOwnerDisbursed).toLocaleString("en-IN")}
-                    </Text>
-                  </View>
-                </View>
+            ) : (
+              <View style={[styles.noImagePlaceholder, { backgroundColor: isDark ? "#1E293B" : "#E2E8F0" }]}>
+                <Ionicons name="images-outline" size={48} color={textSecondary} />
+                <Text style={{ color: textSecondary, marginTop: 8, fontSize: 13 }}>No property photos uploaded</Text>
               </View>
             )}
 
-            {/* ==================================================================== */}
-            {/* 👑 FULL PROPERTY OWNER PROFILE & PAYOUT MANAGEMENT (SUPER ADMIN)     */}
-            {/* ==================================================================== */}
-            <View style={[styles.sectionCard, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF", borderColor: isDark ? "#334155" : "#E2E8F0" }]}>
-              {/* Owner Header with Avatar, Name & Edit Button */}
-              <View style={styles.ownerHeaderRow}>
-                <View style={styles.ownerAvatar}>
-                  <Text style={styles.ownerAvatarText}>{ownerInitials}</Text>
+            {/* Quick Action Bar to Edit Any Section */}
+            <View style={[styles.quickEditBanner, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF", borderColor: borderCol }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.quickEditTitle, { color: textPrimary }]}>Admin Full Control</Text>
+                <Text style={[styles.quickEditSub, { color: textSecondary }]}>Super Admin has full authority to edit every section</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => handleOpenEditModalWithTab("basic")}
+                style={styles.quickEditButton}
+              >
+                <Feather name="edit" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.quickEditBtnText}>Edit Entire Property</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* 2. Key Price & Stats Banner */}
+            <View style={[styles.pricingCard, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF", borderColor: borderCol }]}>
+              <View style={styles.priceRow}>
+                <View>
+                  <Text style={styles.priceLabel}>
+                    {lead.listingType === "sale" || lead.listingType === "SALE" ? "EXPECTED SALE PRICE" : "MONTHLY RENT"}
+                  </Text>
+                  <Text style={styles.priceAmount}>₹{(lead.expectedPrice || 0).toLocaleString("en-IN")}</Text>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Text style={[styles.ownerNameTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                      {lead.ownerName || "Property Owner"}
-                    </Text>
-                    <View style={styles.ownerVerifiedBadge}>
-                      <MaterialCommunityIcons name="shield-check" size={14} color="#0D9488" />
-                      <Text style={styles.ownerVerifiedText}>
-                        {lead.inspectionDetails?.ownershipDocsVerified ? "Title Verified" : "Owner"}
-                      </Text>
+                <TouchableOpacity
+                  onPress={() => handleOpenEditModalWithTab("financials")}
+                  style={styles.cardEditBadge}
+                >
+                  <Feather name="edit-2" size={13} color="#0D9488" />
+                  <Text style={styles.cardEditText}>Edit</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.statGrid}>
+                <View style={styles.statItem}>
+                  <Text style={[styles.statLabel, { color: textSecondary }]}>Deposit</Text>
+                  <Text style={[styles.statValue, { color: textPrimary }]}>
+                    {lead.securityDeposit ? `₹${Number(lead.securityDeposit).toLocaleString("en-IN")}` : "None"}
+                  </Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={[styles.statLabel, { color: textSecondary }]}>Maintenance</Text>
+                  <Text style={[styles.statValue, { color: textPrimary }]}>
+                    {lead.maintenanceCharge ? `₹${Number(lead.maintenanceCharge).toLocaleString("en-IN")}/mo` : "Included"}
+                  </Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={[styles.statLabel, { color: textSecondary }]}>Furnishing</Text>
+                  <Text style={[styles.statValue, { color: textPrimary, textTransform: "capitalize" }]}>
+                    {(lead.furnishing || "Unfurnished").replace("_", " ")}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* 3. Comprehensive Property Location & GPS Map */}
+            <View style={[styles.card, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF", borderColor: borderCol }]}>
+              <View style={styles.cardHeaderRow}>
+                <View style={styles.cardHeaderLeft}>
+                  <View style={[styles.sectionIconWrap, { backgroundColor: "#0D948820" }]}>
+                    <Ionicons name="location" size={18} color="#0D9488" />
+                  </View>
+                  <Text style={[styles.cardTitle, { color: textPrimary }]}>Property Location & Map</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => handleOpenEditModalWithTab("location")}
+                  style={styles.cardEditBadge}
+                >
+                  <Feather name="edit-2" size={13} color="#0D9488" />
+                  <Text style={styles.cardEditText}>Edit</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Interactive Slippy Map Canvas */}
+              <View style={styles.mapFrame}>
+                <View style={[styles.mapContainer, { width: containerW, height: containerH }]}>
+                  {tiles.map((t) => (
+                    <Image
+                      key={t.key}
+                      source={{ uri: t.url }}
+                      style={{
+                        position: "absolute",
+                        left: t.left,
+                        top: t.top,
+                        width: 256,
+                        height: 256,
+                      }}
+                      resizeMode="cover"
+                    />
+                  ))}
+
+                  {/* Centered Animated Pin Marker */}
+                  <View style={styles.pinCenterWrap} pointerEvents="none">
+                    <View style={styles.pinGlow} />
+                    <View style={styles.pinHead}>
+                      <FontAwesome5 name="home" size={12} color="#FFFFFF" />
                     </View>
+                    <View style={styles.pinPoint} />
                   </View>
-                  <Text style={[styles.ownerSubSubtitle, { color: colors.textSecondary }]}>
-                    Full unmasked owner identity, bank accounts & payout controls
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => setIsEditOwnerModalVisible(true)}
-                  style={[styles.editOwnerIconBtn, { backgroundColor: isDark ? "#334155" : "#F1F5F9" }]}
-                >
-                  <Feather name="edit-2" size={14} color="#0D9488" />
-                </TouchableOpacity>
-              </View>
 
-              {/* 1-Touch Quick Contact Actions */}
-              <View style={styles.ownerContactBar}>
-                <TouchableOpacity
-                  onPress={() => handleCall(lead.ownerPhone)}
-                  style={[styles.contactBarBtn, { backgroundColor: "rgba(13, 148, 136, 0.12)" }]}
-                >
-                  <Feather name="phone-call" size={14} color="#0D9488" />
-                  <Text style={[styles.contactBarBtnText, { color: "#0D9488" }]}>Call Owner</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => handleWhatsApp(lead.ownerPhone, lead.ownerName)}
-                  style={[styles.contactBarBtn, { backgroundColor: "rgba(16, 185, 129, 0.12)" }]}
-                >
-                  <FontAwesome5 name="whatsapp" size={14} color="#10B981" />
-                  <Text style={[styles.contactBarBtnText, { color: "#10B981" }]}>WhatsApp</Text>
-                </TouchableOpacity>
-
-                {lead.ownerEmail ? (
-                  <TouchableOpacity
-                    onPress={() => handleEmail(lead.ownerEmail)}
-                    style={[styles.contactBarBtn, { backgroundColor: "rgba(59, 130, 246, 0.12)" }]}
-                  >
-                    <Feather name="mail" size={14} color="#3B82F6" />
-                    <Text style={[styles.contactBarBtnText, { color: "#3B82F6" }]}>Email</Text>
-                  </TouchableOpacity>
-                ) : null}
-
-                <TouchableOpacity
-                  onPress={() => handleCopy(lead.ownerPhone || "", "Owner Phone")}
-                  style={[styles.contactBarBtn, { backgroundColor: isDark ? "#334155" : "#F1F5F9" }]}
-                >
-                  <Feather name="copy" size={14} color={isDark ? "#94A3B8" : "#64748B"} />
-                  <Text style={[styles.contactBarBtnText, { color: isDark ? "#94A3B8" : "#64748B" }]}>Copy</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* 1. Contact & Communication Info */}
-              <View style={styles.detailBlock}>
-                <Text style={[styles.blockTitle, { color: "#0D9488" }]}>CONTACT & ADDRESS</Text>
-
-                <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Primary Mobile</Text>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                    <Text style={[styles.detailValue, { color: "#0D9488", fontWeight: "700" }]}>
-                      {lead.ownerPhone ? "+91 " + lead.ownerPhone : "Not Registered"}
-                    </Text>
-                    {lead.ownerPhone && (
-                      <TouchableOpacity onPress={() => handleCopy(lead.ownerPhone, "Mobile")}>
-                        <Feather name="copy" size={13} color="#0D9488" />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-
-                {lead.alternatePhone ? (
-                  <View style={styles.detailRow}>
-                    <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Alternate Mobile</Text>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                      <Text style={[styles.detailValue, { color: isDark ? "#FFFFFF" : "#0F172A", fontWeight: "600" }]}>
-                        +91 {lead.alternatePhone}
-                      </Text>
-                      <TouchableOpacity onPress={() => handleCall(lead.alternatePhone)}>
-                        <Feather name="phone" size={13} color="#0D9488" />
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => handleWhatsApp(lead.alternatePhone, lead.ownerName)}>
-                        <FontAwesome5 name="whatsapp" size={13} color="#10B981" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ) : null}
-
-                <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Email Address</Text>
-                  <Text style={[styles.detailValue, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                    {lead.ownerEmail || "Not Provided"}
-                  </Text>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Residential Address</Text>
-                  <Text style={[styles.detailValue, { color: isDark ? "#FFFFFF" : "#0F172A", flex: 1, textAlign: "right" }]}>
-                    {lead.ownerAddress?.fullAddress ||
-                      [lead.ownerAddress?.houseNo, lead.ownerAddress?.street, lead.ownerAddress?.city, lead.ownerAddress?.pincode].filter(Boolean).join(", ") ||
-                      "Same as property address"}
-                  </Text>
-                </View>
-              </View>
-
-              {/* 2. Government Identity & Legal Title Verification */}
-              <View style={styles.detailBlock}>
-                <Text style={[styles.blockTitle, { color: "#0D9488" }]}>GOVERNMENT IDENTITY & LEGAL TITLE</Text>
-
-                <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Owner Aadhaar (UIDAI)</Text>
-                  <View style={styles.aadhaarPill}>
-                    <MaterialCommunityIcons name="shield-account" size={13} color="#0D9488" />
-                    <Text style={styles.aadhaarPillText}>
-                      {lead.ownerAadhaarLast4 ? "XXXX-XXXX-" + lead.ownerAadhaarLast4 : "Not Submitted"}
-                    </Text>
-                  </View>
-                </View>
-
-                {lead.ownerPanCard ? (
-                  <View style={styles.detailRow}>
-                    <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>PAN Card Number</Text>
-                    <View style={styles.panPill}>
-                      <Text style={styles.panPillText}>{lead.ownerPanCard}</Text>
-                    </View>
-                  </View>
-                ) : null}
-
-                <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Title / Registry Deed</Text>
-                  <View style={[styles.verificationPill, { backgroundColor: lead.inspectionDetails?.ownershipDocsVerified ? "#DCFCE7" : "#FEF3C7" }]}>
-                    <Text style={{ fontSize: 11, fontWeight: "700", color: lead.inspectionDetails?.ownershipDocsVerified ? "#166534" : "#92400E" }}>
-                      {lead.inspectionDetails?.ownershipDocsVerified ? "✅ Verified" : "⏳ Under Verification"}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Electricity Bill Check</Text>
-                  <Text style={[styles.detailValue, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                    {lead.inspectionDetails?.electricityBillChecked ? "✅ Checked & Matched" : "⏳ Pending"}
-                  </Text>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Property Keys Handover</Text>
-                  <Text style={[styles.detailValue, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                    {lead.inspectionDetails?.keysAvailable ? "🔑 Keys with Field Team" : "🏠 With Owner"}
-                  </Text>
-                </View>
-              </View>
-
-              {/* 3. Bank Account & Payout Destination */}
-              <View style={styles.detailBlock}>
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                  <Text style={[styles.blockTitle, { color: "#0D9488", marginBottom: 0 }]}>BANK & PAYOUT DESTINATION</Text>
-                  {isRented && (
+                  {/* Map Layer Mode Switcher */}
+                  <View style={styles.mapLayerSwitcher}>
                     <TouchableOpacity
-                      onPress={() => setIsOwnerPayoutModalVisible(true)}
-                      style={[styles.addRecordBtn, { backgroundColor: "#0D9488" }]}
+                      onPress={() => setMapType("roadmap")}
+                      style={[styles.layerChip, mapType === "roadmap" && styles.layerChipActive]}
                     >
-                      <Feather name="send" size={12} color="#FFFFFF" />
-                      <Text style={styles.addRecordBtnText}>Release Payout</Text>
+                      <Text style={[styles.layerChipText, mapType === "roadmap" && styles.layerChipTextActive]}>Road</Text>
                     </TouchableOpacity>
-                  )}
-                </View>
-
-                <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Account Beneficiary</Text>
-                  <Text style={[styles.detailValue, { color: isDark ? "#FFFFFF" : "#0F172A", fontWeight: "700" }]}>
-                    {lead.ownerBankDetails?.accountHolderName || lead.ownerName || "—"}
-                  </Text>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Bank Name</Text>
-                  <Text style={[styles.detailValue, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                    {lead.ownerBankDetails?.bankName || "HDFC Bank / Primary"}
-                  </Text>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Account Number</Text>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                    <Text style={[styles.detailValue, { color: isDark ? "#FFFFFF" : "#0F172A", fontFamily: "monospace", fontWeight: "700" }]}>
-                      {lead.ownerBankDetails?.accountNumber || (lead.ownerPhone ? "A/C-" + lead.ownerPhone : "50100••••••••")}
-                    </Text>
-                    {lead.ownerBankDetails?.accountNumber && (
-                      <TouchableOpacity onPress={() => handleCopy(lead.ownerBankDetails.accountNumber, "Account Number")}>
-                        <Feather name="copy" size={13} color="#0D9488" />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>IFSC Code</Text>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                    <Text style={[styles.detailValue, { color: isDark ? "#FFFFFF" : "#0F172A", fontWeight: "700" }]}>
-                      {lead.ownerBankDetails?.ifscCode || "HDFC0001234"}
-                    </Text>
-                    {lead.ownerBankDetails?.ifscCode && (
-                      <TouchableOpacity onPress={() => handleCopy(lead.ownerBankDetails.ifscCode, "IFSC Code")}>
-                        <Feather name="copy" size={13} color="#0D9488" />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>UPI ID / VPA</Text>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                    <Text style={[styles.detailValue, { color: "#0D9488", fontWeight: "700" }]}>
-                      {lead.ownerBankDetails?.upiId || (lead.ownerPhone ? lead.ownerPhone + "@upi" : "Not Set")}
-                    </Text>
-                    <TouchableOpacity onPress={() => handleCopy(lead.ownerBankDetails?.upiId || (lead.ownerPhone + "@upi"), "UPI ID")}>
-                      <Feather name="copy" size={13} color="#0D9488" />
+                    <TouchableOpacity
+                      onPress={() => setMapType("satellite")}
+                      style={[styles.layerChip, mapType === "satellite" && styles.layerChipActive]}
+                    >
+                      <Text style={[styles.layerChipText, mapType === "satellite" && styles.layerChipTextActive]}>Satellite</Text>
                     </TouchableOpacity>
+                  </View>
+
+                  {/* Zoom Controls */}
+                  <View style={styles.zoomControlsWrap}>
+                    <TouchableOpacity
+                      onPress={() => setMapZoom((prev) => Math.min(prev + 1, 18))}
+                      style={styles.zoomBtn}
+                    >
+                      <Feather name="plus" size={16} color="#0F172A" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => setMapZoom((prev) => Math.max(prev - 1, 12))}
+                      style={styles.zoomBtn}
+                    >
+                      <Feather name="minus" size={16} color="#0F172A" />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Accuracy Badge */}
+                  <View style={styles.accuracyPill}>
+                    <View style={styles.livePulseDot} />
+                    <Text style={styles.accuracyText}>
+                      {hasCapturedGps ? `GPS ±${gpsAccuracy}m` : "Estimated Area"}
+                    </Text>
                   </View>
                 </View>
               </View>
 
-              {/* 4. Owner Special Notes */}
-              {lead.ownerNotes ? (
-                <View style={[styles.ownerNotesBox, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC" }]}>
-                  <Text style={[styles.ownerNotesTitle, { color: "#0D9488" }]}>ADMIN NOTES / OWNER PREFERENCES</Text>
-                  <Text style={[styles.ownerNotesText, { color: isDark ? "#E2E8F0" : "#334155" }]}>
-                    {lead.ownerNotes}
+              {/* Coordinates & External Navigation */}
+              <View style={[styles.gpsActionRow, { backgroundColor: isDark ? "#0F172A" : "#F1F5F9" }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.coordLabel, { color: textSecondary }]}>GPS Coordinates</Text>
+                  <Text style={[styles.coordValue, { color: textPrimary }]}>
+                    {latitude.toFixed(6)}, {longitude.toFixed(6)}
                   </Text>
+                </View>
+                <TouchableOpacity onPress={openInGoogleMaps} style={styles.navActionButton}>
+                  <Ionicons name="map-outline" size={15} color="#FFFFFF" style={{ marginRight: 4 }} />
+                  <Text style={styles.navActionText}>Google Maps</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={openDirections} style={[styles.navActionButton, { backgroundColor: "#3B82F6" }]}>
+                  <Ionicons name="navigate-outline" size={15} color="#FFFFFF" style={{ marginRight: 4 }} />
+                  <Text style={styles.navActionText}>Directions</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Address Details */}
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: textSecondary }]}>Locality:</Text>
+                <Text style={[styles.infoValue, { color: textPrimary }]}>{lead.locality || "Not Specified"}</Text>
+              </View>
+              {lead.address?.landmark ? (
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: textSecondary }]}>Landmark:</Text>
+                  <Text style={[styles.infoValue, { color: textPrimary }]}>{lead.address.landmark}</Text>
                 </View>
               ) : null}
-
-              {/* 5. Owner Rent Payout History Ledger */}
-              <View style={styles.historyWrap}>
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                  <Text style={[styles.historyHeading, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                    Owner Rent Disbursements ({ownerPayoutList.length})
-                  </Text>
-                  {isRented && (
-                    <TouchableOpacity onPress={() => setIsOwnerPayoutModalVisible(true)}>
-                      <Text style={{ fontSize: 12, fontWeight: "700", color: "#0D9488" }}>+ Log Payout</Text>
-                    </TouchableOpacity>
-                  )}
+              {lead.address?.fullAddress ? (
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: textSecondary }]}>Full Address:</Text>
+                  <Text style={[styles.infoValue, { color: textPrimary }]}>{lead.address.fullAddress}</Text>
                 </View>
+              ) : null}
+            </View>
 
-                {ownerPayoutList.length === 0 ? (
-                  <View style={[styles.emptyEntryBox, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC" }]}>
-                    <Text style={[styles.emptyEntryText, { color: colors.textSecondary }]}>
-                      No owner payouts recorded yet. Tap "Release Payout" to log disbursement.
-                    </Text>
+            {/* 4. Physical Specs & Field Inspection */}
+            <View style={[styles.card, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF", borderColor: borderCol }]}>
+              <View style={styles.cardHeaderRow}>
+                <View style={styles.cardHeaderLeft}>
+                  <View style={[styles.sectionIconWrap, { backgroundColor: "#8B5CF620" }]}>
+                    <Ionicons name="construct" size={18} color="#8B5CF6" />
                   </View>
-                ) : (
-                  ownerPayoutList.map((payout: any, pIdx: number) => (
-                    <View
-                      key={pIdx}
-                      style={[
-                        styles.ledgerItemRow,
-                        {
-                          backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
-                          borderColor: payout.status === "released" || payout.status === "paid" ? "#0D9488" : "#F59E0B",
-                        },
-                      ]}
-                    >
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.ledgerMonth, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                          {payout.month || "Month"}
-                        </Text>
-                        <Text style={[styles.ledgerDetails, { color: colors.textSecondary }]}>
-                          {payout.paymentMode || "UPI"} {payout.utrNumber ? "• UTR: " + payout.utrNumber : ""}
-                        </Text>
-                        {payout.remarks ? (
-                          <Text style={[styles.ledgerRemarks, { color: colors.textSecondary }]} numberOfLines={1}>
-                            {payout.remarks}
-                          </Text>
-                        ) : null}
-                      </View>
+                  <Text style={[styles.cardTitle, { color: textPrimary }]}>Specifications & Inspection</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => handleOpenEditModalWithTab("specs")}
+                  style={styles.cardEditBadge}
+                >
+                  <Feather name="edit-2" size={13} color="#0D9488" />
+                  <Text style={styles.cardEditText}>Edit</Text>
+                </TouchableOpacity>
+              </View>
 
-                      <View style={{ alignItems: "flex-end" }}>
-                        <Text style={[styles.ledgerAmount, { color: payout.status === "released" || payout.status === "paid" ? "#0D9488" : "#F59E0B" }]}>
-                          ₹{Number(payout.amount || 0).toLocaleString("en-IN")}
-                        </Text>
-                        <View style={[styles.ledgerBadge, { backgroundColor: payout.status === "released" || payout.status === "paid" ? "#CCFBF1" : "#FEF3C7" }]}>
-                          <Text style={{ fontSize: 9.5, fontWeight: "800", color: payout.status === "released" || payout.status === "paid" ? "#0F766E" : "#92400E" }}>
-                            {(payout.status || "PENDING").toUpperCase()}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  ))
-                )}
+              <View style={styles.specGrid}>
+                <View style={[styles.specBox, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC" }]}>
+                  <Text style={[styles.specBoxLabel, { color: textSecondary }]}>Carpet Area</Text>
+                  <Text style={[styles.specBoxVal, { color: textPrimary }]}>
+                    {lead.inspectionDetails?.actualCarpetAreaSqFt ? `${lead.inspectionDetails.actualCarpetAreaSqFt} sq ft` : "N/A"}
+                  </Text>
+                </View>
+                <View style={[styles.specBox, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC" }]}>
+                  <Text style={[styles.specBoxLabel, { color: textSecondary }]}>Bedrooms</Text>
+                  <Text style={[styles.specBoxVal, { color: textPrimary }]}>
+                    {lead.inspectionDetails?.actualBedrooms || lead.propertyType || "N/A"}
+                  </Text>
+                </View>
+                <View style={[styles.specBox, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC" }]}>
+                  <Text style={[styles.specBoxLabel, { color: textSecondary }]}>Floor / Total</Text>
+                  <Text style={[styles.specBoxVal, { color: textPrimary }]}>
+                    {lead.inspectionDetails?.floorNumber !== undefined ? `${lead.inspectionDetails.floorNumber} / ${lead.inspectionDetails.totalFloors || "N/A"}` : "N/A"}
+                  </Text>
+                </View>
+                <View style={[styles.specBox, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC" }]}>
+                  <Text style={[styles.specBoxLabel, { color: textSecondary }]}>Condition</Text>
+                  <Text style={[styles.specBoxVal, { color: textPrimary, textTransform: "capitalize" }]}>
+                    {lead.inspectionDetails?.propertyCondition || "Good"}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={[styles.checklistStatusRow, { backgroundColor: isDark ? "#0F172A" : "#F1F5F9" }]}>
+                <View style={styles.checkItem}>
+                  <Feather
+                    name={lead.inspectionDetails?.physicalVisitDone ? "check-circle" : "clock"}
+                    size={14}
+                    color={lead.inspectionDetails?.physicalVisitDone ? "#10B981" : "#94A3B8"}
+                  />
+                  <Text style={[styles.checkText, { color: textPrimary }]}>Visit Done</Text>
+                </View>
+                <View style={styles.checkItem}>
+                  <Feather
+                    name={lead.inspectionDetails?.ownershipDocsVerified ? "check-circle" : "clock"}
+                    size={14}
+                    color={lead.inspectionDetails?.ownershipDocsVerified ? "#10B981" : "#94A3B8"}
+                  />
+                  <Text style={[styles.checkText, { color: textPrimary }]}>Docs Verified</Text>
+                </View>
+                <View style={styles.checkItem}>
+                  <Feather
+                    name={lead.inspectionDetails?.keysAvailable ? "check-circle" : "clock"}
+                    size={14}
+                    color={lead.inspectionDetails?.keysAvailable ? "#10B981" : "#94A3B8"}
+                  />
+                  <Text style={[styles.checkText, { color: textPrimary }]}>Keys Ready</Text>
+                </View>
               </View>
             </View>
 
-            {/* ==================================================================== */}
-            {/* 👤 ACTIVE TENANT & TENANT RENT COLLECTION LEDGER                     */}
-            {/* ==================================================================== */}
-            <View style={[styles.sectionCard, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF", borderColor: isDark ? "#334155" : "#E2E8F0" }]}>
-              <View style={styles.sectionHeader}>
-                <View style={[styles.iconCircle, { backgroundColor: "rgba(16, 185, 129, 0.15)" }]}>
-                  <Feather name="users" size={16} color="#10B981" />
+            {/* 5. Complete Owner Details & KYC */}
+            <View style={[styles.card, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF", borderColor: borderCol }]}>
+              <View style={styles.cardHeaderRow}>
+                <View style={styles.cardHeaderLeft}>
+                  <View style={[styles.sectionIconWrap, { backgroundColor: "#F59E0B20" }]}>
+                    <Ionicons name="person" size={18} color="#F59E0B" />
+                  </View>
+                  <Text style={[styles.cardTitle, { color: textPrimary }]}>Property Owner Information</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => handleOpenEditModalWithTab("owner")}
+                  style={styles.cardEditBadge}
+                >
+                  <Feather name="edit-2" size={13} color="#0D9488" />
+                  <Text style={styles.cardEditText}>Edit</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.ownerTopProfile}>
+                <View style={[styles.ownerAvatar, { backgroundColor: "#0D9488" }]}>
+                  <Text style={styles.ownerAvatarText}>
+                    {(lead.ownerName || "O").charAt(0).toUpperCase()}
+                  </Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.sectionTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                    Active Tenant & Collection
-                  </Text>
-                  <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>
-                    Tenant identity, lease agreement & monthly rent receipts
-                  </Text>
+                  <Text style={[styles.ownerMainName, { color: textPrimary }]}>{lead.ownerName || "Unknown Owner"}</Text>
+                  <Text style={[styles.ownerMainPhone, { color: textSecondary }]}>{lead.ownerPhone || "No Phone"}</Text>
                 </View>
-                {isRented && (
-                  <TouchableOpacity
-                    onPress={() => setIsTenantRentModalVisible(true)}
-                    style={[styles.addRecordBtn, { backgroundColor: "#10B981" }]}
-                  >
-                    <Feather name="plus-circle" size={13} color="#FFFFFF" />
-                    <Text style={styles.addRecordBtnText}>Record Rent</Text>
+                <View style={styles.ownerContactButtons}>
+                  <TouchableOpacity onPress={() => handleCall(lead.ownerPhone)} style={styles.callCircleBtn}>
+                    <Feather name="phone-call" size={16} color="#FFFFFF" />
                   </TouchableOpacity>
-                )}
+                  <TouchableOpacity onPress={() => handleWhatsApp(lead.ownerPhone, lead.ownerName)} style={[styles.callCircleBtn, { backgroundColor: "#25D366" }]}>
+                    <FontAwesome5 name="whatsapp" size={16} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
               </View>
 
-              {isRented ? (
-                <>
-                  <View style={styles.detailRow}>
-                    <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Current Tenant</Text>
-                    <Text style={[styles.detailValue, { color: isDark ? "#FFFFFF" : "#0F172A", fontWeight: "700" }]}>
-                      {tenantName || "Direct Tenant"}
-                    </Text>
-                  </View>
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: textSecondary }]}>Email:</Text>
+                <Text style={[styles.infoValue, { color: textPrimary }]}>{lead.ownerEmail || "Not Provided"}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: textSecondary }]}>PAN Card:</Text>
+                <Text style={[styles.infoValue, { color: textPrimary }]}>{lead.ownerPanCard || "Not Provided"}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: textSecondary }]}>Aadhaar Last 4:</Text>
+                <Text style={[styles.infoValue, { color: textPrimary }]}>{lead.ownerAadhaarLast4 ? `•••• •••• ${lead.ownerAadhaarLast4}` : "Not Provided"}</Text>
+              </View>
 
-                  <View style={styles.detailRow}>
-                    <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Tenant Phone</Text>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                      <Text style={[styles.detailValue, { color: "#10B981", fontWeight: "700" }]}>
-                        {tenantPhone ? "+91 " + tenantPhone : "Not Registered"}
-                      </Text>
-                      {tenantPhone ? (
-                        <View style={{ flexDirection: "row", gap: 6 }}>
-                          <TouchableOpacity onPress={() => handleCall(tenantPhone)} style={styles.commIconBtn}>
-                            <Feather name="phone" size={13} color="#0D9488" />
-                          </TouchableOpacity>
-                          <TouchableOpacity onPress={() => handleWhatsApp(tenantPhone, tenantName)} style={styles.commIconBtn}>
-                            <FontAwesome5 name="whatsapp" size={13} color="#10B981" />
-                          </TouchableOpacity>
-                        </View>
-                      ) : null}
-                    </View>
+              {/* Bank & Payouts Account */}
+              <View style={[styles.bankDetailsBox, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: borderCol }]}>
+                <View style={styles.bankBoxHeader}>
+                  <MaterialCommunityIcons name="bank" size={16} color="#0D9488" />
+                  <Text style={[styles.bankBoxTitle, { color: textPrimary }]}>Owner Payout Account</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: textSecondary }]}>Bank Name:</Text>
+                  <Text style={[styles.infoValue, { color: textPrimary }]}>{lead.ownerBankDetails?.bankName || "Not Set"}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: textSecondary }]}>Account No:</Text>
+                  <Text style={[styles.infoValue, { color: textPrimary }]}>{lead.ownerBankDetails?.accountNumber || "Not Set"}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: textSecondary }]}>IFSC Code:</Text>
+                  <Text style={[styles.infoValue, { color: textPrimary }]}>{lead.ownerBankDetails?.ifscCode || "Not Set"}</Text>
+                </View>
+                {lead.ownerBankDetails?.upiId ? (
+                  <View style={styles.infoRow}>
+                    <Text style={[styles.infoLabel, { color: textSecondary }]}>UPI ID:</Text>
+                    <Text style={[styles.infoValue, { color: textPrimary }]}>{lead.ownerBankDetails.upiId}</Text>
                   </View>
+                ) : null}
+              </View>
+            </View>
 
-                  {tenantAadhaar ? (
-                    <View style={styles.detailRow}>
-                      <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Tenant Aadhaar</Text>
-                      <View style={styles.aadhaarPill}>
-                        <Text style={styles.aadhaarPillText}>XXXX-XXXX-{tenantAadhaar}</Text>
-                      </View>
-                    </View>
+            {/* 6. Tenant & Rent Management Module */}
+            <View style={[styles.card, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF", borderColor: borderCol }]}>
+              <View style={styles.cardHeaderRow}>
+                <View style={styles.cardHeaderLeft}>
+                  <View style={[styles.sectionIconWrap, { backgroundColor: "#10B98120" }]}>
+                    <FontAwesome5 name="hand-holding-usd" size={16} color="#10B981" />
+                  </View>
+                  <Text style={[styles.cardTitle, { color: textPrimary }]}>Tenant & Rent Ledger</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => handleOpenEditModalWithTab("tenant")}
+                  style={styles.cardEditBadge}
+                >
+                  <Feather name="edit-2" size={13} color="#0D9488" />
+                  <Text style={styles.cardEditText}>Edit</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Tenant Profile / Status */}
+              <View style={[styles.tenantProfileBanner, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC" }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.tenantNameText, { color: textPrimary }]}>
+                    {tenantName || "No Tenant Assigned (Vacant)"}
+                  </Text>
+                  {tenantPhone ? (
+                    <Text style={[styles.tenantPhoneText, { color: textSecondary }]}>{tenantPhone}</Text>
                   ) : null}
-
-                  <View style={styles.detailRow}>
-                    <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Monthly Rent / Deposit</Text>
-                    <Text style={[styles.detailValue, { color: isDark ? "#FFFFFF" : "#0F172A", fontWeight: "700" }]}>
-                      ₹{(lead.deal?.finalPrice || lead.expectedPrice || 0).toLocaleString("en-IN")}/mo • Dep: ₹{(lead.deal?.deposit || lead.securityDeposit || 0).toLocaleString("en-IN")}
-                    </Text>
-                  </View>
-
-                  <View style={styles.detailRow}>
-                    <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Agreement / Police Ver.</Text>
-                    <Text style={[styles.detailValue, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                      {lead.deal?.agreementNumber || "AGR-Active"} • {lead.deal?.policeVerificationStatus === "verified" ? "✅ Verified" : "⏳ Pending"}
-                    </Text>
-                  </View>
-
-                  {/* Tenant Rent Collection History Entries */}
-                  <View style={styles.historyWrap}>
-                    <Text style={[styles.historyHeading, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                      Tenant Rent Collection Ledger ({rentLedgerList.length})
-                    </Text>
-
-                    {rentLedgerList.length === 0 ? (
-                      <View style={[styles.emptyEntryBox, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC" }]}>
-                        <Text style={[styles.emptyEntryText, { color: colors.textSecondary }]}>
-                          No rent receipts logged yet. Tap "Record Rent" to add first month collection.
-                        </Text>
-                      </View>
-                    ) : (
-                      rentLedgerList.map((entry: any, eIdx: number) => (
-                        <View
-                          key={eIdx}
-                          style={[
-                            styles.ledgerItemRow,
-                            {
-                              backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
-                              borderColor: entry.status === "PAID" ? "#10B981" : "#EF4444",
-                            },
-                          ]}
-                        >
-                          <View style={{ flex: 1 }}>
-                            <Text style={[styles.ledgerMonth, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                              {entry.month || "Month"}
-                            </Text>
-                            <Text style={[styles.ledgerDetails, { color: colors.textSecondary }]}>
-                              {entry.paymentMode || "UPI"} {entry.utrNumber ? "• UTR: " + entry.utrNumber : ""}
-                            </Text>
-                          </View>
-
-                          <View style={{ alignItems: "flex-end" }}>
-                            <Text style={[styles.ledgerAmount, { color: entry.status === "PAID" ? "#10B981" : "#EF4444" }]}>
-                              ₹{Number(entry.amount || 0).toLocaleString("en-IN")}
-                            </Text>
-                            <View style={[styles.ledgerBadge, { backgroundColor: entry.status === "PAID" ? "#DCFCE7" : "#FEE2E2" }]}>
-                              <Text style={{ fontSize: 9.5, fontWeight: "800", color: entry.status === "PAID" ? "#166534" : "#991B1B" }}>
-                                {entry.status}
-                              </Text>
-                            </View>
-                          </View>
-                        </View>
-                      ))
-                    )}
-                  </View>
-                </>
-              ) : (
-                <View style={[styles.vacantBox, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC" }]}>
-                  <Ionicons name="home-outline" size={24} color="#64748B" />
-                  <Text style={[styles.vacantTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                    Unit Currently Vacant
-                  </Text>
-                  <Text style={[styles.vacantSub, { color: colors.textSecondary }]}>
-                    No tenant is currently occupying this property.
-                  </Text>
-                  {onDealPress && (
-                    <TouchableOpacity onPress={() => onDealPress(lead)} style={styles.assignTenantBtn}>
-                      <Feather name="user-plus" size={14} color="#FFFFFF" />
-                      <Text style={styles.assignTenantBtnText}>Confirm Deal & Assign Tenant</Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
-              )}
-            </View>
-
-            {/* PROPERTY SPECIFICATIONS */}
-            <View style={[styles.sectionCard, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF", borderColor: isDark ? "#334155" : "#E2E8F0" }]}>
-              <View style={styles.sectionHeader}>
-                <View style={[styles.iconCircle, { backgroundColor: "rgba(59, 130, 246, 0.15)" }]}>
-                  <Ionicons name="home-outline" size={16} color="#3B82F6" />
-                </View>
-                <Text style={[styles.sectionTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                  Property Specifications
-                </Text>
-              </View>
-
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Property Type</Text>
-                <Text style={[styles.detailValue, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>{lead.propertyType || "—"}</Text>
-              </View>
-
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Listing Type</Text>
-                <Text style={[styles.detailValue, { color: isDark ? "#FFFFFF" : "#0F172A", fontWeight: "700" }]}>
-                  {(lead.listingType || "RENT").toUpperCase()}
-                </Text>
-              </View>
-
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Expected Rent / Price</Text>
-                <Text style={[styles.detailValue, { color: "#0D9488", fontWeight: "700" }]}>
-                  ₹{(lead.expectedPrice || 0).toLocaleString("en-IN")}
-                </Text>
-              </View>
-
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Security Deposit</Text>
-                <Text style={[styles.detailValue, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                  ₹{(lead.securityDeposit || 0).toLocaleString("en-IN")}
-                </Text>
-              </View>
-
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Locality & City</Text>
-                <Text style={[styles.detailValue, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                  {lead.locality}, {lead.address?.city || "Delhi NCR"}
-                </Text>
-              </View>
-
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Furnishing</Text>
-                <Text style={[styles.detailValue, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                  {(lead.furnishing || "unfurnished").replace("_", " ")}
-                </Text>
-              </View>
-            </View>
-
-            {/* COMMISSION MANAGEMENT */}
-            <View style={[styles.sectionCard, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF", borderColor: isDark ? "#334155" : "#E2E8F0" }]}>
-              <View style={styles.sectionHeader}>
-                <View style={[styles.iconCircle, { backgroundColor: "rgba(16, 185, 129, 0.15)" }]}>
-                  <Ionicons name="cash-outline" size={16} color="#10B981" />
-                </View>
-                <Text style={[styles.sectionTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                  Agent Commission
-                </Text>
-              </View>
-
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Approved Amount</Text>
-                <Text style={[styles.detailValue, { color: "#10B981", fontWeight: "700" }]}>
-                  ₹{(lead.commission?.approvedAmount || lead.commission?.estimatedAmount || 0).toLocaleString("en-IN")}
-                </Text>
-              </View>
-
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Commission Status</Text>
-                <View style={[styles.badge, { backgroundColor: lead.commission?.status === "paid" ? "#DCFCE7" : "#FEF3C7" }]}>
-                  <Text style={{ fontSize: 11, fontWeight: "700", color: lead.commission?.status === "paid" ? "#166534" : "#92400E" }}>
-                    {(lead.commission?.status || "pending").toUpperCase()}
+                <View style={[styles.rentStatusChip, { backgroundColor: isRented ? "#10B98120" : "#F59E0B20" }]}>
+                  <Text style={[styles.rentStatusChipText, { color: isRented ? "#10B981" : "#F59E0B" }]}>
+                    {isRented ? "OCCUPIED" : "VACANT"}
                   </Text>
                 </View>
               </View>
 
-              {onCommissionPress && (
-                <TouchableOpacity onPress={() => onCommissionPress(lead)} style={styles.actionOutlineBtn}>
-                  <Feather name="dollar-sign" size={14} color="#0D9488" />
-                  <Text style={styles.actionOutlineBtnText}>Manage Commission</Text>
+              {/* Rent Metrics Summary */}
+              <View style={styles.rentMetricsRow}>
+                <View style={[styles.metricCard, { backgroundColor: isDark ? "#0F172A" : "#F1F5F9" }]}>
+                  <Text style={[styles.metricLabel, { color: textSecondary }]}>Collected</Text>
+                  <Text style={[styles.metricValue, { color: "#10B981" }]}>₹{totalRentCollected.toLocaleString("en-IN")}</Text>
+                </View>
+                <View style={[styles.metricCard, { backgroundColor: isDark ? "#0F172A" : "#F1F5F9" }]}>
+                  <Text style={[styles.metricLabel, { color: textSecondary }]}>Disbursed to Owner</Text>
+                  <Text style={[styles.metricValue, { color: "#0D9488" }]}>₹{totalOwnerDisbursed.toLocaleString("en-IN")}</Text>
+                </View>
+              </View>
+
+              {/* Action Buttons to Record Ledger / Owner Payout */}
+              <View style={styles.rentActionButtonsRow}>
+                <TouchableOpacity
+                  onPress={() => setIsTenantRentModalVisible(true)}
+                  style={[styles.rentActionButton, { backgroundColor: "#10B981" }]}
+                >
+                  <Feather name="plus-circle" size={14} color="#FFFFFF" style={{ marginRight: 5 }} />
+                  <Text style={styles.rentActionBtnText}>Record Rent Payment</Text>
                 </TouchableOpacity>
-              )}
-            </View>
 
-            {/* FIELD STAFF & ASSIGNMENT */}
-            <View style={[styles.sectionCard, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF", borderColor: isDark ? "#334155" : "#E2E8F0" }]}>
-              <View style={styles.sectionHeader}>
-                <View style={[styles.iconCircle, { backgroundColor: "rgba(245, 158, 11, 0.15)" }]}>
-                  <Ionicons name="person-outline" size={16} color="#F59E0B" />
-                </View>
-                <Text style={[styles.sectionTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                  Field Operations
-                </Text>
-              </View>
-
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Source Agent</Text>
-                <Text style={[styles.detailValue, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                  {lead.agent?.name || lead.agentName || "Direct / Self"}
-                </Text>
-              </View>
-
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Assigned Staff</Text>
-                <Text style={[styles.detailValue, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                  {lead.assignedTo?.name || lead.assignedStaffName || "Unassigned"}
-                </Text>
-              </View>
-
-              {onAssignPress && (
-                <TouchableOpacity onPress={() => onAssignPress(lead)} style={styles.actionOutlineBtn}>
-                  <Feather name="user-check" size={14} color="#0D9488" />
-                  <Text style={styles.actionOutlineBtnText}>
-                    {lead.assignedTo ? "Reassign Field Staff" : "Assign Field Staff"}
-                  </Text>
+                <TouchableOpacity
+                  onPress={() => setIsOwnerPayoutModalVisible(true)}
+                  style={[styles.rentActionButton, { backgroundColor: "#0D9488" }]}
+                >
+                  <MaterialCommunityIcons name="bank-transfer-out" size={16} color="#FFFFFF" style={{ marginRight: 5 }} />
+                  <Text style={styles.rentActionBtnText}>Release Owner Payout</Text>
                 </TouchableOpacity>
-              )}
+              </View>
             </View>
+
+            {/* Bottom Safe Padding */}
+            <View style={{ height: 40 }} />
           </ScrollView>
 
-          {/* Bottom Close Button */}
-          <View style={[styles.bottomBar, { borderTopColor: isDark ? "#1E293B" : "#F1F5F9" }]}>
-            <TouchableOpacity onPress={onClose} style={[styles.closeBottomBtn, { backgroundColor: "#0D9488" }]}>
-              <Text style={styles.closeBottomBtnText}>Done</Text>
+          {/* Bottom Fixed Action Bar */}
+          <View style={[styles.bottomActionBar, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF", borderTopColor: borderCol }]}>
+            <TouchableOpacity
+              onPress={() => handleOpenEditModalWithTab("basic")}
+              style={[styles.primaryActionBtn, { backgroundColor: "#0D9488" }]}
+            >
+              <Feather name="edit-3" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.primaryActionBtnText}>Edit Full Property</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setIsDeleteModalVisible(true)}
+              style={[styles.secondaryActionBtn, { borderColor: "#EF4444" }]}
+            >
+              <Feather name="trash-2" size={16} color="#EF4444" />
             </TouchableOpacity>
           </View>
         </View>
       </View>
 
-      {/* ==================================================================== */}
-      {/* ✏️ MODAL: EDIT OWNER DETAILS (SUPER ADMIN ONLY)                      */}
-      {/* ==================================================================== */}
-      <Modal visible={isEditOwnerModalVisible} animationType="fade" transparent onRequestClose={() => setIsEditOwnerModalVisible(false)}>
-        <View style={styles.subModalBackdrop}>
-          <View style={[styles.editOwnerSheet, { backgroundColor: isDark ? "#0F172A" : "#FFFFFF" }]}>
-            <View style={[styles.subModalHeader, { borderBottomColor: isDark ? "#1E293B" : "#F1F5F9" }]}>
-              <View>
-                <Text style={[styles.subModalTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                  Edit Owner Information
-                </Text>
-                <Text style={[styles.subModalSub, { color: colors.textSecondary }]}>
-                  Update contact, bank details and KYC records for this property
-                </Text>
+      {/* ──────────────────────────────────────────────────────────
+          MASTER FULL PROPERTY EDIT MODAL (ALL TABS & FIELDS)
+      ────────────────────────────────────────────────────────── */}
+      <Modal visible={isEditModalVisible} animationType="slide" transparent onRequestClose={() => setIsEditModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.editModalContainer, { backgroundColor: isDark ? "#0F172A" : "#FFFFFF" }]}>
+            {/* Edit Modal Header */}
+            <View style={[styles.modalHeader, { borderBottomColor: borderCol, backgroundColor: isDark ? "#1E293B" : "#FFFFFF" }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.modalHeaderTitle, { color: textPrimary }]}>Edit Entire Property</Text>
+                <Text style={[styles.modalHeaderSub, { color: textSecondary }]}>{lead.leadId || "Property"}</Text>
               </View>
-              <TouchableOpacity onPress={() => setIsEditOwnerModalVisible(false)}>
-                <Feather name="x" size={20} color={colors.textSecondary} />
+              <TouchableOpacity onPress={() => setIsEditModalVisible(false)} style={[styles.closeButton, { backgroundColor: isDark ? "#334155" : "#E2E8F0" }]}>
+                <Feather name="x" size={20} color={textPrimary} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16 }}>
-              {/* Personal Contacts */}
-              <Text style={[styles.formSectionHeader, { color: "#0D9488" }]}>PERSONAL & CONTACTS</Text>
+            {/* Navigation Tabs */}
+            <View style={[styles.editTabsBar, { borderBottomColor: borderCol, backgroundColor: isDark ? "#1E293B" : "#F8FAFC" }]}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScrollContent}>
+                {[
+                  { id: "basic", label: "Overview", icon: "home" },
+                  { id: "financials", label: "Financials", icon: "dollar-sign" },
+                  { id: "location", label: "Location & GPS", icon: "map-pin" },
+                  { id: "specs", label: "Specs & Visit", icon: "tool" },
+                  { id: "owner", label: "Owner & Bank", icon: "user" },
+                  { id: "tenant", label: "Tenant & Deal", icon: "check-circle" },
+                  { id: "media", label: "Media & Links", icon: "image" },
+                ].map((tab) => {
+                  const isActive = editActiveTab === tab.id;
+                  return (
+                    <TouchableOpacity
+                      key={tab.id}
+                      onPress={() => {
+                        try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+                        setEditActiveTab(tab.id as EditTab);
+                      }}
+                      style={[
+                        styles.tabItem,
+                        isActive && styles.tabItemActive,
+                        { borderColor: isActive ? "#0D9488" : "transparent" },
+                      ]}
+                    >
+                      <Feather
+                        name={tab.icon as any}
+                        size={14}
+                        color={isActive ? "#0D9488" : textSecondary}
+                        style={{ marginRight: 6 }}
+                      />
+                      <Text
+                        style={[
+                          styles.tabItemText,
+                          { color: isActive ? "#0D9488" : textSecondary, fontWeight: isActive ? "700" : "500" },
+                        ]}
+                      >
+                        {tab.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
 
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Owner Legal Name *</Text>
-              <TextInput
-                value={editOwnerName}
-                onChangeText={setEditOwnerName}
-                placeholder="Full Name"
-                placeholderTextColor="#94A3B8"
-                style={[styles.inputField, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFF" : "#000", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
-              />
+            {/* Tab Form Content */}
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.editFormScroll}>
+              {/* TAB 1: BASIC & OVERVIEW */}
+              {editActiveTab === "basic" && (
+                <View>
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Property Title</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. Luxury 2BHK in Indirapuram"
+                      placeholderTextColor={textSecondary}
+                      value={editTitle}
+                      onChangeText={setEditTitle}
+                    />
+                  </View>
 
-              <View style={{ flexDirection: "row", gap: 12 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Primary Mobile *</Text>
-                  <TextInput
-                    value={editOwnerPhone}
-                    onChangeText={setEditOwnerPhone}
-                    placeholder="10-digit number"
-                    keyboardType="phone-pad"
-                    placeholderTextColor="#94A3B8"
-                    style={[styles.inputField, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFF" : "#000", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
-                  />
+                  {renderOptionSelector(
+                    "Property Type / Configuration",
+                    [
+                      { label: "1 BHK", value: "1BHK" },
+                      { label: "2 BHK", value: "2BHK" },
+                      { label: "3 BHK", value: "3BHK" },
+                      { label: "PG / Studio", value: "PG / Studio" },
+                      { label: "Independent House", value: "Independent House" },
+                      { label: "Commercial Shop", value: "Commercial Shop" },
+                      { label: "Office", value: "office" },
+                      { label: "Villa", value: "villa" },
+                    ],
+                    editPropertyType,
+                    setEditPropertyType
+                  )}
+
+                  {renderOptionSelector(
+                    "Listing Type",
+                    [
+                      { label: "For Rent", value: "rent" },
+                      { label: "For Sale", value: "sale" },
+                    ],
+                    editListingType,
+                    setEditListingType
+                  )}
+
+                  {renderOptionSelector(
+                    "Property Status",
+                    [
+                      { label: "New Lead", value: "new" },
+                      { label: "Assigned", value: "assigned" },
+                      { label: "Under Verification", value: "under_verification" },
+                      { label: "Verified & Active", value: "verified" },
+                      { label: "Rented Out", value: "rented" },
+                      { label: "Sold", value: "sold" },
+                      { label: "Rejected", value: "rejected" },
+                      { label: "Cancelled", value: "cancelled" },
+                    ],
+                    editStatus,
+                    setEditStatus
+                  )}
+
+                  {renderOptionSelector(
+                    "Furnishing",
+                    [
+                      { label: "Unfurnished", value: "unfurnished" },
+                      { label: "Semi Furnished", value: "semi_furnished" },
+                      { label: "Fully Furnished", value: "fully_furnished" },
+                    ],
+                    editFurnishing,
+                    setEditFurnishing
+                  )}
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Available From (YYYY-MM-DD)</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. 2026-10-01"
+                      placeholderTextColor={textSecondary}
+                      value={editAvailableFrom}
+                      onChangeText={setEditAvailableFrom}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Description</Text>
+                    <TextInput
+                      style={[styles.textArea, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="Enter detailed property description..."
+                      placeholderTextColor={textSecondary}
+                      multiline
+                      numberOfLines={3}
+                      value={editDesc}
+                      onChangeText={setEditDesc}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Internal Super Admin Remarks</Text>
+                    <TextInput
+                      style={[styles.textArea, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="Staff or internal notes..."
+                      placeholderTextColor={textSecondary}
+                      multiline
+                      numberOfLines={2}
+                      value={editRemarks}
+                      onChangeText={setEditRemarks}
+                    />
+                  </View>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Alternate Mobile</Text>
-                  <TextInput
-                    value={editAltPhone}
-                    onChangeText={setEditAltPhone}
-                    placeholder="Optional phone"
-                    keyboardType="phone-pad"
-                    placeholderTextColor="#94A3B8"
-                    style={[styles.inputField, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFF" : "#000", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
-                  />
+              )}
+
+              {/* TAB 2: FINANCIALS */}
+              {editActiveTab === "financials" && (
+                <View>
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Expected Rent / Sale Price (₹) *</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. 25000"
+                      placeholderTextColor={textSecondary}
+                      keyboardType="numeric"
+                      value={editPrice}
+                      onChangeText={setEditPrice}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Security Deposit (₹)</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. 50000"
+                      placeholderTextColor={textSecondary}
+                      keyboardType="numeric"
+                      value={editDeposit}
+                      onChangeText={setEditDeposit}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Maintenance Charges (₹/mo)</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. 2000"
+                      placeholderTextColor={textSecondary}
+                      keyboardType="numeric"
+                      value={editMaintenance}
+                      onChangeText={setEditMaintenance}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Min Negotiable Rent (₹)</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. 22000"
+                      placeholderTextColor={textSecondary}
+                      keyboardType="numeric"
+                      value={editMinNegotiable}
+                      onChangeText={setEditMinNegotiable}
+                    />
+                  </View>
+
+                  <View style={styles.formSectionDivider}>
+                    <Text style={[styles.sectionSubtitle, { color: textPrimary }]}>Agent Commission Tracking</Text>
+                  </View>
+
+                  <View style={styles.rowTwoInputs}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Estimated (₹)</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 5000"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editCommissionEst}
+                        onChangeText={setEditCommissionEst}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Approved (₹)</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 5000"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editCommissionApproved}
+                        onChangeText={setEditCommissionApproved}
+                      />
+                    </View>
+                  </View>
+
+                  {renderOptionSelector(
+                    "Commission Status",
+                    [
+                      { label: "Pending", value: "pending" },
+                      { label: "Approved", value: "approved" },
+                      { label: "Paid", value: "paid" },
+                      { label: "Rejected", value: "rejected" },
+                    ],
+                    editCommissionStatus,
+                    setEditCommissionStatus
+                  )}
                 </View>
-              </View>
+              )}
 
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Email Address</Text>
-              <TextInput
-                value={editOwnerEmail}
-                onChangeText={setEditOwnerEmail}
-                placeholder="owner@example.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                placeholderTextColor="#94A3B8"
-                style={[styles.inputField, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFF" : "#000", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
-              />
+              {/* TAB 3: LOCATION & GPS */}
+              {editActiveTab === "location" && (
+                <View>
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Locality / Area Name *</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. Indirapuram, Sector 62"
+                      placeholderTextColor={textSecondary}
+                      value={editLocality}
+                      onChangeText={setEditLocality}
+                    />
+                  </View>
 
-              {/* KYC & Identity */}
-              <Text style={[styles.formSectionHeader, { color: "#0D9488", marginTop: 16 }]}>GOVERNMENT IDENTITY</Text>
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Street / Society Name</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. ATS Advantage, Flat 402"
+                      placeholderTextColor={textSecondary}
+                      value={editStreet}
+                      onChangeText={setEditStreet}
+                    />
+                  </View>
 
-              <View style={{ flexDirection: "row", gap: 12 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Aadhaar Last 4 Digits</Text>
-                  <TextInput
-                    value={editOwnerAadhaar}
-                    onChangeText={setEditOwnerAadhaar}
-                    maxLength={4}
-                    placeholder="e.g. 8921"
-                    keyboardType="number-pad"
-                    placeholderTextColor="#94A3B8"
-                    style={[styles.inputField, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFF" : "#000", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
-                  />
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Landmark</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. Near Shipra Mall"
+                      placeholderTextColor={textSecondary}
+                      value={editLandmark}
+                      onChangeText={setEditLandmark}
+                    />
+                  </View>
+
+                  <View style={styles.rowTwoInputs}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>City</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        value={editCity}
+                        onChangeText={setEditCity}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Pincode</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 201014"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editPincode}
+                        onChangeText={setEditPincode}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Full Formatted Address</Text>
+                    <TextInput
+                      style={[styles.textArea, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="Full printable address..."
+                      placeholderTextColor={textSecondary}
+                      multiline
+                      numberOfLines={2}
+                      value={editFullAddress}
+                      onChangeText={setEditFullAddress}
+                    />
+                  </View>
+
+                  <View style={styles.formSectionDivider}>
+                    <Text style={[styles.sectionSubtitle, { color: textPrimary }]}>Exact GPS Coordinates</Text>
+                  </View>
+
+                  <View style={styles.rowTwoInputs}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Latitude</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 28.633298"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editLatitude}
+                        onChangeText={setEditLatitude}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Longitude</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 77.367870"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editLongitude}
+                        onChangeText={setEditLongitude}
+                      />
+                    </View>
+                  </View>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>PAN Card Number</Text>
-                  <TextInput
-                    value={editOwnerPan}
-                    onChangeText={setEditOwnerPan}
-                    maxLength={10}
-                    placeholder="ABCDE1234F"
-                    autoCapitalize="characters"
-                    placeholderTextColor="#94A3B8"
-                    style={[styles.inputField, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFF" : "#000", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
-                  />
+              )}
+
+              {/* TAB 4: SPECS & PHYSICAL INSPECTION */}
+              {editActiveTab === "specs" && (
+                <View>
+                  <View style={styles.rowTwoInputs}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Carpet Area (sq ft)</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 1250"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editCarpetArea}
+                        onChangeText={setEditCarpetArea}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Bedrooms</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 2"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editBedrooms}
+                        onChangeText={setEditBedrooms}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.rowTwoInputs}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Bathrooms</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 2"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editBathrooms}
+                        onChangeText={setEditBathrooms}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Balconies</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 1"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editBalconies}
+                        onChangeText={setEditBalconies}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.rowTwoInputs}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Floor Number</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 4"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editFloorNo}
+                        onChangeText={setEditFloorNo}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Total Floors</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 14"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editTotalFloors}
+                        onChangeText={setEditTotalFloors}
+                      />
+                    </View>
+                  </View>
+
+                  {renderOptionSelector(
+                    "Property Condition",
+                    [
+                      { label: "Excellent", value: "excellent" },
+                      { label: "Good", value: "good" },
+                      { label: "Needs Repair", value: "needs_repair" },
+                      { label: "Poor", value: "poor" },
+                    ],
+                    editCondition,
+                    setEditCondition
+                  )}
+
+                  <View style={styles.formSectionDivider}>
+                    <Text style={[styles.sectionSubtitle, { color: textPrimary }]}>On-Site Verification Checklist</Text>
+                  </View>
+
+                  <View style={[styles.switchRow, { borderColor: borderCol }]}>
+                    <Text style={[styles.switchLabel, { color: textPrimary }]}>Physical Visit Completed</Text>
+                    <Switch
+                      value={editPhysicalVisitDone}
+                      onValueChange={setEditPhysicalVisitDone}
+                      trackColor={{ false: "#94A3B8", true: "#0D9488" }}
+                    />
+                  </View>
+
+                  <View style={[styles.switchRow, { borderColor: borderCol }]}>
+                    <Text style={[styles.switchLabel, { color: textPrimary }]}>Ownership Documents Verified</Text>
+                    <Switch
+                      value={editOwnershipDocsVerified}
+                      onValueChange={setEditOwnershipDocsVerified}
+                      trackColor={{ false: "#94A3B8", true: "#0D9488" }}
+                    />
+                  </View>
+
+                  <View style={[styles.switchRow, { borderColor: borderCol }]}>
+                    <Text style={[styles.switchLabel, { color: textPrimary }]}>Keys Available</Text>
+                    <Switch
+                      value={editKeysAvailable}
+                      onValueChange={setEditKeysAvailable}
+                      trackColor={{ false: "#94A3B8", true: "#0D9488" }}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Staff Inspection Remarks</Text>
+                    <TextInput
+                      style={[styles.textArea, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="Inspection notes and comments..."
+                      placeholderTextColor={textSecondary}
+                      multiline
+                      numberOfLines={2}
+                      value={editStaffRemarks}
+                      onChangeText={setEditStaffRemarks}
+                    />
+                  </View>
                 </View>
-              </View>
+              )}
 
-              {/* Bank & Payout Information */}
-              <Text style={[styles.formSectionHeader, { color: "#0D9488", marginTop: 16 }]}>BANK ACCOUNT & PAYOUTS</Text>
+              {/* TAB 5: OWNER DETAILS & BANKING */}
+              {editActiveTab === "owner" && (
+                <View>
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Owner Full Name *</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. Ramesh Kumar"
+                      placeholderTextColor={textSecondary}
+                      value={editOwnerName}
+                      onChangeText={setEditOwnerName}
+                    />
+                  </View>
 
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Beneficiary Name</Text>
-              <TextInput
-                value={editAccountHolder}
-                onChangeText={setEditAccountHolder}
-                placeholder="Account Holder Name"
-                placeholderTextColor="#94A3B8"
-                style={[styles.inputField, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFF" : "#000", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
-              />
+                  <View style={styles.rowTwoInputs}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Primary Mobile *</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="10-digit number"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="phone-pad"
+                        value={editOwnerPhone}
+                        onChangeText={setEditOwnerPhone}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Alternate Phone</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="Optional"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="phone-pad"
+                        value={editAltPhone}
+                        onChangeText={setEditAltPhone}
+                      />
+                    </View>
+                  </View>
 
-              <View style={{ flexDirection: "row", gap: 12 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Bank Name</Text>
-                  <TextInput
-                    value={editBankName}
-                    onChangeText={setEditBankName}
-                    placeholder="e.g. HDFC Bank"
-                    placeholderTextColor="#94A3B8"
-                    style={[styles.inputField, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFF" : "#000", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
-                  />
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Owner Email Address</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. owner@example.com"
+                      placeholderTextColor={textSecondary}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      value={editOwnerEmail}
+                      onChangeText={setEditOwnerEmail}
+                    />
+                  </View>
+
+                  <View style={styles.rowTwoInputs}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Aadhaar Last 4</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="4 digits"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        maxLength={4}
+                        value={editOwnerAadhaar}
+                        onChangeText={setEditOwnerAadhaar}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>PAN Card Number</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="ABCDE1234F"
+                        placeholderTextColor={textSecondary}
+                        autoCapitalize="characters"
+                        value={editOwnerPan}
+                        onChangeText={setEditOwnerPan}
+                      />
+                    </View>
+                  </View>
+
+                  {renderOptionSelector(
+                    "Owner KYC Status",
+                    [
+                      { label: "Not Submitted", value: "not_submitted" },
+                      { label: "Pending", value: "pending" },
+                      { label: "Verified", value: "verified" },
+                      { label: "Rejected", value: "rejected" },
+                    ],
+                    editOwnerKycStatus,
+                    setEditOwnerKycStatus
+                  )}
+
+                  <View style={styles.formSectionDivider}>
+                    <Text style={[styles.sectionSubtitle, { color: textPrimary }]}>Owner Bank & UPI Details</Text>
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Account Holder Name</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="Name as per bank"
+                      placeholderTextColor={textSecondary}
+                      value={editAccountHolder}
+                      onChangeText={setEditAccountHolder}
+                    />
+                  </View>
+
+                  <View style={styles.rowTwoInputs}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Bank Name</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. HDFC Bank"
+                        placeholderTextColor={textSecondary}
+                        value={editBankName}
+                        onChangeText={setEditBankName}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Account Number</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="Account Number"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editAccountNumber}
+                        onChangeText={setEditAccountNumber}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.rowTwoInputs}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>IFSC Code</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="HDFC0001234"
+                        placeholderTextColor={textSecondary}
+                        autoCapitalize="characters"
+                        value={editIfscCode}
+                        onChangeText={setEditIfscCode}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>UPI ID</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="owner@upi"
+                        placeholderTextColor={textSecondary}
+                        autoCapitalize="none"
+                        value={editUpiId}
+                        onChangeText={setEditUpiId}
+                      />
+                    </View>
+                  </View>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>IFSC Code</Text>
-                  <TextInput
-                    value={editIfscCode}
-                    onChangeText={setEditIfscCode}
-                    placeholder="HDFC0001234"
-                    autoCapitalize="characters"
-                    placeholderTextColor="#94A3B8"
-                    style={[styles.inputField, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFF" : "#000", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
-                  />
+              )}
+
+              {/* TAB 6: TENANT & DEAL */}
+              {editActiveTab === "tenant" && (
+                <View>
+                  <View style={[styles.switchRow, { borderColor: borderCol, marginBottom: 16 }]}>
+                    <Text style={[styles.switchLabel, { color: textPrimary }]}>Deal Closed / Property Occupied</Text>
+                    <Switch
+                      value={editDealClosed}
+                      onValueChange={setEditDealClosed}
+                      trackColor={{ false: "#94A3B8", true: "#10B981" }}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Tenant Full Name</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. Amit Sharma"
+                      placeholderTextColor={textSecondary}
+                      value={editTenantName}
+                      onChangeText={setEditTenantName}
+                    />
+                  </View>
+
+                  <View style={styles.rowTwoInputs}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Tenant Phone</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="10-digit number"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="phone-pad"
+                        value={editTenantPhone}
+                        onChangeText={setEditTenantPhone}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Tenant Aadhaar Last 4</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="4 digits"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        maxLength={4}
+                        value={editTenantAadhaar}
+                        onChangeText={setEditTenantAadhaar}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.rowTwoInputs}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Final Agreed Rent (₹)</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 24000"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editDealPrice}
+                        onChangeText={setEditDealPrice}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Lease Months</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="11"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editLeaseMonths}
+                        onChangeText={setEditLeaseMonths}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Agreement Number</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. AGR-2026-9812"
+                      placeholderTextColor={textSecondary}
+                      value={editAgreementNumber}
+                      onChangeText={setEditAgreementNumber}
+                    />
+                  </View>
+
+                  {renderOptionSelector(
+                    "Police Verification Status",
+                    [
+                      { label: "Pending", value: "pending" },
+                      { label: "Submitted", value: "submitted" },
+                      { label: "Verified", value: "verified" },
+                      { label: "Not Required", value: "not_required" },
+                    ],
+                    editPoliceStatus,
+                    setEditPoliceStatus
+                  )}
                 </View>
-              </View>
+              )}
 
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Bank Account Number</Text>
-              <TextInput
-                value={editAccountNumber}
-                onChangeText={setEditAccountNumber}
-                placeholder="Account Number"
-                keyboardType="number-pad"
-                placeholderTextColor="#94A3B8"
-                style={[styles.inputField, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFF" : "#000", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
-              />
+              {/* TAB 7: MEDIA & LINKS */}
+              {editActiveTab === "media" && (
+                <View>
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Cover Photo URL</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="https://..."
+                      placeholderTextColor={textSecondary}
+                      value={editCoverPhoto}
+                      onChangeText={setEditCoverPhoto}
+                    />
+                  </View>
 
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>UPI ID (VPA)</Text>
-              <TextInput
-                value={editUpiId}
-                onChangeText={setEditUpiId}
-                placeholder="e.g. name@okhdfcbank"
-                autoCapitalize="none"
-                placeholderTextColor="#94A3B8"
-                style={[styles.inputField, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFF" : "#000", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
-              />
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Property Photos URLs (one per line)</Text>
+                    <TextInput
+                      style={[styles.textArea, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol, height: 110 }]}
+                      placeholder="https://example.com/photo1.jpg&#10;https://example.com/photo2.jpg"
+                      placeholderTextColor={textSecondary}
+                      multiline
+                      value={editPhotosListStr}
+                      onChangeText={setEditPhotosListStr}
+                    />
+                  </View>
 
-              {/* Residential Address */}
-              <Text style={[styles.formSectionHeader, { color: "#0D9488", marginTop: 16 }]}>RESIDENTIAL ADDRESS</Text>
-              <View style={{ flexDirection: "row", gap: 12 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>House / Flat No.</Text>
-                  <TextInput
-                    value={editHouseNo}
-                    onChangeText={setEditHouseNo}
-                    placeholder="A-402, Tower 2"
-                    placeholderTextColor="#94A3B8"
-                    style={[styles.inputField, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFF" : "#000", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
-                  />
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Video URL / YouTube Link</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="https://youtube.com/..."
+                      placeholderTextColor={textSecondary}
+                      value={editVideoUrl}
+                      onChangeText={setEditVideoUrl}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Virtual 3D Tour Link</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="https://my.matterport.com/..."
+                      placeholderTextColor={textSecondary}
+                      value={editVirtualTour}
+                      onChangeText={setEditVirtualTour}
+                    />
+                  </View>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Pincode</Text>
-                  <TextInput
-                    value={editPincode}
-                    onChangeText={setEditPincode}
-                    placeholder="110001"
-                    keyboardType="number-pad"
-                    placeholderTextColor="#94A3B8"
-                    style={[styles.inputField, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFF" : "#000", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
-                  />
-                </View>
-              </View>
+              )}
 
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Street / Landmark</Text>
-              <TextInput
-                value={editStreet}
-                onChangeText={setEditStreet}
-                placeholder="Sector 62, Near Metro"
-                placeholderTextColor="#94A3B8"
-                style={[styles.inputField, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFF" : "#000", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
-              />
+              <View style={{ height: 40 }} />
+            </ScrollView>
 
-              {/* Admin Notes */}
-              <Text style={[styles.formSectionHeader, { color: "#0D9488", marginTop: 16 }]}>ADMIN REMARKS & PREFERENCES</Text>
-              <TextInput
-                value={editOwnerNotes}
-                onChangeText={setEditOwnerNotes}
-                placeholder="Internal notes on payout timing, contact preference, special terms..."
-                placeholderTextColor="#94A3B8"
-                multiline
-                numberOfLines={3}
-                style={[styles.inputField, { height: 75, textAlignVertical: "top", backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFF" : "#000", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
-              />
+            {/* Edit Modal Bottom Footer */}
+            <View style={[styles.editModalFooter, { borderTopColor: borderCol, backgroundColor: isDark ? "#1E293B" : "#FFFFFF" }]}>
+              <TouchableOpacity
+                onPress={() => setIsEditModalVisible(false)}
+                style={[styles.editCancelBtn, { borderColor: borderCol }]}
+              >
+                <Text style={[styles.editCancelText, { color: textSecondary }]}>Cancel</Text>
+              </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={handleSaveOwnerDetails}
-                disabled={savingOwnerDetails}
-                style={[styles.modalSubmitBtn, { backgroundColor: "#0D9488", marginTop: 20 }]}
+                onPress={handleSaveFullProperty}
+                disabled={savingProperty}
+                style={[styles.editSaveBtn, { backgroundColor: "#0D9488" }]}
               >
-                {savingOwnerDetails ? (
+                {savingProperty ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <>
-                    <Feather name="check-circle" size={16} color="#FFFFFF" />
-                    <Text style={styles.modalSubmitBtnText}>Save Owner Details</Text>
+                    <Feather name="check" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.editSaveText}>Save All Changes</Text>
                   </>
                 )}
               </TouchableOpacity>
-            </ScrollView>
+            </View>
           </View>
         </View>
       </Modal>
 
-      {/* ==================================================================== */}
-      {/* 💳 SUB-MODAL: RECORD TENANT RENT PAYMENT                             */}
-      {/* ==================================================================== */}
-      <Modal visible={isTenantRentModalVisible} animationType="fade" transparent onRequestClose={() => setIsTenantRentModalVisible(false)}>
-        <View style={styles.subModalBackdrop}>
-          <View style={[styles.subModalSheet, { backgroundColor: isDark ? "#0F172A" : "#FFFFFF" }]}>
-            <View style={[styles.subModalHeader, { borderBottomColor: isDark ? "#1E293B" : "#F1F5F9" }]}>
-              <View>
-                <Text style={[styles.subModalTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                  Record Tenant Rent Payment
-                </Text>
-                <Text style={[styles.subModalSub, { color: colors.textSecondary }]}>
-                  Log monthly collection receipt from tenant
-                </Text>
-              </View>
-              <TouchableOpacity onPress={() => setIsTenantRentModalVisible(false)}>
-                <Feather name="x" size={20} color={colors.textSecondary} />
+      {/* ──────────────────────────────────────────────────────────
+          SUB-MODAL: DELETE PROPERTY CONFIRMATION
+      ────────────────────────────────────────────────────────── */}
+      <Modal visible={isDeleteModalVisible} transparent animationType="fade" onRequestClose={() => setIsDeleteModalVisible(false)}>
+        <View style={styles.subModalOverlay}>
+          <View style={[styles.subModalCard, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF" }]}>
+            <View style={[styles.deleteIconWrap, { backgroundColor: "#EF444420" }]}>
+              <Feather name="trash-2" size={28} color="#EF4444" />
+            </View>
+            <Text style={[styles.subModalTitle, { color: textPrimary }]}>Delete Property?</Text>
+            <Text style={[styles.subModalSub, { color: textSecondary }]}>
+              Are you sure you want to delete lead {lead.leadId || lead._id}? This property will be archived.
+            </Text>
+
+            <TextInput
+              style={[styles.subModalInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+              placeholder="Reason for deletion (Optional)"
+              placeholderTextColor={textSecondary}
+              value={deleteReason}
+              onChangeText={setDeleteReason}
+            />
+
+            <View style={styles.subModalActions}>
+              <TouchableOpacity onPress={() => setIsDeleteModalVisible(false)} style={[styles.subModalBtn, { borderColor: borderCol }]}>
+                <Text style={{ color: textSecondary, fontWeight: "600" }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleDeleteProperty}
+                disabled={deletingProperty}
+                style={[styles.subModalBtn, { backgroundColor: "#EF4444" }]}
+              >
+                {deletingProperty ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={{ color: "#FFFFFF", fontWeight: "700" }}>Confirm Delete</Text>
+                )}
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16 }}>
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Billing Month</Text>
-              <TextInput
-                value={rentMonth}
-                onChangeText={setRentMonth}
-                placeholder="e.g. Oct 2026"
-                placeholderTextColor="#94A3B8"
-                style={[styles.inputField, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFF" : "#000", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
-              />
+      {/* ──────────────────────────────────────────────────────────
+          SUB-MODAL: RECORD TENANT RENT PAYMENT
+      ────────────────────────────────────────────────────────── */}
+      <Modal visible={isTenantRentModalVisible} transparent animationType="slide" onRequestClose={() => setIsTenantRentModalVisible(false)}>
+        <View style={styles.subModalOverlay}>
+          <View style={[styles.subModalCard, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF" }]}>
+            <Text style={[styles.subModalTitle, { color: textPrimary }]}>Record Rent Payment</Text>
+            <Text style={[styles.subModalSub, { color: textSecondary }]}>Log rent received from tenant</Text>
 
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Collected Rent Amount (₹)</Text>
-              <TextInput
-                value={rentAmount}
-                onChangeText={setRentAmount}
-                placeholder="Amount in INR"
-                keyboardType="numeric"
-                placeholderTextColor="#94A3B8"
-                style={[styles.inputField, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFF" : "#000", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
-              />
+            <TextInput
+              style={[styles.subModalInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+              placeholder="Month (e.g. Oct 2026)"
+              placeholderTextColor={textSecondary}
+              value={rentMonth}
+              onChangeText={setRentMonth}
+            />
+            <TextInput
+              style={[styles.subModalInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+              placeholder="Amount Received (₹)"
+              placeholderTextColor={textSecondary}
+              keyboardType="numeric"
+              value={rentAmount}
+              onChangeText={setRentAmount}
+            />
+            <TextInput
+              style={[styles.subModalInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+              placeholder="Payment Mode (UPI / Bank Transfer / Cash)"
+              placeholderTextColor={textSecondary}
+              value={rentMode}
+              onChangeText={setRentMode}
+            />
+            <TextInput
+              style={[styles.subModalInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+              placeholder="UTR / Transaction Ref Number"
+              placeholderTextColor={textSecondary}
+              value={rentUtr}
+              onChangeText={setRentUtr}
+            />
 
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Payment Status</Text>
-              <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
-                {(["PAID", "PENDING", "OVERDUE"] as const).map((st) => (
-                  <TouchableOpacity
-                    key={st}
-                    onPress={() => setRentStatus(st)}
-                    style={[
-                      styles.choicePill,
-                      {
-                        backgroundColor: rentStatus === st ? "#10B981" : isDark ? "#1E293B" : "#F1F5F9",
-                        borderColor: rentStatus === st ? "#10B981" : isDark ? "#334155" : "#E2E8F0",
-                      },
-                    ]}
-                  >
-                    <Text style={{ fontSize: 12, fontWeight: "700", color: rentStatus === st ? "#FFF" : colors.textSecondary }}>
-                      {st}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Payment Mode</Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-                {["UPI", "Bank Transfer", "NEFT", "Cash", "Cheque"].map((m) => (
-                  <TouchableOpacity
-                    key={m}
-                    onPress={() => setRentMode(m)}
-                    style={[
-                      styles.choicePill,
-                      {
-                        backgroundColor: rentMode === m ? "#0D9488" : isDark ? "#1E293B" : "#F1F5F9",
-                        borderColor: rentMode === m ? "#0D9488" : isDark ? "#334155" : "#E2E8F0",
-                      },
-                    ]}
-                  >
-                    <Text style={{ fontSize: 12, fontWeight: "700", color: rentMode === m ? "#FFF" : colors.textSecondary }}>
-                      {m}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>UTR / Transaction Reference</Text>
-              <TextInput
-                value={rentUtr}
-                onChangeText={setRentUtr}
-                placeholder="e.g. UTR1234567890"
-                placeholderTextColor="#94A3B8"
-                style={[styles.inputField, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFF" : "#000", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
-              />
-
+            <View style={styles.subModalActions}>
+              <TouchableOpacity onPress={() => setIsTenantRentModalVisible(false)} style={[styles.subModalBtn, { borderColor: borderCol }]}>
+                <Text style={{ color: textSecondary, fontWeight: "600" }}>Cancel</Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleRecordTenantRent}
                 disabled={savingRent}
-                style={[styles.modalSubmitBtn, { backgroundColor: "#10B981", marginTop: 12 }]}
+                style={[styles.subModalBtn, { backgroundColor: "#10B981" }]}
               >
                 {savingRent ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <>
-                    <Feather name="check" size={16} color="#FFFFFF" />
-                    <Text style={styles.modalSubmitBtnText}>Save Rent Collection</Text>
-                  </>
+                  <Text style={{ color: "#FFFFFF", fontWeight: "700" }}>Save Payment</Text>
                 )}
               </TouchableOpacity>
-            </ScrollView>
+            </View>
           </View>
         </View>
       </Modal>
 
-      {/* ==================================================================== */}
-      {/* 💸 SUB-MODAL: RELEASE OWNER RENT PAYOUT                              */}
-      {/* ==================================================================== */}
-      <Modal visible={isOwnerPayoutModalVisible} animationType="fade" transparent onRequestClose={() => setIsOwnerPayoutModalVisible(false)}>
-        <View style={styles.subModalBackdrop}>
-          <View style={[styles.subModalSheet, { backgroundColor: isDark ? "#0F172A" : "#FFFFFF" }]}>
-            <View style={[styles.subModalHeader, { borderBottomColor: isDark ? "#1E293B" : "#F1F5F9" }]}>
-              <View>
-                <Text style={[styles.subModalTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                  Release Owner Rent Payout
-                </Text>
-                <Text style={[styles.subModalSub, { color: colors.textSecondary }]}>
-                  Transfer net rent to owner's bank/UPI destination
-                </Text>
-              </View>
-              <TouchableOpacity onPress={() => setIsOwnerPayoutModalVisible(false)}>
-                <Feather name="x" size={20} color={colors.textSecondary} />
+      {/* ──────────────────────────────────────────────────────────
+          SUB-MODAL: RELEASE OWNER RENT PAYOUT
+      ────────────────────────────────────────────────────────── */}
+      <Modal visible={isOwnerPayoutModalVisible} transparent animationType="slide" onRequestClose={() => setIsOwnerPayoutModalVisible(false)}>
+        <View style={styles.subModalOverlay}>
+          <View style={[styles.subModalCard, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF" }]}>
+            <Text style={[styles.subModalTitle, { color: textPrimary }]}>Release Owner Rent Payout</Text>
+            <Text style={[styles.subModalSub, { color: textSecondary }]}>
+              Disburse monthly rental earnings to {lead.ownerName || "Owner"}
+            </Text>
+
+            <TextInput
+              style={[styles.subModalInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+              placeholder="Month (e.g. Oct 2026)"
+              placeholderTextColor={textSecondary}
+              value={payoutMonth}
+              onChangeText={setPayoutMonth}
+            />
+            <TextInput
+              style={[styles.subModalInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+              placeholder="Payout Amount (₹)"
+              placeholderTextColor={textSecondary}
+              keyboardType="numeric"
+              value={payoutAmount}
+              onChangeText={setPayoutAmount}
+            />
+            <TextInput
+              style={[styles.subModalInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+              placeholder="Bank / UPI Reference (UTR)"
+              placeholderTextColor={textSecondary}
+              value={payoutUtr}
+              onChangeText={setPayoutUtr}
+            />
+            <TextInput
+              style={[styles.subModalInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+              placeholder="Notes / Remarks"
+              placeholderTextColor={textSecondary}
+              value={payoutRemarks}
+              onChangeText={setPayoutRemarks}
+            />
+
+            <View style={styles.subModalActions}>
+              <TouchableOpacity onPress={() => setIsOwnerPayoutModalVisible(false)} style={[styles.subModalBtn, { borderColor: borderCol }]}>
+                <Text style={{ color: textSecondary, fontWeight: "600" }}>Cancel</Text>
               </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16 }}>
-              {/* Destination Card */}
-              <View style={[styles.payoutDestCard, { backgroundColor: isDark ? "#1E293B" : "#F0FDFA", borderColor: "#0D9488" }]}>
-                <Text style={[styles.payoutDestLabel, { color: "#0D9488" }]}>PAYOUT DESTINATION</Text>
-                <Text style={[styles.payoutDestName, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                  {lead.ownerBankDetails?.accountHolderName || lead.ownerName}
-                </Text>
-                <Text style={[styles.payoutDestDetails, { color: colors.textSecondary }]}>
-                  {lead.ownerBankDetails?.bankName || "Bank"}: {lead.ownerBankDetails?.accountNumber || lead.ownerPhone} • IFSC: {lead.ownerBankDetails?.ifscCode || "IFSC"}
-                </Text>
-                <Text style={[styles.payoutDestUpi, { color: "#0D9488" }]}>
-                  UPI: {lead.ownerBankDetails?.upiId || (lead.ownerPhone ? lead.ownerPhone + "@upi" : "Not Set")}
-                </Text>
-              </View>
-
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Rent Month</Text>
-              <TextInput
-                value={payoutMonth}
-                onChangeText={setPayoutMonth}
-                placeholder="e.g. Oct 2026"
-                placeholderTextColor="#94A3B8"
-                style={[styles.inputField, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFF" : "#000", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
-              />
-
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Disbursed Amount (₹)</Text>
-              <TextInput
-                value={payoutAmount}
-                onChangeText={setPayoutAmount}
-                placeholder="Amount in INR"
-                keyboardType="numeric"
-                placeholderTextColor="#94A3B8"
-                style={[styles.inputField, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFF" : "#000", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
-              />
-
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Disbursement Mode</Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-                {["UPI", "Bank_Transfer", "NEFT", "RTGS", "Cheque"].map((m) => (
-                  <TouchableOpacity
-                    key={m}
-                    onPress={() => setPayoutMode(m)}
-                    style={[
-                      styles.choicePill,
-                      {
-                        backgroundColor: payoutMode === m ? "#0D9488" : isDark ? "#1E293B" : "#F1F5F9",
-                        borderColor: payoutMode === m ? "#0D9488" : isDark ? "#334155" : "#E2E8F0",
-                      },
-                    ]}
-                  >
-                    <Text style={{ fontSize: 12, fontWeight: "700", color: payoutMode === m ? "#FFF" : colors.textSecondary }}>
-                      {m.replace("_", " ")}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Bank UTR / Transaction ID</Text>
-              <TextInput
-                value={payoutUtr}
-                onChangeText={setPayoutUtr}
-                placeholder="e.g. UTR987654321"
-                placeholderTextColor="#94A3B8"
-                style={[styles.inputField, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFF" : "#000", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
-              />
-
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Audit Remarks / Note</Text>
-              <TextInput
-                value={payoutRemarks}
-                onChangeText={setPayoutRemarks}
-                placeholder="e.g. October Rent Payout released via IMPS"
-                placeholderTextColor="#94A3B8"
-                style={[styles.inputField, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFF" : "#000", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
-              />
-
               <TouchableOpacity
                 onPress={handleReleaseOwnerPayout}
                 disabled={savingPayout}
-                style={[styles.modalSubmitBtn, { backgroundColor: "#0D9488", marginTop: 12 }]}
+                style={[styles.subModalBtn, { backgroundColor: "#0D9488" }]}
               >
                 {savingPayout ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <>
-                    <Feather name="send" size={16} color="#FFFFFF" />
-                    <Text style={styles.modalSubmitBtnText}>Confirm & Release Payout</Text>
-                  </>
+                  <Text style={{ color: "#FFFFFF", fontWeight: "700" }}>Release Payout</Text>
                 )}
               </TouchableOpacity>
-            </ScrollView>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1461,557 +2238,798 @@ export const SuperAdminLeadDetailModal: React.FC<Props> = ({
 };
 
 const styles = StyleSheet.create({
-  backdrop: {
+  modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.65)",
     justifyContent: "flex-end",
   },
-  modalSheet: {
-    height: "92%",
+  modalContainer: {
+    flex: 1,
+    marginTop: 40,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     overflow: "hidden",
   },
-  header: {
+  modalHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
   },
-  leadIdBadge: {
+  headerBadgeRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  leadIdText: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#0D9488",
-    fontFamily: "monospace",
-  },
-  statusPill: {
-    flexDirection: "row",
-    alignItems: "center",
+  statusBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 2,
     borderRadius: 6,
-    gap: 5,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
   },
   statusText: {
     fontSize: 10,
     fontWeight: "800",
+    letterSpacing: 0.5,
   },
-  title: {
-    fontSize: 17,
+  leadIdText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  headerTitle: {
+    fontSize: 16,
     fontWeight: "700",
+    marginTop: 2,
   },
-  closeBtn: {
+  headerIconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+  closeButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },
-  scrollBody: {
+  scrollContent: {
     padding: 16,
     paddingBottom: 40,
-    gap: 14,
   },
-  duplicateAlert: {
-    borderWidth: 1,
+  carouselContainer: {
+    borderRadius: 16,
+    overflow: "hidden",
+    marginBottom: 16,
+    position: "relative",
+  },
+  mainImage: {
+    width: "100%",
+    height: 200,
+    backgroundColor: "#1E293B",
+  },
+  photoCountBadge: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 12,
-    padding: 14,
-    gap: 6,
+    gap: 4,
   },
-  duplicateTitle: {
+  photoCountText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  thumbStrip: {
+    position: "absolute",
+    bottom: 8,
+    left: 8,
+    right: 8,
+  },
+  thumbWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    overflow: "hidden",
+    marginRight: 6,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  thumbWrapActive: {
+    borderColor: "#0D9488",
+  },
+  thumbImage: {
+    width: "100%",
+    height: "100%",
+  },
+  noImagePlaceholder: {
+    height: 120,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  quickEditBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  quickEditTitle: {
     fontSize: 14,
     fontWeight: "700",
   },
-  duplicateDesc: {
-    fontSize: 12,
-    lineHeight: 16,
+  quickEditSub: {
+    fontSize: 11,
+    marginTop: 2,
   },
-  resolveBtn: {
-    backgroundColor: "#D97706",
-    alignSelf: "flex-start",
+  quickEditButton: {
+    backgroundColor: "#0D9488",
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    marginTop: 4,
+    paddingVertical: 8,
+    borderRadius: 10,
   },
-  resolveBtnText: {
+  quickEditBtnText: {
     color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "700",
   },
-  photoSection: {
+  pricingCard: {
+    padding: 16,
     borderRadius: 16,
-    overflow: "hidden",
+    borderWidth: 1,
+    marginBottom: 16,
   },
-  mainImage: {
-    width: "100%",
-    height: 180,
-    borderRadius: 16,
-  },
-  thumbRow: {
-    marginTop: 8,
+  priceRow: {
     flexDirection: "row",
-    gap: 8,
-  },
-  thumb: {
-    width: 50,
-    height: 50,
-    borderRadius: 8,
-    marginRight: 8,
-  },
-  financeCard: {
-    borderWidth: 1.5,
-    borderRadius: 16,
-    padding: 14,
-  },
-  financeHeader: {
-    flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
+    alignItems: "flex-start",
+    marginBottom: 14,
   },
-  financeTitle: {
-    fontSize: 13,
+  priceLabel: {
+    fontSize: 10,
     fontWeight: "800",
-    letterSpacing: 0.3,
+    color: "#0D9488",
+    letterSpacing: 0.5,
   },
-  rentLiveBadge: {
+  priceAmount: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#0D9488",
+    marginTop: 2,
+  },
+  cardEditBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#0D948815",
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
   },
-  financeMetricsRow: {
+  cardEditText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#0D9488",
+  },
+  statGrid: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(148, 163, 184, 0.15)",
   },
-  financeMetricBox: {
+  statItem: {
     flex: 1,
     alignItems: "center",
   },
-  financeMetricLabel: {
-    fontSize: 10.5,
+  statDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: "rgba(148, 163, 184, 0.2)",
+  },
+  statLabel: {
+    fontSize: 10,
     fontWeight: "600",
-    color: "#64748B",
     marginBottom: 2,
   },
-  financeMetricVal: {
-    fontSize: 14,
-    fontWeight: "800",
+  statValue: {
+    fontSize: 13,
+    fontWeight: "700",
   },
-  metricDivider: {
-    width: 1,
-    height: 26,
-    backgroundColor: "rgba(100, 116, 139, 0.2)",
-  },
-  sectionCard: {
-    borderWidth: 1,
-    borderRadius: 16,
+  card: {
     padding: 16,
-    gap: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 16,
   },
-  ownerHeaderRow: {
+  cardHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  cardHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  sectionIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  mapFrame: {
+    borderRadius: 14,
+    overflow: "hidden",
+    marginBottom: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mapContainer: {
+    overflow: "hidden",
+    position: "relative",
+    borderRadius: 14,
+    backgroundColor: "#1E293B",
+  },
+  pinCenterWrap: {
+    position: "absolute",
+    left: "50%",
+    top: "50%",
+    marginLeft: -16,
+    marginTop: -32,
+    alignItems: "center",
+    zIndex: 10,
+  },
+  pinGlow: {
+    position: "absolute",
+    bottom: -4,
+    width: 20,
+    height: 6,
+    borderRadius: 10,
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  pinHead: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#EF4444",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    elevation: 4,
+  },
+  pinPoint: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 5,
+    borderRightWidth: 5,
+    borderTopWidth: 6,
+    borderStyle: "solid",
+    backgroundColor: "transparent",
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderTopColor: "#EF4444",
+  },
+  mapLayerSwitcher: {
+    position: "absolute",
+    top: 10,
+    left: 10,
+    flexDirection: "row",
+    backgroundColor: "rgba(0,0,0,0.65)",
+    borderRadius: 8,
+    padding: 2,
+    zIndex: 12,
+  },
+  layerChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  layerChipActive: {
+    backgroundColor: "#0D9488",
+  },
+  layerChipText: {
+    color: "#E2E8F0",
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  layerChipTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+  zoomControlsWrap: {
+    position: "absolute",
+    right: 10,
+    top: 10,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    borderRadius: 8,
+    overflow: "hidden",
+    zIndex: 12,
+  },
+  zoomBtn: {
+    width: 30,
+    height: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#E2E8F0",
+  },
+  accuracyPill: {
+    position: "absolute",
+    bottom: 8,
+    left: 8,
+    backgroundColor: "rgba(15, 23, 42, 0.8)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    zIndex: 12,
+  },
+  livePulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#10B981",
+  },
+  accuracyText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "600",
+  },
+  gpsActionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 12,
+    gap: 8,
+  },
+  coordLabel: {
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  coordValue: {
+    fontSize: 11,
+    fontWeight: "700",
+    marginTop: 1,
+  },
+  navActionButton: {
+    backgroundColor: "#0D9488",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  navActionText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 6,
+  },
+  infoLabel: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  infoValue: {
+    fontSize: 12,
+    fontWeight: "700",
+    flex: 1,
+    textAlign: "right",
+    marginLeft: 10,
+  },
+  specGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 12,
+  },
+  specBox: {
+    flex: 1,
+    minWidth: "45%",
+    padding: 10,
+    borderRadius: 10,
+  },
+  specBoxLabel: {
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  specBoxVal: {
+    fontSize: 13,
+    fontWeight: "700",
+    marginTop: 2,
+  },
+  checklistStatusRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    padding: 10,
+    borderRadius: 10,
+  },
+  checkItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  checkText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  ownerTopProfile: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 14,
     gap: 12,
-    marginBottom: 4,
   },
   ownerAvatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#0D9488",
     alignItems: "center",
     justifyContent: "center",
   },
   ownerAvatarText: {
     color: "#FFFFFF",
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "800",
   },
-  ownerNameTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-  },
-  ownerVerifiedBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(13, 148, 136, 0.12)",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    gap: 3,
-  },
-  ownerVerifiedText: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#0D9488",
-  },
-  ownerSubSubtitle: {
-    fontSize: 11,
-    marginTop: 1,
-  },
-  editOwnerIconBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  ownerContactBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 2,
-    marginBottom: 4,
-  },
-  contactBarBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 5,
-  },
-  contactBarBtnText: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  detailBlock: {
-    borderTopWidth: 1,
-    borderTopColor: "rgba(148, 163, 184, 0.15)",
-    paddingTop: 10,
-    gap: 8,
-  },
-  blockTitle: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.8,
-    marginBottom: 2,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  iconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  sectionSub: {
-    fontSize: 11,
-  },
-  addRecordBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  addRecordBtnText: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  detailRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  detailLabel: {
-    fontSize: 12.5,
-    fontWeight: "500",
-  },
-  detailValue: {
-    fontSize: 12.5,
-    fontWeight: "600",
-  },
-  commIconBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "rgba(13, 148, 136, 0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  aadhaarPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(13, 148, 136, 0.12)",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  aadhaarPillText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#0D9488",
-    fontFamily: "monospace",
-  },
-  panPill: {
-    backgroundColor: "rgba(59, 130, 246, 0.12)",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  panPillText: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#2563EB",
-    fontFamily: "monospace",
-  },
-  verificationPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  ownerNotesBox: {
-    borderRadius: 10,
-    padding: 10,
-    marginTop: 4,
-    borderLeftWidth: 3,
-    borderLeftColor: "#0D9488",
-  },
-  ownerNotesTitle: {
-    fontSize: 9.5,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-    marginBottom: 3,
-  },
-  ownerNotesText: {
-    fontSize: 11.5,
-    lineHeight: 16,
-  },
-  historyWrap: {
-    marginTop: 6,
-    gap: 6,
-  },
-  historyHeading: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  emptyEntryBox: {
-    borderRadius: 8,
-    padding: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emptyEntryText: {
-    fontSize: 11.5,
-    textAlign: "center",
-  },
-  ledgerItemRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  ledgerMonth: {
-    fontSize: 12.5,
-    fontWeight: "700",
-  },
-  ledgerDetails: {
-    fontSize: 10.5,
-    marginTop: 1,
-  },
-  ledgerRemarks: {
-    fontSize: 10,
-    fontStyle: "italic",
-    marginTop: 1,
-  },
-  ledgerAmount: {
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  ledgerBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginTop: 2,
-  },
-  vacantBox: {
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-  },
-  vacantTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  vacantSub: {
-    fontSize: 11.5,
-    textAlign: "center",
-  },
-  assignTenantBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#0D9488",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginTop: 4,
-  },
-  assignTenantBtnText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  actionOutlineBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    borderWidth: 1,
-    borderColor: "#0D9488",
-    borderRadius: 8,
-    paddingVertical: 8,
-    marginTop: 4,
-  },
-  actionOutlineBtnText: {
-    color: "#0D9488",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  bottomBar: {
-    padding: 16,
-    borderTopWidth: 1,
-  },
-  closeBottomBtn: {
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  closeBottomBtnText: {
-    color: "#FFFFFF",
+  ownerMainName: {
     fontSize: 15,
     fontWeight: "700",
   },
-  // Sub-modal styling
-  subModalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    justifyContent: "flex-end",
+  ownerMainPhone: {
+    fontSize: 12,
+    marginTop: 1,
   },
-  subModalSheet: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: "85%",
-    overflow: "hidden",
+  ownerContactButtons: {
+    flexDirection: "row",
+    gap: 8,
   },
-  editOwnerSheet: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: "92%",
-    overflow: "hidden",
+  callCircleBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#0D9488",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  subModalHeader: {
+  bankDetailsBox: {
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 10,
+  },
+  bankBoxHeader: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    padding: 16,
-    borderBottomWidth: 1,
+    gap: 6,
+    marginBottom: 8,
   },
-  subModalTitle: {
-    fontSize: 16,
-    fontWeight: "800",
+  bankBoxTitle: {
+    fontSize: 12,
+    fontWeight: "700",
   },
-  subModalSub: {
-    fontSize: 11.5,
+  tenantProfileBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  tenantNameText: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  tenantPhoneText: {
+    fontSize: 11,
     marginTop: 2,
   },
-  formSectionHeader: {
-    fontSize: 10.5,
+  rentStatusChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  rentStatusChipText: {
+    fontSize: 10,
     fontWeight: "800",
-    letterSpacing: 0.8,
-    marginBottom: 6,
   },
-  inputLabel: {
-    fontSize: 11.5,
-    fontWeight: "600",
-    marginBottom: 4,
-    marginTop: 8,
+  rentMetricsRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 12,
   },
-  inputField: {
-    borderWidth: 1,
+  metricCard: {
+    flex: 1,
+    padding: 10,
     borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 13,
   },
-  choicePill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
+  metricLabel: {
+    fontSize: 10,
+    fontWeight: "600",
   },
-  modalSubmitBtn: {
+  metricValue: {
+    fontSize: 14,
+    fontWeight: "800",
+    marginTop: 2,
+  },
+  rentActionButtonsRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  rentActionButton: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    borderRadius: 12,
-    paddingVertical: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
   },
-  modalSubmitBtnText: {
+  rentActionBtnText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  bottomActionBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    gap: 10,
+  },
+  primaryActionBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 13,
+    borderRadius: 12,
+  },
+  primaryActionBtnText: {
     color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "700",
   },
-  payoutDestCard: {
-    borderWidth: 1,
+  secondaryActionBtn: {
+    width: 46,
+    height: 46,
     borderRadius: 12,
-    padding: 12,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // Full Property Edit Modal Styles
+  editModalContainer: {
+    flex: 1,
+    marginTop: 30,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: "hidden",
+  },
+  modalHeaderTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  modalHeaderSub: {
+    fontSize: 11,
+    marginTop: 1,
+  },
+  editTabsBar: {
+    borderBottomWidth: 1,
+  },
+  tabsScrollContent: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  tabItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderBottomWidth: 2,
+  },
+  tabItemActive: {
+    backgroundColor: "#0D948815",
+  },
+  tabItemText: {
+    fontSize: 12,
+  },
+  editFormScroll: {
+    padding: 16,
+    paddingBottom: 60,
+  },
+  formGroup: {
+    marginBottom: 14,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 6,
+  },
+  textInput: {
+    height: 44,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    fontSize: 13,
+  },
+  textArea: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    fontSize: 13,
+    textAlignVertical: "top",
+  },
+  pillRow: {
+    flexDirection: "row",
+  },
+  optionPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginRight: 6,
+  },
+  optionPillActive: {
+    borderColor: "#0D9488",
+  },
+  optionPillText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  rowTwoInputs: {
+    flexDirection: "row",
+    marginBottom: 14,
+  },
+  formSectionDivider: {
+    marginVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(148, 163, 184, 0.2)",
+    paddingTop: 10,
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  switchRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 8,
+    borderBottomWidth: 0.5,
     marginBottom: 8,
-    gap: 2,
   },
-  payoutDestLabel: {
-    fontSize: 9.5,
-    fontWeight: "800",
-    letterSpacing: 0.5,
+  switchLabel: {
+    fontSize: 13,
+    fontWeight: "600",
   },
-  payoutDestName: {
-    fontSize: 13.5,
+  editModalFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    gap: 10,
+  },
+  editCancelBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 13,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  editCancelText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  editSaveBtn: {
+    flex: 2,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 13,
+    borderRadius: 12,
+  },
+  editSaveText: {
+    color: "#FFFFFF",
+    fontSize: 14,
     fontWeight: "700",
   },
-  payoutDestDetails: {
-    fontSize: 11.5,
+
+  // Sub-modal shared styles
+  subModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
   },
-  payoutDestUpi: {
-    fontSize: 11.5,
+  subModalCard: {
+    width: "100%",
+    maxWidth: 420,
+    borderRadius: 20,
+    padding: 20,
+    alignItems: "center",
+  },
+  deleteIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  subModalTitle: {
+    fontSize: 18,
     fontWeight: "700",
+    marginBottom: 4,
+    textAlign: "center",
+  },
+  subModalSub: {
+    fontSize: 12,
+    textAlign: "center",
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  subModalInput: {
+    width: "100%",
+    height: 44,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    fontSize: 13,
+    marginBottom: 12,
+  },
+  subModalActions: {
+    flexDirection: "row",
+    width: "100%",
+    gap: 10,
+    marginTop: 8,
+  },
+  subModalBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "transparent",
   },
 });
