@@ -115,4 +115,6 @@ export default {
   gpsSubHint: "Tap to record current live on-site coordinates",
   dataSecurityNotice: "Submitting verified leads gives you direct payout commission. Data confidentiality is guaranteed.",
   numberMaskedNotice: "🔒 Number will be automatically masked once submitted to protect owner privacy.",
+  monthlyBonusTitle: "Monthly Partner Bonus 🏆",
+  monthlyBonusDesc: "Submit 5 verified leads this month and receive an extra ₹2,500 bonus directly in your UPI wallet!",
 };

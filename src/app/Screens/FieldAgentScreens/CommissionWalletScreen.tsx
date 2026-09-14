@@ -132,15 +132,18 @@ export function CommissionWalletScreen() {
         setProfile(res.data.data);
       }
       setIsBankModalVisible(false);
-      Alert.alert("Account Linked", "Your payout UPI and Bank details have been saved.");
+      Alert.alert(t("wallet.accountLinkedTitle"), t("wallet.accountLinkedMsg"));
     } catch (err: any) {
-      Alert.alert("Update Failed", err.message || "Could not save payout details.");
+      Alert.alert(t("wallet.updateFailed"), err.message || "Could not save payout details.");
     }
   };
 
   const handleRequestPayout = async (amount: number, method: string): Promise<boolean> => {
     if (amount <= 0 || amount > availableBalance) {
-      Alert.alert("Invalid Amount", `You can withdraw up to available balance: ${formatCurrency(availableBalance)}`);
+      Alert.alert(
+        t("wallet.invalidAmountTitle"),
+        t("wallet.invalidAmountMsg", { amount: formatCurrency(availableBalance) })
+      );
       return false;
     }
 
@@ -161,8 +164,11 @@ export function CommissionWalletScreen() {
     setIsWithdrawModalVisible(false);
 
     Alert.alert(
-      "Payout Request Submitted! 💸",
-      `Withdrawal of ${formatCurrency(amount)} via ${method} is queued for automated disbursal to your account.`
+      t("wallet.payoutSubmittedTitle"),
+      t("wallet.payoutSubmittedMsg", {
+        amount: formatCurrency(amount),
+        method,
+      })
     );
     return true;
   };
@@ -233,7 +239,7 @@ export function CommissionWalletScreen() {
               { color: isDark ? "#2DD4BF" : "#0D9488" },
             ]}
           >
-            Bank Setup
+            {t("wallet.bankSetup")}
           </Text>
         </TouchableOpacity>
       </View>
@@ -250,7 +256,7 @@ export function CommissionWalletScreen() {
               { color: isDark ? "#2DD4BF" : "#0D9488" },
             ]}
           >
-            Syncing wallet balance from server...
+            {t("wallet.syncingBalance")}
           </Text>
         </View>
       ) : (
@@ -277,8 +283,8 @@ export function CommissionWalletScreen() {
                 onWithdrawPress={() => {
                   if (availableBalance <= 0) {
                     Alert.alert(
-                      "No Available Balance",
-                      "You currently do not have approved commission available to withdraw. Commission is approved once your leads are verified."
+                      t("wallet.noBalanceTitle"),
+                      t("wallet.noBalanceMsg")
                     );
                     return;
                   }
@@ -287,7 +293,7 @@ export function CommissionWalletScreen() {
                 onBankDetailsPress={() => setIsBankModalVisible(true)}
               />
 
-              {/* {t("wallet.payoutDestination")} Card */}
+              {/* Payout Destination Card */}
               <View
                 style={[
                   styles.destCard,
@@ -312,7 +318,7 @@ export function CommissionWalletScreen() {
                         { color: isDark ? colors.textPrimary : "#0F172A" },
                       ]}
                     >
-                      Registered Payout Destination
+                      {t("wallet.registeredDestination")}
                     </Text>
                   </View>
                   <TouchableOpacity onPress={() => setIsBankModalVisible(true)}>
@@ -323,8 +329,8 @@ export function CommissionWalletScreen() {
                       ]}
                     >
                       {profile.upiId || profile.bankDetails?.accountNumber
-                        ? "Edit"
-                        : "+ Add"}
+                        ? t("wallet.edit")
+                        : t("wallet.add")}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -342,7 +348,7 @@ export function CommissionWalletScreen() {
                         { color: isDark ? colors.textMuted : "#64748B" },
                       ]}
                     >
-                      UPI ID
+                      {t("wallet.upiId")}
                     </Text>
                     <Text
                       style={[
@@ -350,7 +356,7 @@ export function CommissionWalletScreen() {
                         { color: isDark ? colors.textPrimary : "#0F172A" },
                       ]}
                     >
-                      {profile.upiId || "Not Linked"}
+                      {profile.upiId || t("wallet.notLinked")}
                     </Text>
                   </View>
                   <View style={{ flex: 1 }}>
@@ -360,7 +366,7 @@ export function CommissionWalletScreen() {
                         { color: isDark ? colors.textMuted : "#64748B" },
                       ]}
                     >
-                      Bank Account
+                      {t("wallet.bankAccount")}
                     </Text>
                     <Text
                       style={[
@@ -372,7 +378,7 @@ export function CommissionWalletScreen() {
                         ? `${profile.bankDetails.bankName} (••${String(
                             profile.bankDetails.accountNumber || ""
                           ).slice(-4)})`
-                        : "Not Linked"}
+                        : t("wallet.notLinked")}
                     </Text>
                   </View>
                 </View>
@@ -397,7 +403,7 @@ export function CommissionWalletScreen() {
                       { color: isDark ? colors.textPrimary : "#0F172A" },
                     ]}
                   >
-                    Lead Commission Summary
+                    {t("wallet.leadCommissionSummary")}
                   </Text>
                   <View style={styles.breakdownRow}>
                     <View style={styles.breakdownItem}>
@@ -415,7 +421,7 @@ export function CommissionWalletScreen() {
                           { color: isDark ? colors.textMuted : "#64748B" },
                         ]}
                       >
-                        Total Leads
+                        {t("wallet.totalLeads")}
                       </Text>
                     </View>
                     <View
@@ -441,7 +447,7 @@ export function CommissionWalletScreen() {
                           { color: isDark ? colors.textMuted : "#64748B" },
                         ]}
                       >
-                        Verified
+                        {t("wallet.verified")}
                       </Text>
                     </View>
                     <View
@@ -471,7 +477,7 @@ export function CommissionWalletScreen() {
                           { color: isDark ? colors.textMuted : "#64748B" },
                         ]}
                       >
-                        In Review
+                        {t("wallet.inReview")}
                       </Text>
                     </View>
                   </View>
@@ -486,7 +492,7 @@ export function CommissionWalletScreen() {
                     { color: isDark ? colors.textPrimary : "#0F172A" },
                   ]}
                 >
-                  Commission & Payout Ledger
+                  {t("wallet.ledgerTitle")}
                 </Text>
                 <Text
                   style={[
@@ -494,7 +500,7 @@ export function CommissionWalletScreen() {
                     { color: isDark ? colors.textMuted : "#64748B" },
                   ]}
                 >
-                  Real-time transaction history
+                  {t("wallet.ledgerSub")}
                 </Text>
               </View>
             </>
@@ -521,7 +527,7 @@ export function CommissionWalletScreen() {
                   { color: isDark ? colors.textSecondary : "#475569" },
                 ]}
               >
-                No Commission Transactions Yet
+                {t("wallet.noTransactionsYet")}
               </Text>
               <Text
                 style={[
@@ -529,8 +535,7 @@ export function CommissionWalletScreen() {
                   { color: isDark ? colors.textMuted : "#94A3B8" },
                 ]}
               >
-                Submit new verified property leads to earn commissions. Approved
-                payouts will appear here in real time.
+                {t("wallet.noTransactionsSub")}
               </Text>
             </View>
           }

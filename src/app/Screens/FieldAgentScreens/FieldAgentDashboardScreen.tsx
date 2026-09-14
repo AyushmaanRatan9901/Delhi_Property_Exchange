@@ -1,11 +1,10 @@
-import { useTranslation } from "react-i18next";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
-  Alert,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -31,7 +30,7 @@ import { useAppSelector } from "../../../Redux/hooks";
 export function FieldAgentDashboardScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const reduxUser = useAppSelector((state) => state.auth.user);
+  const reduxUser = useAppSelector((state) => state?.auth.user);
   const { isDark, colors } = useResponsiveTheme();
   const { t } = useTranslation();
 
@@ -199,9 +198,12 @@ export function FieldAgentDashboardScreen() {
               </View>
 
               <View style={{ flex: 1 }}>
-                <Text style={styles.heroTitle}>{t("fieldAgent.addNewLeadQuick")}</Text>
+                <Text style={styles.heroTitle}>
+                  {t("fieldAgent.addNewLeadQuick")}
+                </Text>
                 <Text style={styles.heroSubtitle}>
-                  {t("fieldAgent.gpsPickerTitle")} • {t("fieldAgent.submitLeadBtn")}
+                  {t("fieldAgent.gpsPickerTitle")} •{" "}
+                  {t("fieldAgent.submitLeadBtn")}
                 </Text>
               </View>
 
@@ -223,7 +225,7 @@ export function FieldAgentDashboardScreen() {
               Haptics.selectionAsync();
             } catch {}
             if (type === "wallet") {
-              router.push("/FiledAgentPanel/(tabs)/properties" as any);
+              router.push("/FiledAgentPanel/(tabs)/wallet" as any);
             } else {
               router.push("/FiledAgentPanel/(tabs)/leads" as any);
             }
@@ -276,7 +278,9 @@ export function FieldAgentDashboardScreen() {
             onPress={() => router.push("/FiledAgentPanel/(tabs)/leads" as any)}
             style={styles.viewAllBtn}
           >
-            <Text style={styles.viewAllText}>{t("common.viewAll")} ({leads.length})</Text>
+            <Text style={styles.viewAllText}>
+              {t("common.viewAll")} ({leads.length})
+            </Text>
             <Feather
               name="chevron-right"
               size={14}
@@ -317,7 +321,7 @@ export function FieldAgentDashboardScreen() {
                 { color: isDark ? "#FCD34D" : "#92400E" },
               ]}
             >
-              Monthly Partner Bonus 🏆
+              {t("fieldAgent.monthlyBonusTitle")}
             </Text>
             <Text
               style={[
@@ -325,8 +329,7 @@ export function FieldAgentDashboardScreen() {
                 { color: isDark ? "#FBBF24" : "#B45309" },
               ]}
             >
-              Submit 5 verified leads this month and receive an extra ₹2,500
-              bonus directly in your UPI wallet!
+              {t("fieldAgent.monthlyBonusDesc")}
             </Text>
           </View>
         </View>

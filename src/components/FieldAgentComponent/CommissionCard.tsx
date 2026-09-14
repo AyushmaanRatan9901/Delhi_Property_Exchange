@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { formatCurrency } from "../../constants/fieldAgentData";
 
 interface CommissionCardProps {
@@ -21,6 +22,8 @@ export const CommissionCard: React.FC<CommissionCardProps> = ({
   onBankDetailsPress,
   style,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <LinearGradient
       colors={["#0D9488", "#0F766E"]}
@@ -34,7 +37,7 @@ export const CommissionCard: React.FC<CommissionCardProps> = ({
           <View style={styles.walletIconCircle}>
             <Ionicons name="wallet-outline" size={18} color="#FFFFFF" />
           </View>
-          <Text style={styles.cardTitle}>Commission Wallet</Text>
+          <Text style={styles.cardTitle}>{t("wallet.commissionWallet")}</Text>
         </View>
 
         <TouchableOpacity
@@ -43,13 +46,13 @@ export const CommissionCard: React.FC<CommissionCardProps> = ({
           style={styles.bankPill}
         >
           <Ionicons name="card-outline" size={13} color="#FFFFFF" />
-          <Text style={styles.bankPillText}>UPI / Bank</Text>
+          <Text style={styles.bankPillText}>{t("wallet.upiBank")}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Main Balance */}
       <View style={styles.balanceContainer}>
-        <Text style={styles.balanceLabel}>Available for Withdrawal</Text>
+        <Text style={styles.balanceLabel}>{t("wallet.availForWithdrawal")}</Text>
         <Text style={styles.balanceValue}>
           {formatCurrency(availableBalance)}
         </Text>
@@ -58,7 +61,7 @@ export const CommissionCard: React.FC<CommissionCardProps> = ({
       {/* Sub Stats Row */}
       <View style={styles.subStatsRow}>
         <View style={styles.subStatItem}>
-          <Text style={styles.subStatLabel}>Total Earned</Text>
+          <Text style={styles.subStatLabel}>{t("wallet.totalEarned")}</Text>
           <Text style={styles.subStatValue}>
             {formatCurrency(totalEarnings)}
           </Text>
@@ -67,7 +70,7 @@ export const CommissionCard: React.FC<CommissionCardProps> = ({
         <View style={styles.subStatDivider} />
 
         <View style={styles.subStatItem}>
-          <Text style={styles.subStatLabel}>Pending Approval</Text>
+          <Text style={styles.subStatLabel}>{t("wallet.pendingApproval")}</Text>
           <Text style={styles.subStatValue}>
             {formatCurrency(pendingApproval)}
           </Text>
@@ -81,7 +84,7 @@ export const CommissionCard: React.FC<CommissionCardProps> = ({
         style={styles.withdrawButton}
       >
         <Ionicons name="flash-outline" size={16} color="#0F766E" />
-        <Text style={styles.withdrawButtonText}>Instant Payout Request</Text>
+        <Text style={styles.withdrawButtonText}>{t("wallet.instantPayoutRequest")}</Text>
       </TouchableOpacity>
     </LinearGradient>
   );
