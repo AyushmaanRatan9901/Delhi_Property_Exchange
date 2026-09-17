@@ -1,7 +1,7 @@
 import { Platform } from "react-native";
 
 // Primary Backend API URL pointing to RentManagementBackend Express Server
-export const API_BASE_URL = "http://192.168.1.15:5000/api/v1";
+export const API_BASE_URL = "http://192.168.1.17:5000/api/v1";
 
 // Fallback for emulator / web development
 export const LOCALHOST_API_URL =

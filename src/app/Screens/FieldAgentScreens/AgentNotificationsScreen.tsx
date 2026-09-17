@@ -1,7 +1,7 @@
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
@@ -162,14 +162,14 @@ export function AgentNotificationsScreen() {
   const { t } = useTranslation();
 
   const [notifications, setNotifications] = useState<AgentNotificationItem[]>(
-    INITIAL_AGENT_NOTIFICATIONS
+    INITIAL_AGENT_NOTIFICATIONS,
   );
   const [selectedFilter, setSelectedFilter] = useState("ALL");
   const [refreshing, setRefreshing] = useState(false);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.read).length,
-    [notifications]
+    [notifications],
   );
 
   const filteredNotifications = useMemo(() => {
@@ -207,7 +207,7 @@ export function AgentNotificationsScreen() {
 
     // Mark as read
     setNotifications((prev) =>
-      prev.map((n) => (n.id === item.id ? { ...n, read: true } : n))
+      prev.map((n) => (n.id === item.id ? { ...n, read: true } : n)),
     );
 
     if (item.actionRoute) {
@@ -234,12 +234,14 @@ export function AgentNotificationsScreen() {
           style: "destructive",
           onPress: () => {
             try {
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              Haptics.notificationAsync(
+                Haptics.NotificationFeedbackType.Success,
+              );
             } catch {}
             setNotifications([]);
           },
         },
-      ]
+      ],
     );
   };
 
@@ -259,8 +261,8 @@ export function AgentNotificationsScreen() {
                 ? "#0D9488"
                 : "#99F6E4"
               : isDark
-              ? colors.border
-              : "#F1F5F9",
+                ? colors.border
+                : "#F1F5F9",
           },
           isUnread && styles.notifCardUnread,
         ]}
@@ -459,9 +461,7 @@ export function AgentNotificationsScreen() {
                   backgroundColor: isDark
                     ? "rgba(13, 148, 136, 0.2)"
                     : "#F0FDFA",
-                  borderColor: isDark
-                    ? "rgba(13, 148, 136, 0.3)"
-                    : "#CCFBF1",
+                  borderColor: isDark ? "rgba(13, 148, 136, 0.3)" : "#CCFBF1",
                 },
               ]}
             >
@@ -533,13 +533,13 @@ export function AgentNotificationsScreen() {
                         ? "rgba(13, 148, 136, 0.2)"
                         : "#F0FDFA"
                       : isDark
-                      ? colors.surfaceLight
-                      : "#F8FAFC",
+                        ? colors.surfaceLight
+                        : "#F8FAFC",
                     borderColor: isSelected
                       ? "#0D9488"
                       : isDark
-                      ? colors.border
-                      : "#E2E8F0",
+                        ? colors.border
+                        : "#E2E8F0",
                   },
                 ]}
               >
@@ -552,8 +552,8 @@ export function AgentNotificationsScreen() {
                           ? "#2DD4BF"
                           : "#0D9488"
                         : isDark
-                        ? colors.textSecondary
-                        : "#64748B",
+                          ? colors.textSecondary
+                          : "#64748B",
                     },
                   ]}
                 >
