@@ -1,94 +1,155 @@
-import React from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  StatusBar,
+  ActivityIndicator,
+  RefreshControl,
+  Image,
+  Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Feather, Ionicons, MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useResponsiveTheme } from "../../../constants/theme";
+import apiClient from "../../../Redux/api/axiosInstance";
 
-export default function HistoryScreen() {
+const { width } = Dimensions.get("window");
+
+export default function VerificationHistoryScreen() {
   const insets = useSafeAreaInsets();
-  const { colors, isDark, moderateScale, spacing, radii, typography, layout, shadows } = useResponsiveTheme();
+  const { colors, isDark } = useResponsiveTheme();
+
+  const textPrimary = colors.textPrimary || (isDark ? "#FFFFFF" : "#0F172A");
+  const textSecondary = colors.textSecondary || (isDark ? "#94A3B8" : "#475569");
+  const borderCol = colors.border || (isDark ? "#334155" : "#E2E8F0");
+
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [historyLeads, setHistoryLeads] = useState<any[]>([]);
+
+  const fetchHistory = useCallback(async () => {
+    try {
+      const res = await apiClient.get("/leads/assigned-to-me?limit=50");
+      if (res.data?.data?.leads) {
+        const verified = res.data.data.leads.filter((l: any) =>
+          ["verified", "rented", "sold"].includes(l.status) || l.isLocked
+        );
+        setHistoryLeads(verified);
+      }
+    } catch (err) {
+      console.error("Error fetching history:", err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchHistory();
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : "#F8FAFC" }]}>
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
-
       {/* Header Banner */}
       <LinearGradient
         colors={isDark ? ["#0F172A", "#061A23", "#042F2E"] : ["#0D9488", "#0F766E", "#115E59"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: Math.max(insets.top + 10, 36) }]}
       >
         <View style={styles.headerTop}>
           <View>
-            <Text style={styles.panelBadge}>VERIFICATION STAFF</Text>
-            <Text style={styles.headerTitle}>History</Text>
+            <Text style={styles.badgeText}>PUBLISHED & VERIFIED ARCHIVE</Text>
+            <Text style={styles.headerTitle}>Verification History</Text>
           </View>
-          <View style={styles.headerIconCircle}>
-            <Ionicons name="archive" size={22} color="#FFFFFF" />
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>{historyLeads.length}</Text>
           </View>
         </View>
-        <Text style={styles.headerSubtitle}>Audit log of verified, approved & rejected listings</Text>
+        <Text style={styles.headerSub}>
+          Live listings published to internal exchange (Locked & PII Masked)
+        </Text>
       </LinearGradient>
 
-      {/* Content Body */}
+      {/* Main List */}
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom + 80, 110) }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0D9488" />}
       >
-        {/* Metric Quick Stats */}
-        <View style={styles.statsRow}>
-          <View style={[styles.statCard, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: colors.border }]}>
-            <Text style={[styles.statValue, { color: colors.primary }]}>280</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Verified</Text>
+        {loading ? (
+          <View style={{ paddingVertical: 40, alignItems: "center" }}>
+            <ActivityIndicator size="large" color="#0D9488" />
+            <Text style={{ color: textSecondary, marginTop: 10, fontSize: 13 }}>Loading verification archive...</Text>
           </View>
-          <View style={[styles.statCard, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: colors.border }]}>
-            <Text style={[styles.statValue, { color: colors.primary }]}>265</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Passed</Text>
+        ) : historyLeads.length === 0 ? (
+          <View style={styles.emptyWrap}>
+            <Feather name="archive" size={48} color={textSecondary} />
+            <Text style={[styles.emptyTitle, { color: textPrimary }]}>No Published Listings Yet</Text>
+            <Text style={[styles.emptySub, { color: textSecondary }]}>
+              Properties you verify and publish will be permanently logged here with lock status and masked PII.
+            </Text>
           </View>
-          <View style={[styles.statCard, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: colors.border }]}>
-            <Text style={[styles.statValue, { color: colors.primary }]}>15</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Flagged</Text>
-          </View>
-        </View>
+        ) : (
+          historyLeads.map((item) => {
+            const photoUrl = item.coverPhoto || item.photos?.[0]?.url || item.images?.[0];
+            const verifiedDate = item.verifiedAt || item.publishedAt || item.updatedAt;
+            const dateStr = verifiedDate
+              ? new Date(verifiedDate).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })
+              : "Verified";
 
-        {/* Feature Section Card */}
-        <View style={[styles.card, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: colors.border }]}>
-          <View style={styles.cardHeader}>
-            <View style={[styles.iconBox, { backgroundColor: isDark ? "rgba(13, 148, 136, 0.2)" : "#CCFBF1" }]}>
-              <Ionicons name="archive" size={20} color="#0D9488" />
-            </View>
-            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>History Management</Text>
-          </View>
+            return (
+              <View
+                key={item._id}
+                style={[styles.historyCard, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: borderCol }]}
+              >
+                {photoUrl ? (
+                  <Image source={{ uri: photoUrl }} style={styles.cardImage} resizeMode="cover" />
+                ) : null}
 
-          <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
-            Welcome to the Verification Staff History portal. Manage and monitor real-time records, activities, and operational workflows directly from this screen.
-          </Text>
+                <View style={styles.cardBody}>
+                  <View style={styles.cardHeader}>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                        <View style={styles.verifiedBadge}>
+                          <Feather name="check" size={10} color="#10B981" />
+                          <Text style={styles.verifiedText}>PUBLISHED & LIVE</Text>
+                        </View>
+                        <View style={styles.lockedBadge}>
+                          <Feather name="lock" size={10} color="#F59E0B" />
+                          <Text style={styles.lockedText}>LOCKED</Text>
+                        </View>
+                      </View>
+                      <Text style={[styles.cardTitle, { color: textPrimary }]} numberOfLines={1}>
+                        {item.title || `${item.propertyType} in ${item.locality}`}
+                      </Text>
+                    </View>
+                    <Text style={styles.priceText}>₹{(item.expectedPrice || 0).toLocaleString("en-IN")}/mo</Text>
+                  </View>
 
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={[styles.primaryBtn, { backgroundColor: "#0D9488" }]}
-          >
-            <Text style={styles.primaryBtnText}>View Audit Logs</Text>
-            <Feather name="arrow-right" size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
-          </TouchableOpacity>
-        </View>
+                  <View style={[styles.metaBox, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC" }]}>
+                    <Text style={[styles.metaItem, { color: textSecondary }]}>📍 {item.address?.fullAddress || item.locality}</Text>
+                    <Text style={[styles.metaItem, { color: textSecondary }]}>👤 Owner: {item.ownerName || "Owner"} (PII Masked)</Text>
+                    <Text style={[styles.metaItem, { color: textSecondary }]}>📅 Published: {dateStr}</Text>
+                  </View>
 
-        {/* Recent Activity / Status Notice */}
-        <View style={[styles.noticeCard, { backgroundColor: isDark ? "rgba(255, 255, 255, 0.05)" : "#F1F5F9", borderColor: colors.borderLight }]}>
-          <Feather name="info" size={18} color="#0D9488" />
-          <Text style={[styles.noticeText, { color: colors.textMuted }]}>
-            All updates on this screen sync in real-time with the Delhi Property Exchange backend engine.
-          </Text>
-        </View>
+                  <View style={[styles.lockNoticeRow, { borderColor: borderCol }]}>
+                    <Feather name="shield" size={13} color="#0D9488" />
+                    <Text style={[styles.lockNoticeText, { color: textSecondary }]}>
+                      Record locked. Contact info masked for field staff.
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            );
+          })
+        )}
       </ScrollView>
     </View>
   );
@@ -99,8 +160,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingBottom: 22,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
@@ -108,108 +169,127 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-  },
-  panelBadge: {
-    color: "#99F6E4",
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1.2,
     marginBottom: 4,
+  },
+  badgeText: {
+    color: "#CCFBF1",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.5,
   },
   headerTitle: {
     color: "#FFFFFF",
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "800",
   },
-  headerIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    alignItems: "center",
-    justifyContent: "center",
+  headerSub: {
+    color: "rgba(255, 255, 255, 0.85)",
+    fontSize: 11,
+    marginTop: 2,
   },
-  headerSubtitle: {
-    color: "#CCFBF1",
+  countBadge: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  countBadgeText: {
+    color: "#FFFFFF",
     fontSize: 13,
-    marginTop: 6,
+    fontWeight: "800",
   },
   content: {
     padding: 16,
-    gap: 16,
   },
-  statsRow: {
-    flexDirection: "row",
-    gap: 12,
+  emptyWrap: {
+    alignItems: "center",
+    paddingVertical: 60,
   },
-  statCard: {
-    flex: 1,
-    padding: 14,
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 10,
+  },
+  emptySub: {
+    fontSize: 12,
+    textAlign: "center",
+    marginTop: 4,
+    maxWidth: 260,
+  },
+  historyCard: {
     borderRadius: 16,
     borderWidth: 1,
-    alignItems: "center",
+    overflow: "hidden",
+    marginBottom: 14,
   },
-  statValue: {
-    fontSize: 20,
-    fontWeight: "800",
-    marginBottom: 4,
+  cardImage: {
+    width: "100%",
+    height: 140,
   },
-  statLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  card: {
-    padding: 18,
-    borderRadius: 20,
-    borderWidth: 1,
+  cardBody: {
+    padding: 14,
   },
   cardHeader: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 12,
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 8,
   },
-  iconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  cardDesc: {
-    fontSize: 13,
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  primaryBtn: {
+  verifiedBadge: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+    backgroundColor: "#10B98115",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 5,
+    gap: 3,
   },
-  primaryBtnText: {
-    color: "#FFFFFF",
+  verifiedText: {
+    color: "#10B981",
+    fontSize: 9,
+    fontWeight: "800",
+  },
+  lockedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F59E0B15",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 5,
+    gap: 3,
+  },
+  lockedText: {
+    color: "#F59E0B",
+    fontSize: 9,
+    fontWeight: "800",
+  },
+  cardTitle: {
     fontSize: 14,
     fontWeight: "700",
   },
-  noticeCard: {
+  priceText: {
+    color: "#0D9488",
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  metaBox: {
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 10,
+    gap: 3,
+  },
+  metaItem: {
+    fontSize: 11,
+  },
+  lockNoticeRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
+    paddingTop: 8,
+    borderTopWidth: 0.5,
+    gap: 6,
   },
-  noticeText: {
+  lockNoticeText: {
+    fontSize: 10,
     flex: 1,
-    fontSize: 12,
-    lineHeight: 18,
   },
 });

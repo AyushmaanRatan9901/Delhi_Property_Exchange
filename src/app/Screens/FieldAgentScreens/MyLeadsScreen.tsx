@@ -1,7 +1,7 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   FlatList,
@@ -15,11 +15,20 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { LeadCard, LeadDetailModal } from "../../../components/FieldAgentComponent";
-import { LeadItem, LeadStatus, useFieldAgent } from "../../../constants/fieldAgentData";
+import {
+  LeadCard,
+  LeadDetailModal,
+} from "../../../components/FieldAgentComponent";
+import {
+  LeadItem,
+  LeadStatus,
+  useFieldAgent,
+} from "../../../constants/fieldAgentData";
 import { useResponsiveTheme } from "../../../constants/theme";
 
-const getFilterTabs = (t: (key: string) => string): Array<{ id: string; label: string; status?: LeadStatus }> => [
+const getFilterTabs = (
+  t: (key: string) => string,
+): Array<{ id: string; label: string; status?: LeadStatus }> => [
   { id: "ALL", label: t("leads.filterAll") },
   { id: "NEW", label: t("leads.filterNew"), status: "NEW" },
   { id: "VERIFIED", label: t("leads.filterVerified"), status: "VERIFIED" },
@@ -79,12 +88,13 @@ export function MyLeadsScreen() {
     ({ item }: { item: LeadItem }) => (
       <LeadCard lead={item} onPress={handleLeadPress} />
     ),
-    [handleLeadPress]
+    [handleLeadPress],
   );
 
   const keyExtractor = useCallback(
-    (item: LeadItem) => item.id || item._id || `${item.ownerPhone}-${item.submissionDate}`,
-    []
+    (item: LeadItem) =>
+      item.id || item._id || `${item.ownerPhone}-${item.submissionDate}`,
+    [],
   );
 
   const renderEmptyComponent = useMemo(
@@ -116,7 +126,9 @@ export function MyLeadsScreen() {
             { color: isDark ? colors.textMuted : "#64748B" },
           ]}
         >
-          {searchQuery ? t("leads.noLeadsSearchSub") : t("leads.noLeadsFilterSub")}
+          {searchQuery
+            ? t("leads.noLeadsSearchSub")
+            : t("leads.noLeadsFilterSub")}
         </Text>
         <TouchableOpacity
           onPress={() => router.push("/FiledAgentPanel/(tabs)/visits" as any)}
@@ -126,11 +138,13 @@ export function MyLeadsScreen() {
           ]}
         >
           <Ionicons name="add-circle" size={18} color="#FFFFFF" />
-          <Text style={styles.emptyAddBtnText}>{t("leads.submitFirstLeadBtn")}</Text>
+          <Text style={styles.emptyAddBtnText}>
+            {t("leads.submitFirstLeadBtn")}
+          </Text>
         </TouchableOpacity>
       </View>
     ),
-    [searchQuery, router, isDark, colors]
+    [searchQuery, router, isDark, colors],
   );
 
   return (
@@ -183,7 +197,7 @@ export function MyLeadsScreen() {
             try {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
             } catch {}
-            router.push("/FiledAgentPanel/(tabs)/visits" as any);
+            router.push("/FiledAgentPanel/(tabs)/addLead" as any);
           }}
           style={[
             styles.addBtn,

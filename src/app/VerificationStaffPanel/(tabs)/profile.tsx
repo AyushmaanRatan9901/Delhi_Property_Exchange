@@ -5,122 +5,162 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  StatusBar,
+  Image,
   Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Feather, Ionicons, MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { router } from "expo-router";
+import { useSelector, useDispatch } from "react-redux";
 import { useResponsiveTheme } from "../../../constants/theme";
-import { useAppDispatch } from "../../../Redux/hooks";
 import { logout } from "../../../Redux/Auth/authActions";
 
-export default function ProfileScreen() {
-  const dispatch = useAppDispatch();
+export default function VerificationStaffProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { colors, isDark, moderateScale, spacing, radii, typography, layout, shadows } = useResponsiveTheme();
+  const router = useRouter();
+  const dispatch = useDispatch();
+  const { colors, isDark } = useResponsiveTheme();
+
+  const textPrimary = colors.textPrimary || (isDark ? "#FFFFFF" : "#0F172A");
+  const textSecondary = colors.textSecondary || (isDark ? "#94A3B8" : "#475569");
+  const borderCol = colors.border || (isDark ? "#334155" : "#E2E8F0");
+
+  const user = useSelector((state: any) => state.auth?.user) || {
+    name: "Verification Officer",
+    email: "staff@delhiexchange.com",
+    phone: "+91 98765 43210",
+    staffId: "VS-DEL-2026",
+    role: "verification_staff",
+  };
 
   const handleLogout = () => {
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    } catch {}
-    Alert.alert(
-      "Log Out",
-      "Are you sure you want to log out of Delhi Property Exchange?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Log Out",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await dispatch(logout()).unwrap();
-            } catch (e) {
-              await dispatch(logout());
-            }
-            router.replace("/(auth)/login" as any);
-          },
+    Alert.alert("Logout", "Are you sure you want to log out of Verification Staff App?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: () => {
+          try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
+          dispatch(logout() as any);
+          router.replace("/(auth)/LoginScreen" as any);
         },
-      ],
-    );
+      },
+    ]);
   };
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : "#F8FAFC" }]}>
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
-
       {/* Header Banner */}
       <LinearGradient
         colors={isDark ? ["#0F172A", "#061A23", "#042F2E"] : ["#0D9488", "#0F766E", "#115E59"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: Math.max(insets.top + 10, 36) }]}
       >
         <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.panelBadge}>VERIFICATION STAFF</Text>
-            <Text style={styles.headerTitle}>Profile</Text>
+          <Text style={styles.badgeText}>STAFF IDENTITY & CREDENTIALS</Text>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutIconBtn}>
+            <Feather name="log-out" size={17} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Profile Card */}
+        <View style={styles.profileRow}>
+          <View style={styles.avatarWrap}>
+            <Image
+              source={{ uri: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=180&q=80" }}
+              style={styles.avatarImage}
+            />
+            <View style={styles.avatarVerifiedPin}>
+              <Feather name="check" size={10} color="#FFFFFF" />
+            </View>
           </View>
-          <View style={styles.headerIconCircle}>
-            <Ionicons name="person" size={22} color="#FFFFFF" />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.profileName}>{user.name || "Verification Staff"}</Text>
+            <Text style={styles.profileRole}>Field Verification Officer</Text>
+            <View style={styles.staffIdBadge}>
+              <Text style={styles.staffIdText}>ID: {user.staffId || "VS-2026-981"}</Text>
+            </View>
           </View>
         </View>
-        <Text style={styles.headerSubtitle}>Staff identity, regional area assignment & daily performance</Text>
       </LinearGradient>
 
-      {/* Content Body */}
+      {/* Main Content */}
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom + 80, 110) }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Metric Quick Stats */}
-        <View style={styles.statsRow}>
-          <View style={[styles.statCard, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: colors.border }]}>
-            <Text style={[styles.statValue, { color: colors.primary }]}>99.2%</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Accuracy</Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: colors.border }]}>
-            <Text style={[styles.statValue, { color: colors.primary }]}>#1</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Speed Rank</Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: colors.border }]}>
-            <Text style={[styles.statValue, { color: colors.primary }]}>Senior</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Badge</Text>
-          </View>
-        </View>
+        {/* Verification Performance Metrics */}
+        <View style={[styles.card, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: borderCol }]}>
+          <Text style={[styles.cardTitle, { color: textPrimary }]}>On-Ground Performance</Text>
 
-        {/* Feature Section Card */}
-        <View style={[styles.card, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: colors.border }]}>
-          <View style={styles.cardHeader}>
-            <View style={[styles.iconBox, { backgroundColor: isDark ? "rgba(13, 148, 136, 0.2)" : "#CCFBF1" }]}>
-              <Ionicons name="person" size={20} color="#0D9488" />
+          <View style={styles.metricsRow}>
+            <View style={styles.metricItem}>
+              <Text style={[styles.metricVal, { color: "#0D9488" }]}>98.6%</Text>
+              <Text style={[styles.metricLbl, { color: textSecondary }]}>Audit Accuracy</Text>
             </View>
-            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Profile Management</Text>
+            <View style={styles.metricDivider} />
+            <View style={styles.metricItem}>
+              <Text style={[styles.metricVal, { color: "#10B981" }]}>42</Text>
+              <Text style={[styles.metricLbl, { color: textSecondary }]}>KYC Verified</Text>
+            </View>
+            <View style={styles.metricDivider} />
+            <View style={styles.metricItem}>
+              <Text style={[styles.metricVal, { color: "#3B82F6" }]}>35m</Text>
+              <Text style={[styles.metricLbl, { color: textSecondary }]}>Avg Visit Time</Text>
+            </View>
           </View>
-
-          <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
-            Welcome to the Verification Staff Profile portal. Manage and monitor real-time records, activities, and operational workflows directly from this screen.
-          </Text>
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={handleLogout}
-            style={[styles.primaryBtn, { backgroundColor: "#f31616" }]}
-          >
-            <Text style={styles.primaryBtnText}>Logout</Text>
-            <Feather name="arrow-right" size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
-          </TouchableOpacity>
         </View>
 
-        {/* Recent Activity / Status Notice */}
-        <View style={[styles.noticeCard, { backgroundColor: isDark ? "rgba(255, 255, 255, 0.05)" : "#F1F5F9", borderColor: colors.borderLight }]}>
-          <Feather name="info" size={18} color="#0D9488" />
-          <Text style={[styles.noticeText, { color: colors.textMuted }]}>
-            All updates on this screen sync in real-time with the Delhi Property Exchange backend engine.
-          </Text>
+        {/* Access Rights & Security Policies */}
+        <View style={[styles.card, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: borderCol }]}>
+          <Text style={[styles.cardTitle, { color: textPrimary }]}>Operational Access & Privacy</Text>
+
+          <View style={styles.policyRow}>
+            <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+            <Text style={[styles.policyText, { color: textSecondary }]}>Full on-ground access during assigned verification</Text>
+          </View>
+          <View style={styles.policyRow}>
+            <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+            <Text style={[styles.policyText, { color: textSecondary }]}>Media capture & instant KYC duplicate Aadhaar check</Text>
+          </View>
+          <View style={styles.policyRow}>
+            <Ionicons name="shield-checkmark" size={16} color="#0D9488" />
+            <Text style={[styles.policyText, { color: textSecondary }]}>Auto-lock & PII masking enforced once published</Text>
+          </View>
+          <View style={styles.policyRow}>
+            <Ionicons name="lock-closed" size={16} color="#F59E0B" />
+            <Text style={[styles.policyText, { color: textSecondary }]}>Post-publication edits reserved for Super Admin only</Text>
+          </View>
         </View>
+
+        {/* Account Details */}
+        <View style={[styles.card, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: borderCol }]}>
+          <Text style={[styles.cardTitle, { color: textPrimary }]}>Staff Account Information</Text>
+
+          <View style={styles.infoRow}>
+            <Text style={[styles.infoLabel, { color: textSecondary }]}>Email:</Text>
+            <Text style={[styles.infoVal, { color: textPrimary }]}>{user.email || "staff@delhiexchange.com"}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={[styles.infoLabel, { color: textSecondary }]}>Mobile:</Text>
+            <Text style={[styles.infoVal, { color: textPrimary }]}>{user.phone || "+91 98765 43210"}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={[styles.infoLabel, { color: textSecondary }]}>Region / City:</Text>
+            <Text style={[styles.infoVal, { color: textPrimary }]}>Delhi NCR (Zone 1)</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={[styles.infoLabel, { color: textSecondary }]}>App Version:</Text>
+            <Text style={[styles.infoVal, { color: textPrimary }]}>v2.4.0 (Staff Build)</Text>
+          </View>
+        </View>
+
+        {/* Logout Button */}
+        <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
+          <Feather name="log-out" size={16} color="#EF4444" style={{ marginRight: 6 }} />
+          <Text style={styles.logoutBtnText}>Log Out of Verification App</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -140,108 +180,146 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 14,
   },
-  panelBadge: {
-    color: "#99F6E4",
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-    marginBottom: 4,
-  },
-  headerTitle: {
-    color: "#FFFFFF",
-    fontSize: 22,
+  badgeText: {
+    color: "#CCFBF1",
+    fontSize: 10,
     fontWeight: "800",
+    letterSpacing: 0.5,
   },
-  headerIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  logoutIconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: "rgba(255, 255, 255, 0.2)",
     alignItems: "center",
     justifyContent: "center",
   },
-  headerSubtitle: {
-    color: "#CCFBF1",
-    fontSize: 13,
-    marginTop: 6,
+  profileRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  avatarWrap: {
+    position: "relative",
+  },
+  avatarImage: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+  },
+  avatarVerifiedPin: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#10B981",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
+  },
+  profileName: {
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  profileRole: {
+    color: "rgba(255, 255, 255, 0.85)",
+    fontSize: 12,
+    marginTop: 1,
+  },
+  staffIdBadge: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    alignSelf: "flex-start",
+    marginTop: 4,
+  },
+  staffIdText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "700",
   },
   content: {
     padding: 16,
-    gap: 16,
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    padding: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-    alignItems: "center",
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: "800",
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-    textAlign: "center",
   },
   card: {
-    padding: 18,
-    borderRadius: 20,
+    padding: 16,
+    borderRadius: 16,
     borderWidth: 1,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 12,
-  },
-  iconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
+    marginBottom: 14,
   },
   cardTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
+    marginBottom: 12,
   },
-  cardDesc: {
-    fontSize: 13,
-    lineHeight: 20,
-    marginBottom: 16,
+  metricsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  primaryBtn: {
+  metricItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  metricDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: "rgba(148, 163, 184, 0.2)",
+  },
+  metricVal: {
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  metricLbl: {
+    fontSize: 10,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  policyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  policyText: {
+    fontSize: 12,
+    flex: 1,
+    lineHeight: 16,
+  },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 5,
+  },
+  infoLabel: {
+    fontSize: 12,
+  },
+  infoVal: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  logoutBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+    backgroundColor: "#EF444415",
+    paddingVertical: 14,
+    borderRadius: 14,
+    marginTop: 10,
   },
-  primaryBtnText: {
-    color: "#FFFFFF",
+  logoutBtnText: {
+    color: "#EF4444",
     fontSize: 14,
     fontWeight: "700",
-  },
-  noticeCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  noticeText: {
-    flex: 1,
-    fontSize: 12,
-    lineHeight: 18,
   },
 });
