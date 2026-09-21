@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,16 +7,20 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSelector, useDispatch } from "react-redux";
 import { useResponsiveTheme } from "../../constants/theme";
-import { RootState } from "../../Redux/store";
+import { AppDispatch, RootState } from "../../Redux/store";
 import {
-  markNotificationRead,
-  markAllNotificationsRead,
-  clearAllNotifications,
+  fetchStaffNotifications,
+  markNotificationAsReadThunk,
+  markAllNotificationsAsReadThunk,
+  clearAllNotificationsThunk,
+  StaffNotification,
 } from "../../Redux/VerificationStaff/verificationStaffSlice";
 
 const { width } = Dimensions.get("window");
@@ -27,19 +31,27 @@ interface Props {
   onOpenLead?: (lead: any) => void;
 }
 
+type FilterType = "all" | "unread" | "assigned" | "alert";
+
 export const NotificationModal: React.FC<Props> = ({
   visible,
   onClose,
   onOpenLead,
 }) => {
   const { colors, isDark } = useResponsiveTheme();
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
+
+  const [activeFilter, setActiveFilter] = useState<FilterType>("all");
+  const [refreshing, setRefreshing] = useState(false);
 
   const notifications = useSelector(
     (state: RootState) => state.verificationStaff.notifications
   );
   const unreadCount = useSelector(
     (state: RootState) => state.verificationStaff.unreadCount
+  );
+  const isNotificationsLoading = useSelector(
+    (state: RootState) => state.verificationStaff.isNotificationsLoading
   );
   const isSocketConnected = useSelector(
     (state: RootState) => state.verificationStaff.isSocketConnected
@@ -50,14 +62,33 @@ export const NotificationModal: React.FC<Props> = ({
   const borderCol = colors.border || (isDark ? "#334155" : "#E2E8F0");
   const cardBg = isDark ? "#1E293B" : "#FFFFFF";
 
-  const handleSelectNotif = (notif: any) => {
+  // Fetch notifications on mount and when modal opens
+  useEffect(() => {
+    if (visible) {
+      dispatch(fetchStaffNotifications());
+    }
+  }, [visible, dispatch]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await dispatch(fetchStaffNotifications()).unwrap();
+    } catch {}
+    setRefreshing(false);
+  };
+
+  const handleSelectNotif = (notif: StaffNotification) => {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch {}
-    dispatch(markNotificationRead(notif.id));
-    if (notif.lead && onOpenLead) {
+    const notifId = notif.id || notif._id;
+    if (notifId && !notif.read && !notif.isRead) {
+      dispatch(markNotificationAsReadThunk(notifId));
+    }
+    const leadObj = notif.lead || notif.data?.lead;
+    if (leadObj && onOpenLead) {
       onClose();
-      onOpenLead(notif.lead);
+      onOpenLead(leadObj);
     }
   };
 
@@ -65,14 +96,14 @@ export const NotificationModal: React.FC<Props> = ({
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch {}
-    dispatch(markAllNotificationsRead());
+    dispatch(markAllNotificationsAsReadThunk());
   };
 
   const handleClearAll = () => {
     try {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     } catch {}
-    dispatch(clearAllNotifications());
+    dispatch(clearAllNotificationsThunk());
   };
 
   const formatTime = (isoString?: string) => {
@@ -87,6 +118,73 @@ export const NotificationModal: React.FC<Props> = ({
       return `${Math.floor(diffHours / 24)}d ago`;
     } catch {
       return "Recently";
+    }
+  };
+
+  // Filtered list
+  const filteredNotifications = notifications.filter((notif) => {
+    const isRead = Boolean(notif.read || notif.isRead);
+    if (activeFilter === "unread") return !isRead;
+    if (activeFilter === "assigned") return notif.type === "lead_assigned";
+    if (activeFilter === "alert")
+      return (
+        notif.type === "scam_alert" ||
+        notif.type === "complaint" ||
+        notif.type === "complaint_logged" ||
+        notif.priority === "urgent" ||
+        notif.priority === "high"
+      );
+    return true;
+  });
+
+  const getNotifMeta = (notif: StaffNotification) => {
+    switch (notif.type) {
+      case "lead_assigned":
+        return {
+          icon: "home-plus" as const,
+          label: "NEW ASSIGNMENT",
+          color: "#0D9488",
+          bgColor: isDark ? "rgba(13, 148, 136, 0.2)" : "#CCFBF1",
+        };
+      case "lead_verified":
+        return {
+          icon: "shield-check" as const,
+          label: "VERIFIED",
+          color: "#10B981",
+          bgColor: isDark ? "rgba(16, 185, 129, 0.2)" : "#D1FAE5",
+        };
+      case "scam_alert":
+        return {
+          icon: "alert-octagon" as const,
+          label: "FRAUD / SCAM ALERT",
+          color: "#EF4444",
+          bgColor: isDark ? "rgba(239, 68, 68, 0.2)" : "#FEE2E2",
+        };
+      case "complaint":
+      case "complaint_logged":
+      case "complaint_resolved":
+        return {
+          icon: "alert-circle-outline" as const,
+          label: "COMPLAINT TICKET",
+          color: "#F59E0B",
+          bgColor: isDark ? "rgba(245, 158, 11, 0.2)" : "#FEF3C7",
+        };
+      case "inspection":
+      case "inspection_scheduled":
+      case "inspection_completed":
+        return {
+          icon: "calendar-clock" as const,
+          label: "INSPECTION",
+          color: "#8B5CF6",
+          bgColor: isDark ? "rgba(139, 92, 246, 0.2)" : "#EDE9FE",
+        };
+      default:
+        return {
+          icon: "bell-outline" as const,
+          label: "SYSTEM ALERT",
+          color: "#64748B",
+          bgColor: isDark ? "rgba(100, 116, 139, 0.2)" : "#F1F5F9",
+        };
     }
   };
 
@@ -134,15 +232,68 @@ export const NotificationModal: React.FC<Props> = ({
                     ]}
                   />
                   <Text style={{ fontSize: 11, color: textSecondary }}>
-                    {isSocketConnected ? "Real-Time Connected" : "Connecting..."}
+                    {isSocketConnected ? "Real-Time Sync Active" : "Connecting Socket..."}
                   </Text>
                 </View>
               </View>
             </View>
 
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={22} color={textSecondary} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <TouchableOpacity
+                onPress={onRefresh}
+                style={styles.refreshBtn}
+                disabled={isNotificationsLoading || refreshing}
+              >
+                {isNotificationsLoading || refreshing ? (
+                  <ActivityIndicator size="small" color="#0D9488" />
+                ) : (
+                  <Feather name="refresh-cw" size={18} color={textSecondary} />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                <Ionicons name="close" size={22} color={textSecondary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Filter Tabs */}
+          <View style={[styles.filterBar, { borderBottomColor: borderCol }]}>
+            {(
+              [
+                { key: "all", label: "All" },
+                { key: "unread", label: `Unread (${unreadCount})` },
+                { key: "assigned", label: "Assignments" },
+                { key: "alert", label: "Alerts" },
+              ] as { key: FilterType; label: string }[]
+            ).map((tab) => {
+              const isSelected = activeFilter === tab.key;
+              return (
+                <TouchableOpacity
+                  key={tab.key}
+                  onPress={() => {
+                    try {
+                      Haptics.selectionAsync();
+                    } catch {}
+                    setActiveFilter(tab.key);
+                  }}
+                  style={[
+                    styles.filterTab,
+                    isSelected && {
+                      backgroundColor: isDark ? "#0D9488" : "#0D9488",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.filterTabText,
+                      { color: isSelected ? "#FFFFFF" : textSecondary },
+                    ]}
+                  >
+                    {tab.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           {/* Quick Action Toolbar */}
@@ -171,8 +322,16 @@ export const NotificationModal: React.FC<Props> = ({
           <ScrollView
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor="#0D9488"
+                colors={["#0D9488"]}
+              />
+            }
           >
-            {notifications.length === 0 ? (
+            {filteredNotifications.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <View
                   style={[
@@ -183,87 +342,109 @@ export const NotificationModal: React.FC<Props> = ({
                   <Feather name="bell-off" size={32} color="#94A3B8" />
                 </View>
                 <Text style={[styles.emptyTitle, { color: textPrimary }]}>
-                  No Notifications Yet
+                  {activeFilter === "all"
+                    ? "No Notifications Yet"
+                    : `No ${activeFilter.toUpperCase()} Notifications`}
                 </Text>
                 <Text style={[styles.emptySubtitle, { color: textSecondary }]}>
-                  When a property lead is assigned to you in real time, you will receive instant alerts here.
+                  When real-time property assignments, fraud warnings, or updates occur, they will appear here saved in the database.
                 </Text>
               </View>
             ) : (
-              notifications.map((notif) => (
-                <TouchableOpacity
-                  key={notif.id}
-                  activeOpacity={0.8}
-                  onPress={() => handleSelectNotif(notif)}
-                  style={[
-                    styles.notifCard,
-                    {
-                      backgroundColor: cardBg,
-                      borderColor: notif.read
-                        ? borderCol
-                        : isDark
-                        ? "#0D9488"
-                        : "#14B8A6",
-                      borderLeftWidth: notif.read ? 1 : 4,
-                      borderLeftColor: notif.read ? borderCol : "#0D9488",
-                    },
-                  ]}
-                >
-                  <View style={styles.notifCardTop}>
-                    <View style={styles.notifTypeRow}>
-                      <MaterialCommunityIcons
-                        name={
-                          notif.type === "lead_assigned"
-                            ? "home-plus"
-                            : notif.type === "inspection"
-                            ? "clipboard-check-outline"
-                            : "alert-circle-outline"
-                        }
-                        size={16}
-                        color="#0D9488"
-                      />
-                      <Text style={styles.notifTypeText}>
-                        {notif.type === "lead_assigned"
-                          ? "NEW ASSIGNMENT"
-                          : notif.type === "inspection"
-                          ? "INSPECTION"
-                          : "ALERT"}
-                      </Text>
-                    </View>
+              filteredNotifications.map((notif) => {
+                const meta = getNotifMeta(notif);
+                const isRead = Boolean(notif.read || notif.isRead);
+                const notifId = notif.id || notif._id;
+                const leadObj = notif.lead || notif.data?.lead;
 
-                    <Text style={styles.notifTime}>
-                      {formatTime(notif.createdAt)}
-                    </Text>
-                  </View>
-
-                  <Text
+                return (
+                  <TouchableOpacity
+                    key={notifId}
+                    activeOpacity={0.8}
+                    onPress={() => handleSelectNotif(notif)}
                     style={[
-                      styles.notifTitle,
+                      styles.notifCard,
                       {
-                        color: textPrimary,
-                        fontWeight: notif.read ? "600" : "800",
+                        backgroundColor: cardBg,
+                        borderColor: isRead
+                          ? borderCol
+                          : isDark
+                          ? "#0D9488"
+                          : "#14B8A6",
+                        borderLeftWidth: isRead ? 1 : 4,
+                        borderLeftColor: isRead ? borderCol : meta.color,
                       },
                     ]}
                   >
-                    {notif.title}
-                  </Text>
-
-                  <Text style={[styles.notifMessage, { color: textSecondary }]}>
-                    {notif.message}
-                  </Text>
-
-                  {notif.lead && (
-                    <View style={styles.actionRow}>
-                      <View style={styles.actionChip}>
-                        <Feather name="shield" size={12} color="#0D9488" />
-                        <Text style={styles.actionChipText}>
-                          Tap to Verify
-                        </Text>
+                    <View style={styles.notifCardTop}>
+                      <View style={styles.notifTypeRow}>
+                        <View
+                          style={[
+                            styles.typeBadge,
+                            { backgroundColor: meta.bgColor },
+                          ]}
+                        >
+                          <MaterialCommunityIcons
+                            name={meta.icon}
+                            size={14}
+                            color={meta.color}
+                          />
+                          <Text
+                            style={[
+                              styles.notifTypeText,
+                              { color: meta.color },
+                            ]}
+                          >
+                            {meta.label}
+                          </Text>
+                        </View>
                       </View>
+
+                      <Text style={styles.notifTime}>
+                        {formatTime(notif.createdAt)}
+                      </Text>
                     </View>
-                  )}
-                </TouchableOpacity>
-              ))
+
+                    <Text
+                      style={[
+                        styles.notifTitle,
+                        {
+                          color: textPrimary,
+                          fontWeight: isRead ? "600" : "800",
+                        },
+                      ]}
+                    >
+                      {notif.title}
+                    </Text>
+
+                    <Text
+                      style={[
+                        styles.notifMessage,
+                        {
+                          color: isRead
+                            ? textSecondary
+                            : isDark
+                            ? "#E2E8F0"
+                            : "#334155",
+                        },
+                      ]}
+                    >
+                      {notif.message}
+                    </Text>
+
+                    {leadObj && (
+                      <View style={styles.actionRow}>
+                        <View style={styles.actionChip}>
+                          <Feather name="shield" size={12} color="#0D9488" />
+                          <Text style={styles.actionChipText}>
+                            Tap to Open Lead / Verify
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })
             )}
           </ScrollView>
         </View>
@@ -281,8 +462,8 @@ const styles = StyleSheet.create({
   container: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: "80%",
-    minHeight: "45%",
+    maxHeight: "85%",
+    minHeight: "50%",
     paddingBottom: 24,
   },
   header: {
@@ -300,9 +481,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   bellIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -312,8 +493,8 @@ const styles = StyleSheet.create({
   },
   unreadBadge: {
     backgroundColor: "#EF4444",
-    paddingHorizontal: 6,
-    paddingVertical: 1,
+    paddingHorizontal: 7,
+    paddingVertical: 1.5,
     borderRadius: 10,
     marginLeft: 6,
   },
@@ -328,8 +509,28 @@ const styles = StyleSheet.create({
     borderRadius: 3.5,
     marginRight: 5,
   },
+  refreshBtn: {
+    padding: 6,
+  },
   closeBtn: {
     padding: 6,
+  },
+  filterBar: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+    borderBottomWidth: 1,
+  },
+  filterTab: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: "rgba(100, 116, 139, 0.12)",
+  },
+  filterTabText: {
+    fontSize: 12,
+    fontWeight: "700",
   },
   toolbar: {
     flexDirection: "row",
@@ -385,17 +586,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 6,
+    marginBottom: 8,
   },
   notifTypeRow: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  typeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
     gap: 4,
   },
   notifTypeText: {
     fontSize: 10,
     fontWeight: "800",
-    color: "#0D9488",
     letterSpacing: 0.5,
   },
   notifTime: {
@@ -408,10 +615,10 @@ const styles = StyleSheet.create({
   },
   notifMessage: {
     fontSize: 12,
-    lineHeight: 17,
+    lineHeight: 18,
   },
   actionRow: {
-    marginTop: 8,
+    marginTop: 10,
     flexDirection: "row",
   },
   actionChip: {
@@ -419,9 +626,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(13, 148, 136, 0.12)",
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 6,
-    gap: 4,
+    gap: 5,
   },
   actionChipText: {
     fontSize: 11,

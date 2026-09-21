@@ -493,3 +493,5 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 });
+
+export default MyLeadsScreen;

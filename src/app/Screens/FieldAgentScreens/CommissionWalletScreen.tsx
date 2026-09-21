@@ -63,20 +63,36 @@ export function CommissionWalletScreen() {
         const docs = leadsRes.value.data.data.leads;
         setRealLeads(docs);
 
-        const dynamicPayouts: PayoutTransaction[] = docs
-          .filter((l: any) => l.commission?.approvedAmount > 0 || l.commission?.status === "paid")
-          .map((l: any, idx: number) => ({
-            id: `TXN-${l.leadId || l._id || idx}`,
-            amount: l.commission?.approvedAmount || l.commission?.estimatedAmount || 0,
-            method: profile.upiId ? `UPI (${profile.upiId})` : "Direct Wallet Credit",
-            date: l.commission?.paidAt
-              ? new Date(l.commission.paidAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-              : l.createdAt
-              ? new Date(l.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-              : "Recently",
-            status: (l.commission?.status === "paid" ? "COMPLETED" : "PROCESSING") as "COMPLETED" | "PROCESSING",
-            referenceId: `LEAD/${l.leadId || l._id}`,
-          }));
+        const dynamicPayouts: PayoutTransaction[] = [];
+        docs.forEach((l: any, idx: number) => {
+          if (Array.isArray(l.commission?.recurringCommissions) && l.commission.recurringCommissions.length > 0) {
+            l.commission.recurringCommissions.forEach((rc: any, rcIdx: number) => {
+              dynamicPayouts.push({
+                id: `TXN-${l.leadId || l._id}-${rc.month}-${rcIdx}`,
+                amount: rc.commissionAmount || 0,
+                method: rc.type === "first_month" ? "1st Month Tenant Move-in" : `Monthly Recurring (${rc.month})`,
+                date: rc.createdAt
+                  ? new Date(rc.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                  : rc.month || "Recently",
+                status: (rc.status === "paid" ? "COMPLETED" : "PROCESSING") as "COMPLETED" | "PROCESSING",
+                referenceId: `LEAD/${l.leadId || l._id}`,
+              });
+            });
+          } else if ((l.status === "rented" || l.status === "sold" || l.deal?.isClosed) && (l.commission?.approvedAmount > 0 || l.commission?.status === "paid")) {
+            dynamicPayouts.push({
+              id: `TXN-${l.leadId || l._id || idx}`,
+              amount: l.commission?.approvedAmount || 0,
+              method: l.status === "rented" ? "Tenant Move-In Commission" : "Direct Wallet Credit",
+              date: l.commission?.paidAt
+                ? new Date(l.commission.paidAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                : l.createdAt
+                ? new Date(l.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                : "Recently",
+              status: (l.commission?.status === "paid" ? "COMPLETED" : "PROCESSING") as "COMPLETED" | "PROCESSING",
+              referenceId: `LEAD/${l.leadId || l._id}`,
+            });
+          }
+        });
 
         setPayoutList(dynamicPayouts);
       }
@@ -280,6 +296,7 @@ export function CommissionWalletScreen() {
                 availableBalance={availableBalance}
                 totalEarnings={totalEarnings}
                 pendingApproval={pendingApproval}
+                recurringMonthlyActive={stats?.recurringMonthlyActive || 0}
                 onWithdrawPress={() => {
                   if (availableBalance <= 0) {
                     Alert.alert(
@@ -292,6 +309,31 @@ export function CommissionWalletScreen() {
                 }}
                 onBankDetailsPress={() => setIsBankModalVisible(true)}
               />
+
+              {/* Recurring Commission Model Notice Banner */}
+              <View
+                style={{
+                  backgroundColor: isDark ? "#0A2540" : "#EFF6FF",
+                  borderColor: isDark ? "#1E40AF" : "#BFDBFE",
+                  borderWidth: 1,
+                  borderRadius: 16,
+                  padding: 14,
+                  marginTop: 12,
+                  gap: 6,
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Ionicons name="repeat" size={16} color={isDark ? "#60A5FA" : "#2563EB"} />
+                  <Text style={{ fontSize: 13, fontWeight: "800", color: isDark ? "#93C5FD" : "#1E40AF" }}>
+                    Recurring Monthly Commission Model
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 11.5, lineHeight: 16, color: isDark ? "#CBD5E1" : "#3B82F6" }}>
+                  • <Text style={{ fontWeight: "700" }}>Initial Commission</Text>: Earned when a tenant is registered and pays the 1st month rent.{"\n"}
+                  • <Text style={{ fontWeight: "700" }}>Monthly Recurring</Text>: Earn continuous monthly commission on every rent payment as long as the tenant resides.{"\n"}
+                  • <Text style={{ fontWeight: "700" }}>Verification</Text>: Property verification approves the listing live, but commission activates upon tenant move-in.
+                </Text>
+              </View>
 
               {/* Payout Destination Card */}
               <View
@@ -712,3 +754,5 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 });
+
+export default CommissionWalletScreen;

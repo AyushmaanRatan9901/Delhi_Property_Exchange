@@ -21,6 +21,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useResponsiveTheme } from "../../constants/theme";
 import apiClient from "../../Redux/api/axiosInstance";
 import { SOCKET_URL } from "../../Redux/api/apiConfig";
+import ComplaintModal from "./ComplaintModal";
 
 const { width } = Dimensions.get("window");
 
@@ -47,6 +48,7 @@ interface Props {
 }
 
 type StepType = 1 | 2 | 3 | 4 | 5;
+type EditTab = "basic" | "financials" | "location" | "specs" | "owner" | "tenant" | "media";
 
 export const PropertyVerificationModal: React.FC<Props> = ({
   visible,
@@ -67,43 +69,102 @@ export const PropertyVerificationModal: React.FC<Props> = ({
   const [mapZoom, setMapZoom] = useState(16);
   const [mapType, setMapType] = useState<"roadmap" | "satellite">("roadmap");
 
-  // Step 1: Location & GPS Info
-  const [locality, setLocality] = useState("");
-  const [street, setStreet] = useState("");
-  const [landmark, setLandmark] = useState("");
-  const [city, setCity] = useState("Delhi NCR");
-  const [pincode, setPincode] = useState("");
-  const [fullAddress, setFullAddress] = useState("");
+  // ────────────────────────────────────────────────────────────
+  // SUB-MODAL: FULL PROPERTY EDIT MODAL STATE (LIKE SUPERADMIN)
+  // ────────────────────────────────────────────────────────────
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [editActiveTab, setEditActiveTab] = useState<EditTab>("basic");
+  const [savingProperty, setSavingProperty] = useState(false);
 
-  // Step 2: Specs & Physical Checklist
-  const [carpetArea, setCarpetArea] = useState("");
-  const [bedrooms, setBedrooms] = useState("2");
-  const [bathrooms, setBathrooms] = useState("2");
-  const [balconies, setBalconies] = useState("1");
-  const [floorNo, setFloorNo] = useState("");
-  const [totalFloors, setTotalFloors] = useState("");
-  const [condition, setCondition] = useState("good");
-  const [negotiablePrice, setNegotiablePrice] = useState("");
-  const [keysAvailable, setKeysAvailable] = useState(true);
-  const [visitDone, setVisitDone] = useState(true);
-  const [docsVerified, setDocsVerified] = useState(true);
-  const [billChecked, setBillChecked] = useState(true);
-  const [inspectionRemarks, setInspectionRemarks] = useState("");
+  // 1. Basic & Overview
+  const [editTitle, setEditTitle] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editPropertyType, setEditPropertyType] = useState("2BHK");
+  const [editListingType, setEditListingType] = useState("rent");
+  const [editStatus, setEditStatus] = useState("under_verification");
+  const [editFurnishing, setEditFurnishing] = useState("unfurnished");
+  const [editAvailableFrom, setEditAvailableFrom] = useState("");
+  const [editRemarks, setEditRemarks] = useState("");
 
-  // Step 3: Owner KYC & Aadhaar
-  const [ownerName, setOwnerName] = useState("");
-  const [ownerPhone, setOwnerPhone] = useState("");
-  const [ownerEmail, setOwnerEmail] = useState("");
-  const [aadhaarLast4, setAadhaarLast4] = useState("");
-  const [panCard, setPanCard] = useState("");
-  const [bankName, setBankName] = useState("");
-  const [accountNumber, setAccountNumber] = useState("");
-  const [ifscCode, setIfscCode] = useState("");
-  const [upiId, setUpiId] = useState("");
+  // 2. Financials
+  const [editPrice, setEditPrice] = useState("");
+  const [editDeposit, setEditDeposit] = useState("");
+  const [editMaintenance, setEditMaintenance] = useState("");
+  const [editMinNegotiable, setEditMinNegotiable] = useState("");
+  const [editCommissionEst, setEditCommissionEst] = useState("");
+  const [editCommissionApproved, setEditCommissionApproved] = useState("");
+  const [editCommissionStatus, setEditCommissionStatus] = useState("pending");
+
+  // 3. Location & GPS
+  const [editLocality, setEditLocality] = useState("");
+  const [editStreet, setEditStreet] = useState("");
+  const [editLandmark, setEditLandmark] = useState("");
+  const [editCity, setEditCity] = useState("Delhi NCR");
+  const [editState, setEditState] = useState("Delhi");
+  const [editPincode, setEditPincode] = useState("");
+  const [editFullAddress, setEditFullAddress] = useState("");
+  const [editLatitude, setEditLatitude] = useState("");
+  const [editLongitude, setEditLongitude] = useState("");
+
+  // 4. Specs & Physical Visit
+  const [editCarpetArea, setEditCarpetArea] = useState("");
+  const [editBedrooms, setEditBedrooms] = useState("");
+  const [editBathrooms, setEditBathrooms] = useState("");
+  const [editBalconies, setEditBalconies] = useState("");
+  const [editFloorNo, setEditFloorNo] = useState("");
+  const [editTotalFloors, setEditTotalFloors] = useState("");
+  const [editCondition, setEditCondition] = useState("good");
+  const [editKeysAvailable, setEditKeysAvailable] = useState(true);
+  const [editPhysicalVisitDone, setEditPhysicalVisitDone] = useState(true);
+  const [editOwnershipDocsVerified, setEditOwnershipDocsVerified] = useState(true);
+  const [editElectricityBillChecked, setEditElectricityBillChecked] = useState(true);
+  const [editStaffRemarks, setEditStaffRemarks] = useState("");
+
+  // 5. Owner Details & Banking
+  const [editOwnerName, setEditOwnerName] = useState("");
+  const [editOwnerPhone, setEditOwnerPhone] = useState("");
+  const [editAltPhone, setEditAltPhone] = useState("");
+  const [editOwnerEmail, setEditOwnerEmail] = useState("");
+  const [editOwnerAadhaar, setEditOwnerAadhaar] = useState("");
+  const [editOwnerPan, setEditOwnerPan] = useState("");
+  const [editOwnerHouseNo, setEditOwnerHouseNo] = useState("");
+  const [editOwnerStreet, setEditOwnerStreet] = useState("");
+  const [editOwnerCity, setEditOwnerCity] = useState("");
+  const [editOwnerState, setEditOwnerState] = useState("");
+  const [editOwnerPincode, setEditOwnerPincode] = useState("");
+  const [editAccountHolder, setEditAccountHolder] = useState("");
+  const [editBankName, setEditBankName] = useState("");
+  const [editAccountNumber, setEditAccountNumber] = useState("");
+  const [editIfscCode, setEditIfscCode] = useState("");
+  const [editUpiId, setEditUpiId] = useState("");
+  const [editOwnerKycStatus, setEditOwnerKycStatus] = useState("not_submitted");
+  const [editOwnerNotes, setEditOwnerNotes] = useState("");
+
+  // 6. Tenant & Deal Info
+  const [editTenantName, setEditTenantName] = useState("");
+  const [editTenantPhone, setEditTenantPhone] = useState("");
+  const [editTenantAadhaar, setEditTenantAadhaar] = useState("");
+  const [editDealPrice, setEditDealPrice] = useState("");
+  const [editDealDeposit, setEditDealDeposit] = useState("");
+  const [editLeaseMonths, setEditLeaseMonths] = useState("11");
+  const [editAgreementNumber, setEditAgreementNumber] = useState("");
+  const [editPoliceStatus, setEditPoliceStatus] = useState("pending");
+  const [editDealClosed, setEditDealClosed] = useState(false);
+  const [editDealNotes, setEditDealNotes] = useState("");
+
+  // 7. Media Links
+  const [editCoverPhoto, setEditCoverPhoto] = useState("");
+  const [editVideoUrl, setEditVideoUrl] = useState("");
+  const [editVirtualTour, setEditVirtualTour] = useState("");
+  const [editPhotosListStr, setEditPhotosListStr] = useState("");
+
+  // ────────────────────────────────────────────────────────────
+  // STEPPER GUIDED WORKFLOW STATE
+  // ────────────────────────────────────────────────────────────
   const [aadhaarWarning, setAadhaarWarning] = useState<string | null>(null);
   const [checkingAadhaar, setCheckingAadhaar] = useState(false);
 
-  // Step 4: Guided Media Capture Slots
+  // Guided Media Capture Slots
   const [mediaSlots, setMediaSlots] = useState<{ [key: string]: string }>({
     parking: "",
     stairs: "",
@@ -116,88 +177,339 @@ export const PropertyVerificationModal: React.FC<Props> = ({
   });
   const [uploadingSlots, setUploadingSlots] = useState<{ [key: string]: boolean }>({});
 
-  // Step 5: Publish & Lock State
+  // Publish & Lock State
   const [confirmLockChecked, setConfirmLockChecked] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [isReportFraudModalVisible, setIsReportFraudModalVisible] = useState(false);
+
+  // Populate form values from lead object
+  const populateFormValues = (currentLead: any) => {
+    if (!currentLead) return;
+
+    // 1. Basic
+    setEditTitle(currentLead.title || "");
+    setEditDesc(currentLead.description || "");
+    setEditPropertyType(currentLead.propertyType || "2BHK");
+    setEditListingType(currentLead.listingType || "rent");
+    setEditStatus(currentLead.status || "under_verification");
+    setEditFurnishing(currentLead.furnishing || "unfurnished");
+    setEditAvailableFrom(
+      currentLead.availableFrom ? new Date(currentLead.availableFrom).toISOString().split("T")[0] : ""
+    );
+    setEditRemarks(currentLead.remarks || "");
+
+    // 2. Financials
+    setEditPrice(String(currentLead.expectedPrice || ""));
+    setEditDeposit(String(currentLead.securityDeposit || ""));
+    setEditMaintenance(String(currentLead.maintenanceCharge || ""));
+    setEditMinNegotiable(String(currentLead.inspectionDetails?.negotiablePriceMin || ""));
+    setEditCommissionEst(String(currentLead.commission?.estimatedAmount || ""));
+    setEditCommissionApproved(String(currentLead.commission?.approvedAmount || ""));
+    setEditCommissionStatus(currentLead.commission?.status || "pending");
+
+    // 3. Location & GPS
+    setEditLocality(currentLead.locality || "");
+    setEditStreet(currentLead.address?.street || "");
+    setEditLandmark(currentLead.address?.landmark || "");
+    setEditCity(currentLead.address?.city || "Delhi NCR");
+    setEditState(currentLead.address?.state || "Delhi");
+    setEditPincode(currentLead.address?.pincode || "");
+    setEditFullAddress(currentLead.address?.fullAddress || "");
+
+    const lat =
+      currentLead.gpsDetails?.latitude ||
+      (Array.isArray(currentLead.location?.coordinates) && currentLead.location.coordinates[1]) ||
+      currentLead.latitude ||
+      "";
+    const lng =
+      currentLead.gpsDetails?.longitude ||
+      (Array.isArray(currentLead.location?.coordinates) && currentLead.location.coordinates[0]) ||
+      currentLead.longitude ||
+      "";
+    setEditLatitude(lat ? String(lat) : "");
+    setEditLongitude(lng ? String(lng) : "");
+
+    // 4. Specs & Inspection
+    setEditCarpetArea(String(currentLead.inspectionDetails?.actualCarpetAreaSqFt || ""));
+    setEditBedrooms(
+      String(
+        currentLead.inspectionDetails?.actualBedrooms ||
+          (currentLead.propertyType?.includes("1")
+            ? "1"
+            : currentLead.propertyType?.includes("3")
+            ? "3"
+            : "2")
+      )
+    );
+    setEditBathrooms(String(currentLead.inspectionDetails?.actualBathrooms || "2"));
+    setEditBalconies(String(currentLead.inspectionDetails?.actualBalconies || "1"));
+    setEditFloorNo(String(currentLead.inspectionDetails?.floorNumber || ""));
+    setEditTotalFloors(String(currentLead.inspectionDetails?.totalFloors || ""));
+    setEditCondition(currentLead.inspectionDetails?.propertyCondition || "good");
+    setEditKeysAvailable(currentLead.inspectionDetails?.keysAvailable ?? true);
+    setEditPhysicalVisitDone(currentLead.inspectionDetails?.physicalVisitDone ?? true);
+    setEditOwnershipDocsVerified(currentLead.inspectionDetails?.ownershipDocsVerified ?? true);
+    setEditElectricityBillChecked(currentLead.inspectionDetails?.electricityBillChecked ?? true);
+    setEditStaffRemarks(currentLead.inspectionDetails?.staffChecklistRemarks || "");
+
+    // 5. Owner
+    setEditOwnerName(currentLead.ownerName || "");
+    setEditOwnerPhone(currentLead.ownerPhone || "");
+    setEditAltPhone(currentLead.alternatePhone || "");
+    setEditOwnerEmail(currentLead.ownerEmail || "");
+    setEditOwnerAadhaar(currentLead.ownerAadhaarLast4 || "");
+    setEditOwnerPan(currentLead.ownerPanCard || "");
+    setEditOwnerHouseNo(currentLead.ownerAddress?.houseNo || "");
+    setEditOwnerStreet(currentLead.ownerAddress?.street || "");
+    setEditOwnerCity(currentLead.ownerAddress?.city || "");
+    setEditOwnerState(currentLead.ownerAddress?.state || "");
+    setEditOwnerPincode(currentLead.ownerAddress?.pincode || "");
+    setEditAccountHolder(
+      currentLead.ownerBankDetails?.accountHolderName || currentLead.ownerName || ""
+    );
+    setEditBankName(currentLead.ownerBankDetails?.bankName || "");
+    setEditAccountNumber(currentLead.ownerBankDetails?.accountNumber || "");
+    setEditIfscCode(currentLead.ownerBankDetails?.ifscCode || "");
+    setEditUpiId(currentLead.ownerBankDetails?.upiId || "");
+    setEditOwnerKycStatus(currentLead.ownerKYC?.status || "not_submitted");
+    setEditOwnerNotes(currentLead.ownerNotes || "");
+
+    // 6. Tenant & Deal
+    setEditTenantName(currentLead.deal?.tenantName || "");
+    setEditTenantPhone(currentLead.deal?.tenantPhone || "");
+    setEditTenantAadhaar(currentLead.deal?.tenantAadhaarLast4 || "");
+    setEditDealPrice(String(currentLead.deal?.finalPrice || currentLead.expectedPrice || ""));
+    setEditDealDeposit(String(currentLead.deal?.deposit || currentLead.securityDeposit || ""));
+    setEditLeaseMonths(String(currentLead.deal?.leaseDurationMonths || "11"));
+    setEditAgreementNumber(currentLead.deal?.agreementNumber || "");
+    setEditPoliceStatus(currentLead.deal?.policeVerificationStatus || "pending");
+    setEditDealClosed(
+      Boolean(
+        currentLead.deal?.isClosed ||
+          currentLead.status === "rented" ||
+          currentLead.status === "sold"
+      )
+    );
+    setEditDealNotes(currentLead.deal?.notes || "");
+
+    // 7. Media
+    setEditCoverPhoto(currentLead.coverPhoto || "");
+    setEditVideoUrl(currentLead.videoUrl || currentLead.videoLink || "");
+    setEditVirtualTour(currentLead.virtualTourLink || "");
+    const photosArr =
+      currentLead.photos?.map((p: any) => (typeof p === "string" ? p : p.url)) ||
+      currentLead.images ||
+      [];
+    setEditPhotosListStr(photosArr.join("\n"));
+
+    // Media slots for guided capture
+    setMediaSlots({
+      parking: photosArr[0] || "",
+      stairs: photosArr[1] || "",
+      livingRoom: photosArr[2] || "",
+      kitchen: photosArr[3] || "",
+      bedroom: photosArr[4] || "",
+      bathroom: photosArr[5] || "",
+      balcony: photosArr[6] || "",
+      videoUrl: currentLead.videoUrl || currentLead.videoLink || "",
+    });
+  };
 
   useEffect(() => {
     setLead(initialLead);
     if (initialLead) {
       setCurrentStep(1);
       setActivePhotoIdx(0);
-
-      // Location
-      setLocality(initialLead.locality || "");
-      setStreet(initialLead.address?.street || "");
-      setLandmark(initialLead.address?.landmark || "");
-      setCity(initialLead.address?.city || "Delhi NCR");
-      setPincode(initialLead.address?.pincode || "");
-      setFullAddress(initialLead.address?.fullAddress || "");
-
-      // Specs & Checklist
-      setCarpetArea(String(initialLead.inspectionDetails?.actualCarpetAreaSqFt || ""));
-      setBedrooms(
-        String(
-          initialLead.inspectionDetails?.actualBedrooms ||
-            (initialLead.propertyType?.includes("1")
-              ? "1"
-              : initialLead.propertyType?.includes("3")
-              ? "3"
-              : "2")
-        )
-      );
-      setBathrooms(String(initialLead.inspectionDetails?.actualBathrooms || "2"));
-      setBalconies(String(initialLead.inspectionDetails?.actualBalconies || "1"));
-      setFloorNo(String(initialLead.inspectionDetails?.floorNumber || ""));
-      setTotalFloors(String(initialLead.inspectionDetails?.totalFloors || ""));
-      setCondition(initialLead.inspectionDetails?.propertyCondition || "good");
-      setNegotiablePrice(
-        String(
-          initialLead.inspectionDetails?.negotiablePriceMin ||
-            initialLead.expectedPrice ||
-            ""
-        )
-      );
-      setKeysAvailable(initialLead.inspectionDetails?.keysAvailable ?? true);
-      setVisitDone(initialLead.inspectionDetails?.physicalVisitDone ?? true);
-      setDocsVerified(initialLead.inspectionDetails?.ownershipDocsVerified ?? true);
-      setBillChecked(initialLead.inspectionDetails?.electricityBillChecked ?? true);
-      setInspectionRemarks(initialLead.inspectionDetails?.staffChecklistRemarks || "");
-
-      // Owner & KYC
-      setOwnerName(initialLead.ownerName || "");
-      setOwnerPhone(initialLead.ownerPhone || "");
-      setOwnerEmail(initialLead.ownerEmail || "");
-      setAadhaarLast4(initialLead.ownerAadhaarLast4 || "");
-      setPanCard(initialLead.ownerPanCard || "");
-      setBankName(initialLead.ownerBankDetails?.bankName || "");
-      setAccountNumber(initialLead.ownerBankDetails?.accountNumber || "");
-      setIfscCode(initialLead.ownerBankDetails?.ifscCode || "");
-      setUpiId(initialLead.ownerBankDetails?.upiId || "");
+      populateFormValues(initialLead);
       setAadhaarWarning(null);
-
-      // Photos
-      const existingPhotos =
-        initialLead.photos?.map((p: any) => (typeof p === "string" ? p : p.url)) ||
-        initialLead.images ||
-        [];
-      setMediaSlots({
-        parking: existingPhotos[0] || "",
-        stairs: existingPhotos[1] || "",
-        livingRoom: existingPhotos[2] || "",
-        kitchen: existingPhotos[3] || "",
-        bedroom: existingPhotos[4] || "",
-        bathroom: existingPhotos[5] || "",
-        balcony: existingPhotos[6] || "",
-        videoUrl: initialLead.videoUrl || initialLead.videoLink || "",
-      });
-
       setUploadingSlots({});
       setConfirmLockChecked(false);
     }
   }, [initialLead, visible]);
 
   if (!lead) return null;
+
+  // Open Edit Modal with a specific active tab
+  const handleOpenEditModalWithTab = (tab: EditTab = "basic") => {
+    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+    populateFormValues(lead);
+    setEditActiveTab(tab);
+    setIsEditModalVisible(true);
+  };
+
+  // Master Save & Submit Handler for Entire Property
+  const handleSaveFullProperty = async () => {
+    if (!editLocality.trim()) {
+      Alert.alert("Validation Error", "Locality is required.");
+      setEditActiveTab("location");
+      return;
+    }
+    if (!editOwnerName.trim()) {
+      Alert.alert("Validation Error", "Owner Name is required.");
+      setEditActiveTab("owner");
+      return;
+    }
+
+    setSavingProperty(true);
+    try {
+      const photosArray = editPhotosListStr
+        .split("\n")
+        .map((u) => u.trim())
+        .filter((u) => u.length > 5);
+
+      const payload: any = {
+        title: editTitle.trim() || `${editPropertyType} in ${editLocality}`,
+        description: editDesc.trim(),
+        propertyType: editPropertyType,
+        listingType: editListingType,
+        status: editStatus,
+        furnishing: editFurnishing,
+        expectedPrice: Number(editPrice) || 0,
+        securityDeposit: Number(editDeposit) || 0,
+        maintenanceCharge: Number(editMaintenance) || 0,
+        availableFrom: editAvailableFrom ? new Date(editAvailableFrom) : undefined,
+        remarks: editRemarks.trim(),
+
+        // Location & GPS
+        locality: editLocality.trim(),
+        address: {
+          street: editStreet.trim(),
+          landmark: editLandmark.trim(),
+          city: editCity.trim(),
+          state: editState.trim(),
+          pincode: editPincode.trim(),
+          fullAddress:
+            editFullAddress.trim() ||
+            [editStreet, editLandmark, editLocality, editCity].filter(Boolean).join(", "),
+        },
+
+        // Owner Info
+        ownerName: editOwnerName.trim(),
+        ownerPhone: editOwnerPhone.replace(/\D/g, ""),
+        alternatePhone: editAltPhone.trim(),
+        ownerEmail: editOwnerEmail.trim().toLowerCase(),
+        ownerAadhaarLast4: editOwnerAadhaar.trim().slice(-4),
+        ownerPanCard: editOwnerPan.trim().toUpperCase(),
+        ownerAddress: {
+          houseNo: editOwnerHouseNo.trim(),
+          street: editOwnerStreet.trim(),
+          city: editOwnerCity.trim(),
+          state: editOwnerState.trim(),
+          pincode: editOwnerPincode.trim(),
+          fullAddress: [
+            editOwnerHouseNo,
+            editOwnerStreet,
+            editOwnerCity,
+            editOwnerState,
+            editOwnerPincode,
+          ]
+            .filter(Boolean)
+            .join(", "),
+        },
+        ownerBankDetails: {
+          accountHolderName: editAccountHolder.trim() || editOwnerName.trim(),
+          bankName: editBankName.trim(),
+          accountNumber: editAccountNumber.trim(),
+          ifscCode: editIfscCode.trim().toUpperCase(),
+          accountType: "Savings",
+          upiId: editUpiId.trim(),
+        },
+        ownerKYC: {
+          ...lead.ownerKYC,
+          status: editOwnerKycStatus,
+        },
+        ownerNotes: editOwnerNotes.trim(),
+
+        // Physical Inspection & Specs
+        inspectionDetails: {
+          ...lead.inspectionDetails,
+          actualCarpetAreaSqFt: Number(editCarpetArea) || undefined,
+          actualBedrooms: Number(editBedrooms) || undefined,
+          actualBathrooms: Number(editBathrooms) || undefined,
+          actualBalconies: Number(editBalconies) || undefined,
+          floorNumber: Number(editFloorNo) || undefined,
+          totalFloors: Number(editTotalFloors) || undefined,
+          propertyCondition: editCondition,
+          negotiablePriceMin: Number(editMinNegotiable) || undefined,
+          keysAvailable: editKeysAvailable,
+          physicalVisitDone: editPhysicalVisitDone,
+          ownershipDocsVerified: editOwnershipDocsVerified,
+          electricityBillChecked: editElectricityBillChecked,
+          staffChecklistRemarks: editStaffRemarks.trim(),
+        },
+
+        // Tenant Deal Info
+        deal: {
+          ...lead.deal,
+          tenantName: editTenantName.trim(),
+          tenantPhone: editTenantPhone.trim(),
+          tenantAadhaarLast4: editTenantAadhaar.trim().slice(-4),
+          finalPrice: Number(editDealPrice) || Number(editPrice) || 0,
+          deposit: Number(editDealDeposit) || Number(editDeposit) || 0,
+          leaseDurationMonths: Number(editLeaseMonths) || 11,
+          agreementNumber: editAgreementNumber.trim(),
+          policeVerificationStatus: editPoliceStatus,
+          isClosed: editDealClosed,
+          notes: editDealNotes.trim(),
+        },
+
+        // Commission Tracking
+        commission: {
+          ...lead.commission,
+          estimatedAmount: Number(editCommissionEst) || 0,
+          approvedAmount: (editStatus === "rented" || editStatus === "sold" || editDealClosed) ? (Number(editCommissionApproved) || 0) : 0,
+          status: (editStatus === "rented" || editStatus === "sold" || editDealClosed) ? editCommissionStatus : "pending",
+        },
+
+        // Media Links
+        coverPhoto: editCoverPhoto.trim() || (photosArray[0] || undefined),
+        videoUrl: editVideoUrl.trim(),
+        videoLink: editVideoUrl.trim(),
+        virtualTourLink: editVirtualTour.trim(),
+      };
+
+      if (photosArray.length > 0) {
+        payload.photos = photosArray.map((url, idx) => ({
+          url,
+          caption: "Photo " + (idx + 1),
+          isCover: idx === 0,
+        }));
+        payload.images = photosArray;
+      }
+
+      if (editLatitude && editLongitude) {
+        payload.latitude = Number(editLatitude);
+        payload.longitude = Number(editLongitude);
+        payload.gpsDetails = {
+          latitude: Number(editLatitude),
+          longitude: Number(editLongitude),
+          accuracy: 3.5,
+          reverseGeocodedAddress: editFullAddress.trim() || editLocality.trim(),
+        };
+      }
+
+      const res = await apiClient.patch("/leads/" + lead._id, payload);
+      if (res.data?.data) {
+        setLead(res.data.data);
+        populateFormValues(res.data.data);
+      }
+      try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
+      setIsEditModalVisible(false);
+      Alert.alert(
+        "Property Details Saved 🎉",
+        "All property specifications, location, owner KYC and media have been updated successfully."
+      );
+      onSuccess?.();
+    } catch (err: any) {
+      console.error("Save property error:", err);
+      Alert.alert(
+        "Update Failed",
+        err?.response?.data?.message || "Could not save property changes. Please try again."
+      );
+    } finally {
+      setSavingProperty(false);
+    }
+  };
 
   // Extract Coordinates for Map View
   const latitude =
@@ -283,15 +595,6 @@ export const PropertyVerificationModal: React.FC<Props> = ({
     }
   };
 
-  const handleCopy = async (text: string, label: string) => {
-    if (!text) return;
-    try {
-      await Clipboard.setStringAsync(text);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("Copied", label + " copied to clipboard.");
-    } catch {}
-  };
-
   const openInGoogleMaps = () => {
     try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch {}
     const query = latitude + "," + longitude;
@@ -310,7 +613,7 @@ export const PropertyVerificationModal: React.FC<Props> = ({
   // Real-time Aadhaar last-4 duplicate check
   const handleAadhaarChange = async (text: string) => {
     const clean = text.replace(/\D/g, "").slice(0, 4);
-    setAadhaarLast4(clean);
+    setEditOwnerAadhaar(clean);
     if (clean.length === 4) {
       setCheckingAadhaar(true);
       try {
@@ -522,22 +825,22 @@ export const PropertyVerificationModal: React.FC<Props> = ({
         .map(([k, v]) => v);
 
       const payload = {
-        actualCarpetAreaSqFt: Number(carpetArea) || undefined,
-        actualBedrooms: Number(bedrooms) || undefined,
-        actualBathrooms: Number(bathrooms) || undefined,
-        actualBalconies: Number(balconies) || undefined,
-        floorNumber: Number(floorNo) || undefined,
-        totalFloors: Number(totalFloors) || undefined,
-        propertyCondition: condition,
-        negotiablePriceMin: Number(negotiablePrice) || lead.expectedPrice,
-        keysAvailable,
-        physicalVisitDone: visitDone,
-        ownershipDocsVerified: docsVerified,
-        electricityBillChecked: billChecked,
+        actualCarpetAreaSqFt: Number(editCarpetArea) || undefined,
+        actualBedrooms: Number(editBedrooms) || undefined,
+        actualBathrooms: Number(editBathrooms) || undefined,
+        actualBalconies: Number(editBalconies) || undefined,
+        floorNumber: Number(editFloorNo) || undefined,
+        totalFloors: Number(editTotalFloors) || undefined,
+        propertyCondition: editCondition,
+        negotiablePriceMin: Number(editMinNegotiable) || Number(editPrice) || lead.expectedPrice,
+        keysAvailable: editKeysAvailable,
+        physicalVisitDone: editPhysicalVisitDone,
+        ownershipDocsVerified: editOwnershipDocsVerified,
+        electricityBillChecked: editElectricityBillChecked,
         staffChecklistRemarks:
-          inspectionRemarks.trim() || "Inspected on-site, verified specs & KYC.",
-        ownerAadhaarLast4: aadhaarLast4,
-        ownerPanCard: panCard.toUpperCase(),
+          editStaffRemarks.trim() || "Inspected on-site, verified specs & KYC.",
+        ownerAadhaarLast4: editOwnerAadhaar.trim().slice(-4),
+        ownerPanCard: editOwnerPan.trim().toUpperCase(),
         photos: photosArray.length > 0 ? photosArray : undefined,
         videoUrl: mediaSlots.videoUrl || undefined,
       };
@@ -569,13 +872,52 @@ export const PropertyVerificationModal: React.FC<Props> = ({
     { num: 5, label: "Publish & Lock", icon: "lock" },
   ];
 
-  const conditionOptions = [
-    { label: "Brand New", value: "new" },
-    { label: "Excellent", value: "excellent" },
-    { label: "Good", value: "good" },
-    { label: "Average", value: "average" },
-    { label: "Needs Repair", value: "needs_repair" },
-  ];
+  // Reusable Pill / Option Selector for Edit Form
+  const renderOptionSelector = (
+    label: string,
+    options: { label: string; value: string }[],
+    selectedValue: string,
+    onSelect: (val: string) => void
+  ) => (
+    <View style={styles.formGroup}>
+      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>{label}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillRow}>
+        {options.map((opt) => {
+          const isSelected = selectedValue.toLowerCase() === opt.value.toLowerCase();
+          return (
+            <TouchableOpacity
+              key={opt.value}
+              onPress={() => {
+                try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+                onSelect(opt.value);
+              }}
+              style={[
+                styles.optionPill,
+                isSelected && styles.optionPillActive,
+                {
+                  backgroundColor: isSelected
+                    ? "#0D9488"
+                    : isDark
+                    ? "#1E293B"
+                    : "#F1F5F9",
+                  borderColor: isSelected ? "#0D9488" : borderCol,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.optionPillText,
+                  { color: isSelected ? "#FFFFFF" : isDark ? "#E2E8F0" : "#334155" },
+                ]}
+              >
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -604,13 +946,35 @@ export const PropertyVerificationModal: React.FC<Props> = ({
               </Text>
             </View>
 
-            {/* Close Button */}
-            <TouchableOpacity
-              onPress={onClose}
-              style={[styles.closeButton, { backgroundColor: isDark ? "#334155" : "#E2E8F0" }]}
-            >
-              <Feather name="x" size={20} color={textPrimary} />
-            </TouchableOpacity>
+            {/* Header Action Buttons */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              {/* Report Fake / Scam Property Button */}
+              <TouchableOpacity
+                onPress={() => {
+                  try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch {}
+                  setIsReportFraudModalVisible(true);
+                }}
+                style={[styles.headerIconButton, { backgroundColor: "#EF444415", borderColor: "#EF444450" }]}
+              >
+                <Feather name="alert-triangle" size={17} color="#EF4444" />
+              </TouchableOpacity>
+
+              {/* Full Edit Property Button */}
+              <TouchableOpacity
+                onPress={() => handleOpenEditModalWithTab("basic")}
+                style={[styles.headerIconButton, { backgroundColor: "#0D948815", borderColor: "#0D948850" }]}
+              >
+                <Feather name="edit-3" size={17} color="#0D9488" />
+              </TouchableOpacity>
+
+              {/* Close Button */}
+              <TouchableOpacity
+                onPress={onClose}
+                style={[styles.closeButton, { backgroundColor: isDark ? "#334155" : "#E2E8F0" }]}
+              >
+                <Feather name="x" size={20} color={textPrimary} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Stepper Wizard Bar */}
@@ -682,7 +1046,46 @@ export const PropertyVerificationModal: React.FC<Props> = ({
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-            {/* Top Quick Overview Banner */}
+            {/* 1. Photos Carousel Preview */}
+            {photos.length > 0 ? (
+              <View style={styles.carouselContainer}>
+                <Image source={{ uri: photos[activePhotoIdx] }} style={styles.mainImage} resizeMode="cover" />
+                <View style={styles.photoCountBadge}>
+                  <Feather name="camera" size={12} color="#FFFFFF" />
+                  <Text style={styles.photoCountText}>{activePhotoIdx + 1}/{photos.length}</Text>
+                </View>
+                {photos.length > 1 && (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbStrip}>
+                    {photos.map((p: string, idx: number) => (
+                      <TouchableOpacity
+                        key={idx}
+                        onPress={() => setActivePhotoIdx(idx)}
+                        style={[styles.thumbWrap, idx === activePhotoIdx && styles.thumbWrapActive]}
+                      >
+                        <Image source={{ uri: p }} style={styles.thumbImage} resizeMode="cover" />
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
+              </View>
+            ) : null}
+
+            {/* Quick Action Banner to Edit Any Property Section */}
+            <View style={[styles.quickEditBanner, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF", borderColor: borderCol }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.quickEditTitle, { color: textPrimary }]}>Full Property Editor</Text>
+                <Text style={[styles.quickEditSub, { color: textSecondary }]}>Verification staff can edit every detail & specs</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => handleOpenEditModalWithTab("basic")}
+                style={styles.quickEditButton}
+              >
+                <Feather name="edit" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.quickEditBtnText}>Edit Entire Property</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* 2. Key Pricing & Overview Banner */}
             <View
               style={[
                 styles.pricingCard,
@@ -700,11 +1103,13 @@ export const PropertyVerificationModal: React.FC<Props> = ({
                     ₹{(lead.expectedPrice || 0).toLocaleString("en-IN")}
                   </Text>
                 </View>
-                <View style={[styles.typeBadge, { backgroundColor: "#0D948815" }]}>
-                  <Text style={[styles.typeBadgeText, { color: "#0D9488" }]}>
-                    {lead.propertyType || "Residential"} • {(lead.listingType || "Rent").toUpperCase()}
-                  </Text>
-                </View>
+                <TouchableOpacity
+                  onPress={() => handleOpenEditModalWithTab("financials")}
+                  style={styles.cardEditBadge}
+                >
+                  <Feather name="edit-2" size={13} color="#0D9488" />
+                  <Text style={styles.cardEditText}>Edit</Text>
+                </TouchableOpacity>
               </View>
 
               <View style={styles.statGrid}>
@@ -752,9 +1157,13 @@ export const PropertyVerificationModal: React.FC<Props> = ({
                       On-Site Location & GPS
                     </Text>
                   </View>
-                  <View style={[styles.stepCountPill, { backgroundColor: "#0D948815" }]}>
-                    <Text style={[styles.stepCountText, { color: "#0D9488" }]}>Step 1 of 5</Text>
-                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleOpenEditModalWithTab("location")}
+                    style={styles.cardEditBadge}
+                  >
+                    <Feather name="edit-2" size={13} color="#0D9488" />
+                    <Text style={styles.cardEditText}>Edit</Text>
+                  </TouchableOpacity>
                 </View>
 
                 {/* Interactive Slippy Map Canvas */}
@@ -874,88 +1283,23 @@ export const PropertyVerificationModal: React.FC<Props> = ({
                   </TouchableOpacity>
                 </View>
 
-                {/* Address Form Verification */}
-                <View style={styles.formSection}>
-                  <Text style={[styles.subSectionTitle, { color: textPrimary }]}>
-                    Address & Locality Details
-                  </Text>
-
-                  <View style={styles.formGroup}>
-                    <Text style={[styles.inputLabel, { color: textSecondary }]}>Locality / Area</Text>
-                    <TextInput
-                      style={[
-                        styles.input,
-                        {
-                          backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
-                          borderColor: borderCol,
-                          color: textPrimary,
-                        },
-                      ]}
-                      value={locality}
-                      onChangeText={setLocality}
-                      placeholder="e.g. Indirapuram, Sector 62"
-                      placeholderTextColor={textSecondary}
-                    />
-                  </View>
-
-                  <View style={styles.formRow}>
-                    <View style={[styles.formGroup, { flex: 1 }]}>
-                      <Text style={[styles.inputLabel, { color: textSecondary }]}>Street / Block</Text>
-                      <TextInput
-                        style={[
-                          styles.input,
-                          {
-                            backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
-                            borderColor: borderCol,
-                            color: textPrimary,
-                          },
-                        ]}
-                        value={street}
-                        onChangeText={setStreet}
-                        placeholder="e.g. Tower B, Flat 402"
-                        placeholderTextColor={textSecondary}
-                      />
-                    </View>
-                    <View style={[styles.formGroup, { flex: 1 }]}>
-                      <Text style={[styles.inputLabel, { color: textSecondary }]}>Landmark</Text>
-                      <TextInput
-                        style={[
-                          styles.input,
-                          {
-                            backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
-                            borderColor: borderCol,
-                            color: textPrimary,
-                          },
-                        ]}
-                        value={landmark}
-                        onChangeText={setLandmark}
-                        placeholder="Near Metro / Park"
-                        placeholderTextColor={textSecondary}
-                      />
-                    </View>
-                  </View>
-
-                  <View style={styles.formGroup}>
-                    <Text style={[styles.inputLabel, { color: textSecondary }]}>Full Address String</Text>
-                    <TextInput
-                      style={[
-                        styles.input,
-                        styles.textArea,
-                        {
-                          backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
-                          borderColor: borderCol,
-                          color: textPrimary,
-                        },
-                      ]}
-                      value={fullAddress}
-                      onChangeText={setFullAddress}
-                      placeholder="Complete verified physical address"
-                      placeholderTextColor={textSecondary}
-                      multiline
-                      numberOfLines={2}
-                    />
-                  </View>
+                {/* Address Details */}
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: textSecondary }]}>Locality:</Text>
+                  <Text style={[styles.infoValue, { color: textPrimary }]}>{lead.locality || "Not Specified"}</Text>
                 </View>
+                {lead.address?.landmark ? (
+                  <View style={styles.infoRow}>
+                    <Text style={[styles.infoLabel, { color: textSecondary }]}>Landmark:</Text>
+                    <Text style={[styles.infoValue, { color: textPrimary }]}>{lead.address.landmark}</Text>
+                  </View>
+                ) : null}
+                {lead.address?.fullAddress ? (
+                  <View style={styles.infoRow}>
+                    <Text style={[styles.infoLabel, { color: textSecondary }]}>Full Address:</Text>
+                    <Text style={[styles.infoValue, { color: textPrimary }]}>{lead.address.fullAddress}</Text>
+                  </View>
+                ) : null}
               </View>
             )}
 
@@ -976,298 +1320,69 @@ export const PropertyVerificationModal: React.FC<Props> = ({
                       Specifications & Physical Visit
                     </Text>
                   </View>
-                  <View style={[styles.stepCountPill, { backgroundColor: "#8B5CF615" }]}>
-                    <Text style={[styles.stepCountText, { color: "#8B5CF6" }]}>Step 2 of 5</Text>
-                  </View>
-                </View>
-
-                {/* Specs Inputs */}
-                <View style={styles.formRow}>
-                  <View style={[styles.formGroup, { flex: 1 }]}>
-                    <Text style={[styles.inputLabel, { color: textSecondary }]}>Carpet Area (sq ft)</Text>
-                    <TextInput
-                      style={[
-                        styles.input,
-                        {
-                          backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
-                          borderColor: borderCol,
-                          color: textPrimary,
-                        },
-                      ]}
-                      value={carpetArea}
-                      onChangeText={setCarpetArea}
-                      placeholder="e.g. 1150"
-                      placeholderTextColor={textSecondary}
-                      keyboardType="numeric"
-                    />
-                  </View>
-                  <View style={[styles.formGroup, { flex: 1 }]}>
-                    <Text style={[styles.inputLabel, { color: textSecondary }]}>Bedrooms</Text>
-                    <TextInput
-                      style={[
-                        styles.input,
-                        {
-                          backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
-                          borderColor: borderCol,
-                          color: textPrimary,
-                        },
-                      ]}
-                      value={bedrooms}
-                      onChangeText={setBedrooms}
-                      placeholder="e.g. 2"
-                      placeholderTextColor={textSecondary}
-                      keyboardType="numeric"
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.formRow}>
-                  <View style={[styles.formGroup, { flex: 1 }]}>
-                    <Text style={[styles.inputLabel, { color: textSecondary }]}>Bathrooms</Text>
-                    <TextInput
-                      style={[
-                        styles.input,
-                        {
-                          backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
-                          borderColor: borderCol,
-                          color: textPrimary,
-                        },
-                      ]}
-                      value={bathrooms}
-                      onChangeText={setBathrooms}
-                      placeholder="e.g. 2"
-                      placeholderTextColor={textSecondary}
-                      keyboardType="numeric"
-                    />
-                  </View>
-                  <View style={[styles.formGroup, { flex: 1 }]}>
-                    <Text style={[styles.inputLabel, { color: textSecondary }]}>Balconies</Text>
-                    <TextInput
-                      style={[
-                        styles.input,
-                        {
-                          backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
-                          borderColor: borderCol,
-                          color: textPrimary,
-                        },
-                      ]}
-                      value={balconies}
-                      onChangeText={setBalconies}
-                      placeholder="e.g. 1"
-                      placeholderTextColor={textSecondary}
-                      keyboardType="numeric"
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.formRow}>
-                  <View style={[styles.formGroup, { flex: 1 }]}>
-                    <Text style={[styles.inputLabel, { color: textSecondary }]}>Floor Number</Text>
-                    <TextInput
-                      style={[
-                        styles.input,
-                        {
-                          backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
-                          borderColor: borderCol,
-                          color: textPrimary,
-                        },
-                      ]}
-                      value={floorNo}
-                      onChangeText={setFloorNo}
-                      placeholder="e.g. 4"
-                      placeholderTextColor={textSecondary}
-                      keyboardType="numeric"
-                    />
-                  </View>
-                  <View style={[styles.formGroup, { flex: 1 }]}>
-                    <Text style={[styles.inputLabel, { color: textSecondary }]}>Total Floors</Text>
-                    <TextInput
-                      style={[
-                        styles.input,
-                        {
-                          backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
-                          borderColor: borderCol,
-                          color: textPrimary,
-                        },
-                      ]}
-                      value={totalFloors}
-                      onChangeText={setTotalFloors}
-                      placeholder="e.g. 12"
-                      placeholderTextColor={textSecondary}
-                      keyboardType="numeric"
-                    />
-                  </View>
-                </View>
-
-                {/* Property Condition Pills */}
-                <View style={styles.formGroup}>
-                  <Text style={[styles.inputLabel, { color: textSecondary }]}>
-                    Property Physical Condition
-                  </Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillRow}>
-                    {conditionOptions.map((opt) => {
-                      const isSelected = condition.toLowerCase() === opt.value.toLowerCase();
-                      return (
-                        <TouchableOpacity
-                          key={opt.value}
-                          onPress={() => {
-                            try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
-                            setCondition(opt.value);
-                          }}
-                          style={[
-                            styles.optionPill,
-                            isSelected && styles.optionPillActive,
-                            {
-                              backgroundColor: isSelected
-                                ? "#0D9488"
-                                : isDark
-                                ? "#0F172A"
-                                : "#F1F5F9",
-                              borderColor: isSelected ? "#0D9488" : borderCol,
-                            },
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.optionPillText,
-                              {
-                                color: isSelected ? "#FFFFFF" : isDark ? "#E2E8F0" : "#334155",
-                              },
-                            ]}
-                          >
-                            {opt.label}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-
-                {/* Physical Inspection Checklist Switches */}
-                <View style={styles.checklistSection}>
-                  <Text style={[styles.subSectionTitle, { color: textPrimary }]}>
-                    Mandatory Physical Verification Checklist
-                  </Text>
-
-                  <View
-                    style={[
-                      styles.switchCard,
-                      { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: borderCol },
-                    ]}
+                  <TouchableOpacity
+                    onPress={() => handleOpenEditModalWithTab("specs")}
+                    style={styles.cardEditBadge}
                   >
-                    <View style={{ flex: 1, marginRight: 10 }}>
-                      <Text style={[styles.switchCardTitle, { color: textPrimary }]}>
-                        Physical On-Site Visit Completed
-                      </Text>
-                      <Text style={[styles.switchCardSub, { color: textSecondary }]}>
-                        Staff member physically entered the property
-                      </Text>
-                    </View>
-                    <Switch
-                      value={visitDone}
-                      onValueChange={(val) => {
-                        try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
-                        setVisitDone(val);
-                      }}
-                      trackColor={{ false: "#64748B", true: "#0D9488" }}
-                    />
-                  </View>
+                    <Feather name="edit-2" size={13} color="#0D9488" />
+                    <Text style={styles.cardEditText}>Edit</Text>
+                  </TouchableOpacity>
+                </View>
 
-                  <View
-                    style={[
-                      styles.switchCard,
-                      { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: borderCol },
-                    ]}
-                  >
-                    <View style={{ flex: 1, marginRight: 10 }}>
-                      <Text style={[styles.switchCardTitle, { color: textPrimary }]}>
-                        Ownership Documents Verified
-                      </Text>
-                      <Text style={[styles.switchCardSub, { color: textSecondary }]}>
-                        Registry copy, allotment letter, or tax receipt checked
-                      </Text>
-                    </View>
-                    <Switch
-                      value={docsVerified}
-                      onValueChange={(val) => {
-                        try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
-                        setDocsVerified(val);
-                      }}
-                      trackColor={{ false: "#64748B", true: "#0D9488" }}
-                    />
+                {/* Spec Summary Grid */}
+                <View style={styles.specGrid}>
+                  <View style={[styles.specBox, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC" }]}>
+                    <Text style={[styles.specBoxLabel, { color: textSecondary }]}>Carpet Area</Text>
+                    <Text style={[styles.specBoxVal, { color: textPrimary }]}>
+                      {lead.inspectionDetails?.actualCarpetAreaSqFt ? `${lead.inspectionDetails.actualCarpetAreaSqFt} sq ft` : "N/A"}
+                    </Text>
                   </View>
-
-                  <View
-                    style={[
-                      styles.switchCard,
-                      { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: borderCol },
-                    ]}
-                  >
-                    <View style={{ flex: 1, marginRight: 10 }}>
-                      <Text style={[styles.switchCardTitle, { color: textPrimary }]}>
-                        Electricity & Utility Bills Checked
-                      </Text>
-                      <Text style={[styles.switchCardSub, { color: textSecondary }]}>
-                        Confirmed CA number and zero pending arrears
-                      </Text>
-                    </View>
-                    <Switch
-                      value={billChecked}
-                      onValueChange={(val) => {
-                        try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
-                        setBillChecked(val);
-                      }}
-                      trackColor={{ false: "#64748B", true: "#0D9488" }}
-                    />
+                  <View style={[styles.specBox, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC" }]}>
+                    <Text style={[styles.specBoxLabel, { color: textSecondary }]}>Bedrooms</Text>
+                    <Text style={[styles.specBoxVal, { color: textPrimary }]}>
+                      {lead.inspectionDetails?.actualBedrooms || lead.propertyType || "N/A"}
+                    </Text>
                   </View>
-
-                  <View
-                    style={[
-                      styles.switchCard,
-                      { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: borderCol },
-                    ]}
-                  >
-                    <View style={{ flex: 1, marginRight: 10 }}>
-                      <Text style={[styles.switchCardTitle, { color: textPrimary }]}>
-                        Keys Handed Over / Available
-                      </Text>
-                      <Text style={[styles.switchCardSub, { color: textSecondary }]}>
-                        Keys with guard or available on call for visits
-                      </Text>
-                    </View>
-                    <Switch
-                      value={keysAvailable}
-                      onValueChange={(val) => {
-                        try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
-                        setKeysAvailable(val);
-                      }}
-                      trackColor={{ false: "#64748B", true: "#0D9488" }}
-                    />
+                  <View style={[styles.specBox, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC" }]}>
+                    <Text style={[styles.specBoxLabel, { color: textSecondary }]}>Floor / Total</Text>
+                    <Text style={[styles.specBoxVal, { color: textPrimary }]}>
+                      {lead.inspectionDetails?.floorNumber !== undefined ? `${lead.inspectionDetails.floorNumber} / ${lead.inspectionDetails.totalFloors || "N/A"}` : "N/A"}
+                    </Text>
+                  </View>
+                  <View style={[styles.specBox, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC" }]}>
+                    <Text style={[styles.specBoxLabel, { color: textSecondary }]}>Condition</Text>
+                    <Text style={[styles.specBoxVal, { color: textPrimary, textTransform: "capitalize" }]}>
+                      {lead.inspectionDetails?.propertyCondition || "Good"}
+                    </Text>
                   </View>
                 </View>
 
-                {/* Remarks */}
-                <View style={styles.formGroup}>
-                  <Text style={[styles.inputLabel, { color: textSecondary }]}>
-                    Staff Inspection Notes & Audit Remarks
-                  </Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      styles.textArea,
-                      {
-                        backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
-                        borderColor: borderCol,
-                        color: textPrimary,
-                      },
-                    ]}
-                    value={inspectionRemarks}
-                    onChangeText={setInspectionRemarks}
-                    placeholder="Enter on-ground audit observations (e.g. newly painted, lift working, sunny balcony)..."
-                    placeholderTextColor={textSecondary}
-                    multiline
-                    numberOfLines={3}
-                  />
+                {/* Checklist Badges */}
+                <View style={[styles.checklistStatusRow, { backgroundColor: isDark ? "#0F172A" : "#F1F5F9" }]}>
+                  <View style={styles.checkItem}>
+                    <Feather
+                      name={lead.inspectionDetails?.physicalVisitDone ? "check-circle" : "clock"}
+                      size={14}
+                      color={lead.inspectionDetails?.physicalVisitDone ? "#10B981" : "#94A3B8"}
+                    />
+                    <Text style={[styles.checkText, { color: textPrimary }]}>Visit Done</Text>
+                  </View>
+                  <View style={styles.checkItem}>
+                    <Feather
+                      name={lead.inspectionDetails?.ownershipDocsVerified ? "check-circle" : "clock"}
+                      size={14}
+                      color={lead.inspectionDetails?.ownershipDocsVerified ? "#10B981" : "#94A3B8"}
+                    />
+                    <Text style={[styles.checkText, { color: textPrimary }]}>Docs Verified</Text>
+                  </View>
+                  <View style={styles.checkItem}>
+                    <Feather
+                      name={lead.inspectionDetails?.keysAvailable ? "check-circle" : "clock"}
+                      size={14}
+                      color={lead.inspectionDetails?.keysAvailable ? "#10B981" : "#94A3B8"}
+                    />
+                    <Text style={[styles.checkText, { color: textPrimary }]}>Keys Ready</Text>
+                  </View>
                 </View>
               </View>
             )}
@@ -1289,35 +1404,39 @@ export const PropertyVerificationModal: React.FC<Props> = ({
                       Owner KYC & Identity Check
                     </Text>
                   </View>
-                  <View style={[styles.stepCountPill, { backgroundColor: "#F59E0B15" }]}>
-                    <Text style={[styles.stepCountText, { color: "#F59E0B" }]}>Step 3 of 5</Text>
-                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleOpenEditModalWithTab("owner")}
+                    style={styles.cardEditBadge}
+                  >
+                    <Feather name="edit-2" size={13} color="#0D9488" />
+                    <Text style={styles.cardEditText}>Edit</Text>
+                  </TouchableOpacity>
                 </View>
 
                 {/* Owner Profile Banner */}
                 <View style={styles.ownerTopProfile}>
                   <View style={[styles.ownerAvatar, { backgroundColor: "#0D9488" }]}>
                     <Text style={styles.ownerAvatarText}>
-                      {(ownerName || lead.ownerName || "O").charAt(0).toUpperCase()}
+                      {(lead.ownerName || "O").charAt(0).toUpperCase()}
                     </Text>
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.ownerMainName, { color: textPrimary }]}>
-                      {ownerName || lead.ownerName || "Unknown Owner"}
+                      {lead.ownerName || "Unknown Owner"}
                     </Text>
                     <Text style={[styles.ownerMainPhone, { color: textSecondary }]}>
-                      {ownerPhone || lead.ownerPhone || "No Phone"}
+                      {lead.ownerPhone || "No Phone"}
                     </Text>
                   </View>
                   <View style={styles.ownerContactButtons}>
                     <TouchableOpacity
-                      onPress={() => handleCall(ownerPhone || lead.ownerPhone)}
+                      onPress={() => handleCall(lead.ownerPhone)}
                       style={styles.callCircleBtn}
                     >
                       <Feather name="phone-call" size={16} color="#FFFFFF" />
                     </TouchableOpacity>
                     <TouchableOpacity
-                      onPress={() => handleWhatsApp(ownerPhone || lead.ownerPhone, ownerName || lead.ownerName)}
+                      onPress={() => handleWhatsApp(lead.ownerPhone, lead.ownerName)}
                       style={[styles.callCircleBtn, { backgroundColor: "#25D366" }]}
                     >
                       <FontAwesome5 name="whatsapp" size={16} color="#FFFFFF" />
@@ -1325,153 +1444,40 @@ export const PropertyVerificationModal: React.FC<Props> = ({
                   </View>
                 </View>
 
-                {/* Aadhaar Last 4 & Real-time Check */}
-                <View style={styles.formGroup}>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                    <Text style={[styles.inputLabel, { color: textSecondary }]}>
-                      Owner Aadhaar (Last 4 Digits) *
-                    </Text>
-                    {checkingAadhaar && <ActivityIndicator size="small" color="#0D9488" />}
-                  </View>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      {
-                        backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
-                        borderColor: aadhaarWarning ? "#EF4444" : borderCol,
-                        color: textPrimary,
-                        fontSize: 18,
-                        letterSpacing: 4,
-                        fontWeight: "700",
-                      },
-                    ]}
-                    value={aadhaarLast4}
-                    onChangeText={handleAadhaarChange}
-                    placeholder="4-digit PIN (e.g. 7890)"
-                    placeholderTextColor={textSecondary}
-                    keyboardType="numeric"
-                    maxLength={4}
-                  />
-                  {aadhaarWarning && (
-                    <View style={styles.warningBox}>
-                      <Feather name="alert-triangle" size={14} color="#EF4444" style={{ marginRight: 6 }} />
-                      <Text style={styles.warningText}>{aadhaarWarning}</Text>
-                    </View>
-                  )}
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: textSecondary }]}>Email:</Text>
+                  <Text style={[styles.infoValue, { color: textPrimary }]}>{lead.ownerEmail || "Not Provided"}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: textSecondary }]}>PAN Card:</Text>
+                  <Text style={[styles.infoValue, { color: textPrimary }]}>{lead.ownerPanCard || "Not Provided"}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: textSecondary }]}>Aadhaar Last 4:</Text>
+                  <Text style={[styles.infoValue, { color: textPrimary }]}>{lead.ownerAadhaarLast4 ? `•••• •••• ${lead.ownerAadhaarLast4}` : "Not Provided"}</Text>
                 </View>
 
-                {/* PAN Card */}
-                <View style={styles.formGroup}>
-                  <Text style={[styles.inputLabel, { color: textSecondary }]}>Owner PAN Card Number</Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      {
-                        backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
-                        borderColor: borderCol,
-                        color: textPrimary,
-                        textTransform: "uppercase",
-                      },
-                    ]}
-                    value={panCard}
-                    onChangeText={(val) => setPanCard(val.toUpperCase())}
-                    placeholder="e.g. ABCDE1234F"
-                    placeholderTextColor={textSecondary}
-                    autoCapitalize="characters"
-                    maxLength={10}
-                  />
-                </View>
-
-                {/* Owner Banking / Payout Account */}
-                <View
-                  style={[
-                    styles.bankDetailsBox,
-                    { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: borderCol },
-                  ]}
-                >
-                  <View style={styles.bankBoxHeader}>
-                    <MaterialCommunityIcons name="bank" size={16} color="#0D9488" />
-                    <Text style={[styles.bankBoxTitle, { color: textPrimary }]}>
-                      Owner Direct Payout Bank Account
-                    </Text>
-                  </View>
-
-                  <View style={styles.formRow}>
-                    <View style={[styles.formGroup, { flex: 1 }]}>
-                      <Text style={[styles.inputLabel, { color: textSecondary }]}>Bank Name</Text>
-                      <TextInput
-                        style={[
-                          styles.input,
-                          {
-                            backgroundColor: isDark ? "#1E293B" : "#FFFFFF",
-                            borderColor: borderCol,
-                            color: textPrimary,
-                          },
-                        ]}
-                        value={bankName}
-                        onChangeText={setBankName}
-                        placeholder="e.g. HDFC Bank"
-                        placeholderTextColor={textSecondary}
-                      />
+                {/* Bank Details Box */}
+                {lead.ownerBankDetails?.bankName ? (
+                  <View style={[styles.bankDetailsBox, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: borderCol }]}>
+                    <View style={styles.bankBoxHeader}>
+                      <MaterialCommunityIcons name="bank" size={16} color="#0D9488" />
+                      <Text style={[styles.bankBoxTitle, { color: textPrimary }]}>Owner Payout Account</Text>
                     </View>
-                    <View style={[styles.formGroup, { flex: 1 }]}>
-                      <Text style={[styles.inputLabel, { color: textSecondary }]}>IFSC Code</Text>
-                      <TextInput
-                        style={[
-                          styles.input,
-                          {
-                            backgroundColor: isDark ? "#1E293B" : "#FFFFFF",
-                            borderColor: borderCol,
-                            color: textPrimary,
-                            textTransform: "uppercase",
-                          },
-                        ]}
-                        value={ifscCode}
-                        onChangeText={(val) => setIfscCode(val.toUpperCase())}
-                        placeholder="HDFC0001234"
-                        placeholderTextColor={textSecondary}
-                      />
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, { color: textSecondary }]}>Bank Name:</Text>
+                      <Text style={[styles.infoValue, { color: textPrimary }]}>{lead.ownerBankDetails.bankName}</Text>
+                    </View>
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, { color: textSecondary }]}>Account No:</Text>
+                      <Text style={[styles.infoValue, { color: textPrimary }]}>{lead.ownerBankDetails.accountNumber || "Not Set"}</Text>
+                    </View>
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, { color: textSecondary }]}>IFSC Code:</Text>
+                      <Text style={[styles.infoValue, { color: textPrimary }]}>{lead.ownerBankDetails.ifscCode || "Not Set"}</Text>
                     </View>
                   </View>
-
-                  <View style={styles.formRow}>
-                    <View style={[styles.formGroup, { flex: 1 }]}>
-                      <Text style={[styles.inputLabel, { color: textSecondary }]}>Account Number</Text>
-                      <TextInput
-                        style={[
-                          styles.input,
-                          {
-                            backgroundColor: isDark ? "#1E293B" : "#FFFFFF",
-                            borderColor: borderCol,
-                            color: textPrimary,
-                          },
-                        ]}
-                        value={accountNumber}
-                        onChangeText={setAccountNumber}
-                        placeholder="Account Number"
-                        placeholderTextColor={textSecondary}
-                        keyboardType="numeric"
-                      />
-                    </View>
-                    <View style={[styles.formGroup, { flex: 1 }]}>
-                      <Text style={[styles.inputLabel, { color: textSecondary }]}>UPI ID</Text>
-                      <TextInput
-                        style={[
-                          styles.input,
-                          {
-                            backgroundColor: isDark ? "#1E293B" : "#FFFFFF",
-                            borderColor: borderCol,
-                            color: textPrimary,
-                          },
-                        ]}
-                        value={upiId}
-                        onChangeText={setUpiId}
-                        placeholder="owner@okhdfcbank"
-                        placeholderTextColor={textSecondary}
-                      />
-                    </View>
-                  </View>
-                </View>
+                ) : null}
               </View>
             )}
 
@@ -1492,9 +1498,13 @@ export const PropertyVerificationModal: React.FC<Props> = ({
                       Guided Media Capture Flow
                     </Text>
                   </View>
-                  <View style={[styles.stepCountPill, { backgroundColor: "#0D948815" }]}>
-                    <Text style={[styles.stepCountText, { color: "#0D9488" }]}>Step 4 of 5</Text>
-                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleOpenEditModalWithTab("media")}
+                    style={styles.cardEditBadge}
+                  >
+                    <Feather name="edit-2" size={13} color="#0D9488" />
+                    <Text style={styles.cardEditText}>Edit Links</Text>
+                  </TouchableOpacity>
                 </View>
 
                 <Text style={[styles.stepSubDesc, { color: textSecondary }]}>
@@ -1713,19 +1723,19 @@ export const PropertyVerificationModal: React.FC<Props> = ({
                   <View style={styles.summaryItemRow}>
                     <Text style={[styles.summaryItemLabel, { color: textSecondary }]}>Property:</Text>
                     <Text style={[styles.summaryItemVal, { color: textPrimary }]}>
-                      {lead.title || ((lead.propertyType || "Property") + " in " + (locality || lead.locality))}
+                      {lead.title || ((lead.propertyType || "Property") + " in " + (lead.locality || "Site"))}
                     </Text>
                   </View>
                   <View style={styles.summaryItemRow}>
                     <Text style={[styles.summaryItemLabel, { color: textSecondary }]}>Verified Price:</Text>
                     <Text style={[styles.summaryItemVal, { color: "#0D9488", fontWeight: "800" }]}>
-                      ₹{(Number(negotiablePrice) || lead.expectedPrice || 0).toLocaleString("en-IN")}
+                      ₹{(Number(editPrice) || lead.expectedPrice || 0).toLocaleString("en-IN")}
                     </Text>
                   </View>
                   <View style={styles.summaryItemRow}>
                     <Text style={[styles.summaryItemLabel, { color: textSecondary }]}>Aadhaar Masked:</Text>
                     <Text style={[styles.summaryItemVal, { color: textPrimary }]}>
-                      {aadhaarLast4 ? "•••• •••• " + aadhaarLast4 : "Not Provided"}
+                      {lead.ownerAadhaarLast4 ? "•••• •••• " + lead.ownerAadhaarLast4 : "Not Provided"}
                     </Text>
                   </View>
                   <View style={styles.summaryItemRow}>
@@ -1793,14 +1803,22 @@ export const PropertyVerificationModal: React.FC<Props> = ({
             <View style={{ height: 40 }} />
           </ScrollView>
 
-          {/* Bottom Fixed Stepper Action Bar */}
+          {/* Bottom Fixed Action Bar */}
           <View
             style={[
               styles.bottomActionBar,
               { backgroundColor: isDark ? "#1E293B" : "#FFFFFF", borderTopColor: borderCol },
             ]}
           >
-            {currentStep > 1 ? (
+            <TouchableOpacity
+              onPress={() => handleOpenEditModalWithTab("basic")}
+              style={[styles.primaryActionBtn, { backgroundColor: "#0D9488" }]}
+            >
+              <Feather name="edit-3" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.primaryActionBtnText}>Edit Full Property</Text>
+            </TouchableOpacity>
+
+            {currentStep > 1 && (
               <TouchableOpacity
                 onPress={() => {
                   try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
@@ -1811,14 +1829,11 @@ export const PropertyVerificationModal: React.FC<Props> = ({
                   { backgroundColor: isDark ? "#334155" : "#E2E8F0" },
                 ]}
               >
-                <Feather name="arrow-left" size={16} color={textPrimary} style={{ marginRight: 6 }} />
-                <Text style={[styles.prevStepBtnText, { color: textPrimary }]}>Previous</Text>
+                <Feather name="arrow-left" size={16} color={textPrimary} />
               </TouchableOpacity>
-            ) : (
-              <View style={{ flex: 1 }} />
             )}
 
-            {currentStep < 5 ? (
+            {currentStep < 5 && (
               <TouchableOpacity
                 onPress={() => {
                   try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
@@ -1826,13 +1841,788 @@ export const PropertyVerificationModal: React.FC<Props> = ({
                 }}
                 style={[styles.nextStepBtn, { backgroundColor: "#0D9488" }]}
               >
-                <Text style={styles.nextStepBtnText}>Next: {stepsConfig[currentStep].label}</Text>
-                <Feather name="arrow-right" size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
+                <Text style={styles.nextStepBtnText}>Next</Text>
+                <Feather name="arrow-right" size={16} color="#FFFFFF" style={{ marginLeft: 4 }} />
               </TouchableOpacity>
-            ) : null}
+            )}
           </View>
         </View>
       </View>
+
+      {/* ──────────────────────────────────────────────────────────
+          MASTER FULL PROPERTY EDIT MODAL (ALL 7 TABS & FIELDS)
+      ────────────────────────────────────────────────────────── */}
+      <Modal visible={isEditModalVisible} animationType="slide" transparent onRequestClose={() => setIsEditModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.editModalContainer, { backgroundColor: isDark ? "#0F172A" : "#FFFFFF" }]}>
+            {/* Edit Modal Header */}
+            <View style={[styles.modalHeader, { borderBottomColor: borderCol, backgroundColor: isDark ? "#1E293B" : "#FFFFFF" }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.modalHeaderTitle, { color: textPrimary }]}>Edit Entire Property Details</Text>
+                <Text style={[styles.modalHeaderSub, { color: textSecondary }]}>{lead.leadId || "Property"}</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setIsEditModalVisible(false)}
+                style={[styles.closeButton, { backgroundColor: isDark ? "#334155" : "#E2E8F0" }]}
+              >
+                <Feather name="x" size={20} color={textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Navigation Tabs */}
+            <View style={[styles.editTabsBar, { borderBottomColor: borderCol, backgroundColor: isDark ? "#1E293B" : "#F8FAFC" }]}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScrollContent}>
+                {[
+                  { id: "basic", label: "Overview", icon: "home" },
+                  { id: "financials", label: "Financials", icon: "dollar-sign" },
+                  { id: "location", label: "Location & GPS", icon: "map-pin" },
+                  { id: "specs", label: "Specs & Visit", icon: "tool" },
+                  { id: "owner", label: "Owner & Bank", icon: "user" },
+                  { id: "tenant", label: "Tenant & Deal", icon: "check-circle" },
+                  { id: "media", label: "Media & Links", icon: "image" },
+                ].map((tab) => {
+                  const isActive = editActiveTab === tab.id;
+                  return (
+                    <TouchableOpacity
+                      key={tab.id}
+                      onPress={() => {
+                        try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+                        setEditActiveTab(tab.id as EditTab);
+                      }}
+                      style={[
+                        styles.tabItem,
+                        isActive && styles.tabItemActive,
+                        { borderColor: isActive ? "#0D9488" : "transparent" },
+                      ]}
+                    >
+                      <Feather
+                        name={tab.icon as any}
+                        size={14}
+                        color={isActive ? "#0D9488" : textSecondary}
+                        style={{ marginRight: 6 }}
+                      />
+                      <Text
+                        style={[
+                          styles.tabItemText,
+                          { color: isActive ? "#0D9488" : textSecondary, fontWeight: isActive ? "700" : "500" },
+                        ]}
+                      >
+                        {tab.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            {/* Tab Form Content */}
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.editFormScroll}>
+              {/* TAB 1: BASIC & OVERVIEW */}
+              {editActiveTab === "basic" && (
+                <View>
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Property Title</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. Luxury 2BHK in Indirapuram"
+                      placeholderTextColor={textSecondary}
+                      value={editTitle}
+                      onChangeText={setEditTitle}
+                    />
+                  </View>
+
+                  {renderOptionSelector(
+                    "Property Type / Configuration",
+                    [
+                      { label: "1 BHK", value: "1BHK" },
+                      { label: "2 BHK", value: "2BHK" },
+                      { label: "3 BHK", value: "3BHK" },
+                      { label: "PG / Studio", value: "PG / Studio" },
+                      { label: "Independent House", value: "Independent House" },
+                      { label: "Commercial Shop", value: "Commercial Shop" },
+                      { label: "Office", value: "office" },
+                      { label: "Villa", value: "villa" },
+                    ],
+                    editPropertyType,
+                    setEditPropertyType
+                  )}
+
+                  {renderOptionSelector(
+                    "Listing Type",
+                    [
+                      { label: "For Rent", value: "rent" },
+                      { label: "For Sale", value: "sale" },
+                    ],
+                    editListingType,
+                    setEditListingType
+                  )}
+
+                  {renderOptionSelector(
+                    "Property Status",
+                    [
+                      { label: "Under Verification", value: "under_verification" },
+                      { label: "Verified & Active", value: "verified" },
+                      { label: "New Lead", value: "new" },
+                      { label: "Assigned", value: "assigned" },
+                      { label: "Rented Out", value: "rented" },
+                      { label: "Sold", value: "sold" },
+                      { label: "Rejected", value: "rejected" },
+                    ],
+                    editStatus,
+                    setEditStatus
+                  )}
+
+                  {renderOptionSelector(
+                    "Furnishing",
+                    [
+                      { label: "Unfurnished", value: "unfurnished" },
+                      { label: "Semi Furnished", value: "semi_furnished" },
+                      { label: "Fully Furnished", value: "fully_furnished" },
+                    ],
+                    editFurnishing,
+                    setEditFurnishing
+                  )}
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Available From (YYYY-MM-DD)</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. 2026-10-01"
+                      placeholderTextColor={textSecondary}
+                      value={editAvailableFrom}
+                      onChangeText={setEditAvailableFrom}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Description</Text>
+                    <TextInput
+                      style={[styles.textArea, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="Enter detailed property description..."
+                      placeholderTextColor={textSecondary}
+                      multiline
+                      numberOfLines={3}
+                      value={editDesc}
+                      onChangeText={setEditDesc}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Staff / Verification Notes</Text>
+                    <TextInput
+                      style={[styles.textArea, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="Staff or verification notes..."
+                      placeholderTextColor={textSecondary}
+                      multiline
+                      numberOfLines={2}
+                      value={editRemarks}
+                      onChangeText={setEditRemarks}
+                    />
+                  </View>
+                </View>
+              )}
+
+              {/* TAB 2: FINANCIALS */}
+              {editActiveTab === "financials" && (
+                <View>
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Expected Rent / Sale Price (₹) *</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. 25000"
+                      placeholderTextColor={textSecondary}
+                      keyboardType="numeric"
+                      value={editPrice}
+                      onChangeText={setEditPrice}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Security Deposit (₹)</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. 50000"
+                      placeholderTextColor={textSecondary}
+                      keyboardType="numeric"
+                      value={editDeposit}
+                      onChangeText={setEditDeposit}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Maintenance Charges (₹/mo)</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. 2000"
+                      placeholderTextColor={textSecondary}
+                      keyboardType="numeric"
+                      value={editMaintenance}
+                      onChangeText={setEditMaintenance}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Min Negotiable Rent (₹)</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. 22000"
+                      placeholderTextColor={textSecondary}
+                      keyboardType="numeric"
+                      value={editMinNegotiable}
+                      onChangeText={setEditMinNegotiable}
+                    />
+                  </View>
+                </View>
+              )}
+
+              {/* TAB 3: LOCATION & GPS */}
+              {editActiveTab === "location" && (
+                <View>
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Locality / Area Name *</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. Indirapuram, Sector 62"
+                      placeholderTextColor={textSecondary}
+                      value={editLocality}
+                      onChangeText={setEditLocality}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Street / Society Name</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. ATS Advantage, Flat 402"
+                      placeholderTextColor={textSecondary}
+                      value={editStreet}
+                      onChangeText={setEditStreet}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Landmark</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. Near Shipra Mall"
+                      placeholderTextColor={textSecondary}
+                      value={editLandmark}
+                      onChangeText={setEditLandmark}
+                    />
+                  </View>
+
+                  <View style={styles.rowTwoInputs}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>City</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        value={editCity}
+                        onChangeText={setEditCity}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Pincode</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 201014"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editPincode}
+                        onChangeText={setEditPincode}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Full Formatted Address</Text>
+                    <TextInput
+                      style={[styles.textArea, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="Full printable address..."
+                      placeholderTextColor={textSecondary}
+                      multiline
+                      numberOfLines={2}
+                      value={editFullAddress}
+                      onChangeText={setEditFullAddress}
+                    />
+                  </View>
+
+                  <View style={styles.formSectionDivider}>
+                    <Text style={[styles.sectionSubtitle, { color: textPrimary }]}>Exact GPS Coordinates</Text>
+                  </View>
+
+                  <View style={styles.rowTwoInputs}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Latitude</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 28.633298"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editLatitude}
+                        onChangeText={setEditLatitude}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Longitude</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 77.367870"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editLongitude}
+                        onChangeText={setEditLongitude}
+                      />
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {/* TAB 4: SPECS & PHYSICAL INSPECTION */}
+              {editActiveTab === "specs" && (
+                <View>
+                  <View style={styles.rowTwoInputs}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Carpet Area (sq ft)</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 1250"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editCarpetArea}
+                        onChangeText={setEditCarpetArea}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Bedrooms</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 2"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editBedrooms}
+                        onChangeText={setEditBedrooms}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.rowTwoInputs}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Bathrooms</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 2"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editBathrooms}
+                        onChangeText={setEditBathrooms}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Balconies</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 1"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editBalconies}
+                        onChangeText={setEditBalconies}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.rowTwoInputs}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Floor Number</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 4"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editFloorNo}
+                        onChangeText={setEditFloorNo}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Total Floors</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 14"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editTotalFloors}
+                        onChangeText={setEditTotalFloors}
+                      />
+                    </View>
+                  </View>
+
+                  {renderOptionSelector(
+                    "Property Condition",
+                    [
+                      { label: "Brand New", value: "new" },
+                      { label: "Excellent", value: "excellent" },
+                      { label: "Good", value: "good" },
+                      { label: "Average", value: "average" },
+                      { label: "Needs Repair", value: "needs_repair" },
+                    ],
+                    editCondition,
+                    setEditCondition
+                  )}
+
+                  <View style={styles.formSectionDivider}>
+                    <Text style={[styles.sectionSubtitle, { color: textPrimary }]}>On-Site Verification Checklist</Text>
+                  </View>
+
+                  <View style={[styles.switchRow, { borderColor: borderCol }]}>
+                    <Text style={[styles.switchLabel, { color: textPrimary }]}>Physical Visit Completed</Text>
+                    <Switch
+                      value={editPhysicalVisitDone}
+                      onValueChange={setEditPhysicalVisitDone}
+                      trackColor={{ false: "#94A3B8", true: "#0D9488" }}
+                    />
+                  </View>
+
+                  <View style={[styles.switchRow, { borderColor: borderCol }]}>
+                    <Text style={[styles.switchLabel, { color: textPrimary }]}>Ownership Documents Verified</Text>
+                    <Switch
+                      value={editOwnershipDocsVerified}
+                      onValueChange={setEditOwnershipDocsVerified}
+                      trackColor={{ false: "#94A3B8", true: "#0D9488" }}
+                    />
+                  </View>
+
+                  <View style={[styles.switchRow, { borderColor: borderCol }]}>
+                    <Text style={[styles.switchLabel, { color: textPrimary }]}>Electricity Bills Checked</Text>
+                    <Switch
+                      value={editElectricityBillChecked}
+                      onValueChange={setEditElectricityBillChecked}
+                      trackColor={{ false: "#94A3B8", true: "#0D9488" }}
+                    />
+                  </View>
+
+                  <View style={[styles.switchRow, { borderColor: borderCol }]}>
+                    <Text style={[styles.switchLabel, { color: textPrimary }]}>Keys Available</Text>
+                    <Switch
+                      value={editKeysAvailable}
+                      onValueChange={setEditKeysAvailable}
+                      trackColor={{ false: "#94A3B8", true: "#0D9488" }}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Staff Inspection Remarks</Text>
+                    <TextInput
+                      style={[styles.textArea, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="Inspection notes and audit observations..."
+                      placeholderTextColor={textSecondary}
+                      multiline
+                      numberOfLines={2}
+                      value={editStaffRemarks}
+                      onChangeText={setEditStaffRemarks}
+                    />
+                  </View>
+                </View>
+              )}
+
+              {/* TAB 5: OWNER DETAILS & BANKING */}
+              {editActiveTab === "owner" && (
+                <View>
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Owner Full Name *</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. Ramesh Kumar"
+                      placeholderTextColor={textSecondary}
+                      value={editOwnerName}
+                      onChangeText={setEditOwnerName}
+                    />
+                  </View>
+
+                  <View style={styles.rowTwoInputs}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Phone Number</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 9876543210"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="phone-pad"
+                        value={editOwnerPhone}
+                        onChangeText={setEditOwnerPhone}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Alternate Phone</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 9811122233"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="phone-pad"
+                        value={editAltPhone}
+                        onChangeText={setEditAltPhone}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Email Address</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. owner@example.com"
+                      placeholderTextColor={textSecondary}
+                      keyboardType="email-address"
+                      value={editOwnerEmail}
+                      onChangeText={setEditOwnerEmail}
+                    />
+                  </View>
+
+                  <View style={styles.rowTwoInputs}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Aadhaar Last 4</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 5678"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        maxLength={4}
+                        value={editOwnerAadhaar}
+                        onChangeText={setEditOwnerAadhaar}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>PAN Card</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol, textTransform: "uppercase" }]}
+                        placeholder="e.g. ABCDE1234F"
+                        placeholderTextColor={textSecondary}
+                        maxLength={10}
+                        value={editOwnerPan}
+                        onChangeText={(val) => setEditOwnerPan(val.toUpperCase())}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.formSectionDivider}>
+                    <Text style={[styles.sectionSubtitle, { color: textPrimary }]}>Owner Bank Payout Account</Text>
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Bank Name</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. HDFC Bank"
+                      placeholderTextColor={textSecondary}
+                      value={editBankName}
+                      onChangeText={setEditBankName}
+                    />
+                  </View>
+
+                  <View style={styles.rowTwoInputs}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Account Number</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 50100234567890"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editAccountNumber}
+                        onChangeText={setEditAccountNumber}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>IFSC Code</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol, textTransform: "uppercase" }]}
+                        placeholder="HDFC0001234"
+                        placeholderTextColor={textSecondary}
+                        value={editIfscCode}
+                        onChangeText={(val) => setEditIfscCode(val.toUpperCase())}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>UPI ID</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. 9876543210@paytm"
+                      placeholderTextColor={textSecondary}
+                      value={editUpiId}
+                      onChangeText={setEditUpiId}
+                    />
+                  </View>
+                </View>
+              )}
+
+              {/* TAB 6: TENANT & DEAL */}
+              {editActiveTab === "tenant" && (
+                <View>
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Tenant Name</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="e.g. Rohit Sharma"
+                      placeholderTextColor={textSecondary}
+                      value={editTenantName}
+                      onChangeText={setEditTenantName}
+                    />
+                  </View>
+
+                  <View style={styles.rowTwoInputs}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Tenant Phone</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 9811122233"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="phone-pad"
+                        value={editTenantPhone}
+                        onChangeText={setEditTenantPhone}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Tenant Aadhaar Last 4</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 1234"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        maxLength={4}
+                        value={editTenantAadhaar}
+                        onChangeText={setEditTenantAadhaar}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.rowTwoInputs}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Agreed Rent (₹)</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 24000"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editDealPrice}
+                        onChangeText={setEditDealPrice}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Deposit Paid (₹)</Text>
+                      <TextInput
+                        style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                        placeholder="e.g. 48000"
+                        placeholderTextColor={textSecondary}
+                        keyboardType="numeric"
+                        value={editDealDeposit}
+                        onChangeText={setEditDealDeposit}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={[styles.switchRow, { borderColor: borderCol }]}>
+                    <Text style={[styles.switchLabel, { color: textPrimary }]}>Deal Closed / Occupied</Text>
+                    <Switch
+                      value={editDealClosed}
+                      onValueChange={setEditDealClosed}
+                      trackColor={{ false: "#94A3B8", true: "#0D9488" }}
+                    />
+                  </View>
+                </View>
+              )}
+
+              {/* TAB 7: MEDIA & LINKS */}
+              {editActiveTab === "media" && (
+                <View>
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Cover Photo URL</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="https://... cover photo url"
+                      placeholderTextColor={textSecondary}
+                      value={editCoverPhoto}
+                      onChangeText={setEditCoverPhoto}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Video URL (YouTube / Direct Link)</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="https://youtube.com/watch?v=..."
+                      placeholderTextColor={textSecondary}
+                      value={editVideoUrl}
+                      onChangeText={setEditVideoUrl}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Virtual Tour 3D Link</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol }]}
+                      placeholder="https://my.matterport.com/show/?m=..."
+                      placeholderTextColor={textSecondary}
+                      value={editVirtualTour}
+                      onChangeText={setEditVirtualTour}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.inputLabel, { color: isDark ? "#94A3B8" : "#475569" }]}>Property Photos (One URL Per Line)</Text>
+                    <TextInput
+                      style={[styles.textArea, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: textPrimary, borderColor: borderCol, minHeight: 90 }]}
+                      placeholder={"https://example.com/photo1.jpg\nhttps://example.com/photo2.jpg"}
+                      placeholderTextColor={textSecondary}
+                      multiline
+                      value={editPhotosListStr}
+                      onChangeText={setEditPhotosListStr}
+                    />
+                  </View>
+                </View>
+              )}
+
+              {/* Bottom Safe Padding in Edit Modal */}
+              <View style={{ height: 30 }} />
+            </ScrollView>
+
+            {/* Edit Modal Bottom Action Bar */}
+            <View style={[styles.bottomActionBar, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF", borderTopColor: borderCol }]}>
+              <TouchableOpacity
+                onPress={() => setIsEditModalVisible(false)}
+                style={[styles.prevStepBtn, { backgroundColor: isDark ? "#334155" : "#E2E8F0" }]}
+              >
+                <Text style={[styles.prevStepBtnText, { color: textPrimary }]}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleSaveFullProperty}
+                disabled={savingProperty}
+                style={[styles.nextStepBtn, { backgroundColor: "#0D9488" }]}
+              >
+                {savingProperty ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Feather name="check" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.nextStepBtnText}>Save & Submit Changes</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Report Fraud / Scam Modal with Proof */}
+      {isReportFraudModalVisible && (
+        <ComplaintModal
+          visible={isReportFraudModalVisible}
+          preselectedProperty={lead}
+          onClose={() => setIsReportFraudModalVisible(false)}
+          onSuccess={() => {
+            setIsReportFraudModalVisible(false);
+            onSuccess?.();
+            onClose();
+          }}
+        />
+      )}
     </Modal>
   );
 };
@@ -1845,6 +2635,12 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     height: "92%",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: "hidden",
+  },
+  editModalContainer: {
+    height: "90%",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     overflow: "hidden",
@@ -1881,12 +2677,53 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
   },
+  headerIconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   closeButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
+  },
+  modalHeaderTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  modalHeaderSub: {
+    fontSize: 12,
+    marginTop: 1,
+  },
+  editTabsBar: {
+    borderBottomWidth: 1,
+    paddingVertical: 8,
+  },
+  tabsScrollContent: {
+    paddingHorizontal: 14,
+    gap: 8,
+  },
+  tabItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  tabItemActive: {
+    backgroundColor: "rgba(13, 148, 136, 0.12)",
+  },
+  tabItemText: {
+    fontSize: 13,
+  },
+  editFormScroll: {
+    padding: 16,
   },
   stepperBar: {
     borderBottomWidth: 1,
@@ -1921,6 +2758,85 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
   },
+  carouselContainer: {
+    position: "relative",
+    borderRadius: 16,
+    overflow: "hidden",
+    marginBottom: 14,
+  },
+  mainImage: {
+    width: "100%",
+    height: 200,
+  },
+  photoCountBadge: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    backgroundColor: "rgba(15, 23, 42, 0.75)",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  photoCountText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  thumbStrip: {
+    position: "absolute",
+    bottom: 10,
+    left: 10,
+    right: 10,
+  },
+  thumbWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    overflow: "hidden",
+    marginRight: 8,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  thumbWrapActive: {
+    borderColor: "#0D9488",
+  },
+  thumbImage: {
+    width: "100%",
+    height: "100%",
+  },
+  quickEditBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 14,
+  },
+  quickEditTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  quickEditSub: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  quickEditButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#0D9488",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  quickEditBtnText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "700",
+  },
   pricingCard: {
     borderRadius: 16,
     borderWidth: 1,
@@ -1945,13 +2861,18 @@ const styles = StyleSheet.create({
     color: "#0D9488",
     marginTop: 2,
   },
-  typeBadge: {
-    paddingHorizontal: 10,
+  cardEditBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(13, 148, 136, 0.12)",
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 6,
+    gap: 4,
   },
-  typeBadgeText: {
-    fontSize: 12,
+  cardEditText: {
+    color: "#0D9488",
+    fontSize: 11,
     fontWeight: "700",
   },
   statGrid: {
@@ -2157,79 +3078,56 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
   },
-  formSection: {
-    marginTop: 6,
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 5,
   },
-  subSectionTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    marginBottom: 10,
+  infoLabel: {
+    fontSize: 12,
   },
-  formGroup: {
+  infoValue: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  specGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
     marginBottom: 12,
   },
-  formRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  input: {
-    borderWidth: 1,
+  specBox: {
+    width: "48%",
+    padding: 10,
     borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
   },
-  textArea: {
-    minHeight: 60,
-    textAlignVertical: "top",
+  specBoxLabel: {
+    fontSize: 11,
+    marginBottom: 2,
   },
-  pillRow: {
-    flexDirection: "row",
-    marginTop: 4,
-  },
-  optionPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    marginRight: 8,
-  },
-  optionPillActive: {
-    borderColor: "#0D9488",
-  },
-  optionPillText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  checklistSection: {
-    marginTop: 10,
-  },
-  switchCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 8,
-  },
-  switchCardTitle: {
+  specBoxVal: {
     fontSize: 13,
     fontWeight: "700",
   },
-  switchCardSub: {
-    fontSize: 11,
-    marginTop: 2,
+  checklistStatusRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    padding: 10,
+    borderRadius: 10,
+  },
+  checkItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  checkText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
   ownerTopProfile: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 12,
     gap: 10,
   },
   ownerAvatar: {
@@ -2264,19 +3162,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  warningBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 6,
-    backgroundColor: "rgba(239, 68, 68, 0.1)",
-    padding: 8,
-    borderRadius: 8,
-  },
-  warningText: {
-    color: "#EF4444",
-    fontSize: 12,
-    fontWeight: "600",
-  },
   bankDetailsBox: {
     padding: 12,
     borderRadius: 12,
@@ -2287,7 +3172,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   bankBoxTitle: {
     fontSize: 13,
@@ -2463,20 +3348,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderTopWidth: 1,
-    gap: 12,
+    gap: 10,
   },
-  prevStepBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  prevStepBtnText: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  nextStepBtn: {
+  primaryActionBtn: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
@@ -2484,10 +3358,103 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
   },
+  primaryActionBtnText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  prevStepBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  prevStepBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  nextStepBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
   nextStepBtnText: {
     color: "#FFFFFF",
     fontSize: 13,
     fontWeight: "800",
+  },
+  formGroup: {
+    marginBottom: 12,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  textInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+  },
+  textArea: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    minHeight: 60,
+    textAlignVertical: "top",
+  },
+  rowTwoInputs: {
+    flexDirection: "row",
+    marginBottom: 12,
+  },
+  pillRow: {
+    flexDirection: "row",
+    marginTop: 4,
+  },
+  optionPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginRight: 8,
+  },
+  optionPillActive: {
+    borderColor: "#0D9488",
+  },
+  optionPillText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  formSectionDivider: {
+    marginTop: 8,
+    marginBottom: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(148, 163, 184, 0.2)",
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    marginBottom: 4,
+  },
+  switchLabel: {
+    fontSize: 13,
+    fontWeight: "600",
   },
 });
 

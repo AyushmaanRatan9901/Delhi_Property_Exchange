@@ -16,7 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather, Ionicons, MaterialCommunityIcons, FontAwesome5 } from "@expo/vector-icons";
-import { SuperAdminSideMenu } from "../../../components/SuperAdminComponent";
+import { SuperAdminSideMenu, SuperAdminNotificationModal } from "../../../components/SuperAdminComponent";
 import { useResponsiveTheme } from "../../../constants/theme";
 import apiClient from "../../../Redux/api/axiosInstance";
 
@@ -24,6 +24,7 @@ const { width } = Dimensions.get("window");
 
 export default function SuperAdminAnalyticsScreen() {
   const [isSideMenuVisible, setIsSideMenuVisible] = useState<boolean>(false);
+  const [isNotificationModalVisible, setIsNotificationModalVisible] = useState<boolean>(false);
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useResponsiveTheme();
 
@@ -130,9 +131,18 @@ export default function SuperAdminAnalyticsScreen() {
               <Text style={styles.headerTitle}>Analytics & Rent Ledger</Text>
             </View>
           </View>
-          <TouchableOpacity onPress={onRefresh} style={styles.headerIconCircle}>
-            <Ionicons name="refresh" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <TouchableOpacity
+              onPress={() => setIsNotificationModalVisible(true)}
+              style={styles.headerIconCircle}
+              activeOpacity={0.7}
+            >
+              <Feather name="bell" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onRefresh} style={styles.headerIconCircle}>
+              <Ionicons name="refresh" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
         </View>
         <Text style={styles.headerSubtitle}>
           Hyperlocal locality velocity, agent leaderboard & universal rent ledger tracking
@@ -416,6 +426,13 @@ export default function SuperAdminAnalyticsScreen() {
       <SuperAdminSideMenu
         visible={isSideMenuVisible}
         onClose={() => setIsSideMenuVisible(false)}
+        onNotificationPress={() => setIsNotificationModalVisible(true)}
+      />
+
+      {/* Notifications Modal */}
+      <SuperAdminNotificationModal
+        visible={isNotificationModalVisible}
+        onClose={() => setIsNotificationModalVisible(false)}
       />
     </View>
   );

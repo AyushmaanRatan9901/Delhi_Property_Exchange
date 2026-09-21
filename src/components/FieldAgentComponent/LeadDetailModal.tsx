@@ -27,33 +27,58 @@ const MONTH_NAMES = [
 
 const WEEK_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-// Helper to parse date from string (e.g. "12 Sep 2026", "2026-09-12", "Today, 10:45 AM")
+// Helper to parse date from string (e.g. "12 Sep 2026", "2026-09-12", "12/09/2026", "Today, 10:45 AM")
 const parseLeadDate = (dateStr?: string): { day: number; month: number; year: number } => {
   if (!dateStr) {
     const now = new Date();
     return { day: now.getDate(), month: now.getMonth(), year: now.getFullYear() };
   }
 
-  if (dateStr.toLowerCase().includes("today") || dateStr.toLowerCase().includes("just now")) {
+  const str = String(dateStr).trim();
+  const lower = str.toLowerCase();
+
+  if (lower.includes("today") || lower.includes("just now") || lower.includes("recently")) {
     const now = new Date();
     return { day: now.getDate(), month: now.getMonth(), year: now.getFullYear() };
   }
 
-  const parsed = new Date(dateStr);
-  if (!isNaN(parsed.getTime())) {
-    return { day: parsed.getDate(), month: parsed.getMonth(), year: parsed.getFullYear() };
+  if (lower.includes("yesterday")) {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return { day: d.getDate(), month: d.getMonth(), year: d.getFullYear() };
   }
 
-  const parts = dateStr.match(/(\d+)\s+([A-Za-z]+)\s+(\d{4})/);
-  if (parts) {
-    const day = parseInt(parts[1], 10);
-    const monthIndex = MONTH_NAMES.findIndex((m) => m.toLowerCase().startsWith(parts[2].toLowerCase()));
-    const year = parseInt(parts[3], 10);
+  // DD/MM/YYYY or DD-MM-YYYY
+  const dmyMatch = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+  if (dmyMatch) {
+    const day = parseInt(dmyMatch[1], 10);
+    const m = parseInt(dmyMatch[2], 10) - 1;
+    const y = parseInt(dmyMatch[3], 10);
+    return {
+      day: day || 1,
+      month: m >= 0 && m <= 11 ? m : new Date().getMonth(),
+      year: y || new Date().getFullYear(),
+    };
+  }
+
+  // "12 Sep 2026", "12-Sep-2026", "12 Sept 2026", "September 12, 2026"
+  const wordMonthMatch = str.match(/(\d{1,2})[\s-]+([A-Za-z]+)[\s,-]+(\d{4})/);
+  if (wordMonthMatch) {
+    const day = parseInt(wordMonthMatch[1], 10);
+    const mStr = wordMonthMatch[2].toLowerCase().slice(0, 3);
+    const monthIndex = MONTH_NAMES.findIndex((m) => m.toLowerCase().startsWith(mStr));
+    const year = parseInt(wordMonthMatch[3], 10);
     return {
       day: day || 1,
       month: monthIndex >= 0 ? monthIndex : new Date().getMonth(),
       year: year || new Date().getFullYear(),
     };
+  }
+
+  // ISO or standard date
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime()) && parsed.getFullYear() > 2000) {
+    return { day: parsed.getDate(), month: parsed.getMonth(), year: parsed.getFullYear() };
   }
 
   const now = new Date();
@@ -87,6 +112,10 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
+
+  const today = useMemo(() => new Date(), []);
+  const isCurrentMonthToday = today.getFullYear() === year && today.getMonth() === month;
+  const todayDateNum = today.getDate();
 
   // Days in month and starting offset
   const daysInMonth = useMemo(() => new Date(year, month + 1, 0).getDate(), [year, month]);
@@ -143,8 +172,11 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
     const dayLeads = leadsByDay.get(day);
     if (!dayLeads || dayLeads.length === 0) return "NORMAL";
 
-    if (dayLeads.some((l) => l.commissionStatus === "PAID" || l.status === "VERIFIED")) {
+    if (dayLeads.some((l) => l.commissionStatus === "PAID" || l.status === "RENTED" || l.status === "SOLD")) {
       return "PAID";
+    }
+    if (dayLeads.some((l) => l.status === "VERIFIED")) {
+      return "VERIFIED";
     }
     if (dayLeads.some((l) => l.commissionStatus === "PENDING" || l.status === "NEW")) {
       return "PENDING";
@@ -517,19 +549,23 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
               {/* Calendar Days Grid */}
               <View style={styles.daysGrid}>
                 {Array.from({ length: startDayOffset }).map((_, i) => (
-                  <View key={`offset-${i}`} style={styles.dayCellEmpty} />
+                  <View key={`offset-${i}`} style={styles.dayCellContainer}>
+                    <View style={styles.dayCellEmpty} />
+                  </View>
                 ))}
 
                 {Array.from({ length: daysInMonth }).map((_, i) => {
                   const dayNum = i + 1;
                   const dayStatus = getDayStatus(dayNum);
                   const isSelected = dayNum === selectedDay;
+                  const isTodayDay = isCurrentMonthToday && dayNum === todayDateNum;
                   const hasLeads = leadsByDay.has(dayNum);
 
                   let cellBg = isDark ? colors.surfaceLight : "#F8FAFC";
                   let textColor = isDark ? colors.textSecondary : "#334155";
                   let borderColor = "transparent";
                   let showClock = false;
+                  let showPaid = false;
                   let showVerified = false;
 
                   if (isSelected) {
@@ -539,6 +575,10 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                   } else if (dayStatus === "PAID") {
                     cellBg = isDark ? "#062A1C" : "#DCFCE7";
                     textColor = isDark ? "#34D399" : "#15803D";
+                    showPaid = true;
+                  } else if (dayStatus === "VERIFIED") {
+                    cellBg = isDark ? "#082F49" : "#E0F2FE";
+                    textColor = isDark ? "#38BDF8" : "#0284C7";
                     showVerified = true;
                   } else if (dayStatus === "PENDING") {
                     cellBg = isDark ? "#2E1E08" : "#FEF3C7";
@@ -547,53 +587,72 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                   } else if (dayStatus === "REJECTED") {
                     cellBg = isDark ? "#331111" : "#FEE2E2";
                     textColor = isDark ? "#F87171" : "#B91C1C";
+                  } else if (isTodayDay) {
+                    borderColor = isDark ? "#0369A1" : "#BAE6FD";
+                    cellBg = isDark ? "#082238" : "#F0F9FF";
+                    textColor = isDark ? "#38BDF8" : "#0284C7";
                   }
 
                   return (
-                    <TouchableOpacity
-                      key={dayNum}
-                      style={[
-                        styles.dayCell,
-                        {
-                          backgroundColor: cellBg,
-                          borderColor: borderColor,
-                          borderWidth: isSelected ? 2 : 0,
-                        },
-                      ]}
-                      onPress={() => setSelectedDay(dayNum)}
-                      activeOpacity={0.7}
-                    >
-                      <Text
+                    <View key={dayNum} style={styles.dayCellContainer}>
+                      <TouchableOpacity
                         style={[
-                          styles.dayNumberText,
+                          styles.dayCell,
                           {
-                            color: textColor,
-                            fontWeight: isSelected || hasLeads ? "800" : "600",
+                            backgroundColor: cellBg,
+                            borderColor: borderColor,
+                            borderWidth: isSelected ? 2 : isTodayDay ? 1.5 : 0,
                           },
                         ]}
+                        onPress={() => {
+                          try {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          } catch {}
+                          setSelectedDay(dayNum);
+                        }}
+                        activeOpacity={0.7}
                       >
-                        {dayNum}
-                      </Text>
+                        <Text
+                          style={[
+                            styles.dayNumberText,
+                            {
+                              color: textColor,
+                              fontWeight: isSelected || hasLeads || isTodayDay ? "800" : "600",
+                            },
+                          ]}
+                        >
+                          {dayNum}
+                        </Text>
 
-                      {showClock && (
-                        <View style={styles.clockDot}>
-                          <Ionicons
-                            name="time"
-                            size={10}
-                            color={isDark ? "#FBBF24" : "#D97706"}
-                          />
-                        </View>
-                      )}
-                      {showVerified && (
-                        <View style={styles.alertDot}>
-                          <Ionicons
-                            name="checkmark-circle"
-                            size={10}
-                            color={isDark ? "#34D399" : "#16A34A"}
-                          />
-                        </View>
-                      )}
-                    </TouchableOpacity>
+                        {showClock && (
+                          <View style={styles.dotIndicator}>
+                            <Ionicons
+                              name="time"
+                              size={8}
+                              color={isDark ? "#FBBF24" : "#D97706"}
+                            />
+                          </View>
+                        )}
+                        {showPaid && (
+                          <View style={styles.dotIndicator}>
+                            <Ionicons
+                              name="checkmark-circle"
+                              size={8}
+                              color={isDark ? "#34D399" : "#16A34A"}
+                            />
+                          </View>
+                        )}
+                        {showVerified && (
+                          <View style={styles.dotIndicator}>
+                            <Ionicons
+                              name="shield-checkmark"
+                              size={8}
+                              color={isDark ? "#38BDF8" : "#0284C7"}
+                            />
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    </View>
                   );
                 })}
               </View>
@@ -660,7 +719,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                       { color: isDark ? colors.textSecondary : "#475569" },
                     ]}
                   >
-                    Selected Day
+                    Selected
                   </Text>
                 </View>
 
@@ -687,7 +746,34 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                       { color: isDark ? colors.textSecondary : "#475569" },
                     ]}
                   >
-                    Verified / Paid
+                    Rented / Paid
+                  </Text>
+                </View>
+
+                <View
+                  style={[
+                    styles.legendChip,
+                    {
+                      backgroundColor: isDark
+                        ? colors.surfaceLight
+                        : "#F8FAFC",
+                      borderColor: isDark ? colors.border : "#E2E8F0",
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.legendDot,
+                      { backgroundColor: isDark ? "#38BDF8" : "#0284C7" },
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.legendText,
+                      { color: isDark ? colors.textSecondary : "#475569" },
+                    ]}
+                  >
+                    Verified / Listed
                   </Text>
                 </View>
 
@@ -819,6 +905,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
 
                 {/* Milestone Step Tracker */}
                 <View style={styles.milestoneBox}>
+                  {/* Step 1: Lead Registered */}
                   <View style={styles.stepRow}>
                     <View
                       style={[
@@ -835,7 +922,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                           { color: isDark ? colors.textPrimary : "#1E293B" },
                         ]}
                       >
-                        Lead Registered
+                        1. Lead Registered
                       </Text>
                       <Text
                         style={[
@@ -855,6 +942,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                     ]}
                   />
 
+                  {/* Step 2: Staff Physical Inspection (No commission) */}
                   <View style={styles.stepRow}>
                     <View
                       style={[
@@ -862,7 +950,8 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                         {
                           backgroundColor:
                             lead.status === "VERIFIED" ||
-                            lead.commissionStatus === "PAID"
+                            lead.status === "RENTED" ||
+                            lead.status === "SOLD"
                               ? isDark
                                 ? "#14B8A6"
                                 : "#0D9488"
@@ -872,7 +961,9 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                         },
                       ]}
                     >
-                      {lead.status === "VERIFIED" ? (
+                      {lead.status === "VERIFIED" ||
+                      lead.status === "RENTED" ||
+                      lead.status === "SOLD" ? (
                         <Ionicons name="checkmark" size={12} color="#FFFFFF" />
                       ) : (
                         <MaterialCommunityIcons
@@ -889,7 +980,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                           { color: isDark ? colors.textPrimary : "#1E293B" },
                         ]}
                       >
-                        Staff Physical Inspection
+                        2. Staff Verification & Listing
                       </Text>
                       <Text
                         style={[
@@ -897,8 +988,10 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                           { color: isDark ? colors.textMuted : "#64748B" },
                         ]}
                       >
-                        {lead.status === "VERIFIED"
-                          ? "Verified & Approved"
+                        {lead.status === "VERIFIED" ||
+                        lead.status === "RENTED" ||
+                        lead.status === "SOLD"
+                          ? "Verified & Listed Live (Awaiting Tenant)"
                           : "Scheduled / In Progress"}
                       </Text>
                     </View>
@@ -911,17 +1004,15 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                     ]}
                   />
 
+                  {/* Step 3: Tenant Move-In & 1st Month Rent */}
                   <View style={styles.stepRow}>
                     <View
                       style={[
                         styles.stepCircle,
                         {
                           backgroundColor:
-                            lead.commissionStatus === "PAID"
-                              ? isDark
-                                ? "#34D399"
-                                : "#16A34A"
-                              : lead.commissionStatus === "APPROVED"
+                            lead.status === "RENTED" ||
+                            lead.status === "SOLD"
                               ? isDark
                                 ? "#14B8A6"
                                 : "#0D9488"
@@ -931,11 +1022,11 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                         },
                       ]}
                     >
-                      {lead.commissionStatus === "PAID" ? (
+                      {lead.status === "RENTED" || lead.status === "SOLD" ? (
                         <Ionicons name="checkmark" size={12} color="#FFFFFF" />
                       ) : (
                         <Ionicons
-                          name="wallet-outline"
+                          name="key-outline"
                           size={12}
                           color={isDark ? colors.textMuted : "#64748B"}
                         />
@@ -948,7 +1039,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                           { color: isDark ? colors.textPrimary : "#1E293B" },
                         ]}
                       >
-                        Commission Disbursal to Wallet
+                        3. Tenant Move-In & 1st Month Rent
                       </Text>
                       <Text
                         style={[
@@ -956,9 +1047,61 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                           { color: isDark ? colors.textMuted : "#64748B" },
                         ]}
                       >
-                        {lead.commissionStatus === "PAID"
-                          ? "Disbursed to Bank / UPI"
-                          : "Credited automatically on lead deal closure"}
+                        {lead.status === "RENTED" || lead.status === "SOLD"
+                          ? `1st Month Commission (${formatCurrency(lead.firstMonthCommission || lead.commissionAmount || 0)}) Unlocked`
+                          : `Unlocks ${formatCurrency(lead.firstMonthCommission || Math.round(lead.expectedPrice * 0.15))} on tenant registration`}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.stepConnector,
+                      { backgroundColor: isDark ? colors.border : "#CBD5E1" },
+                    ]}
+                  />
+
+                  {/* Step 4: Recurring Monthly Commission */}
+                  <View style={styles.stepRow}>
+                    <View
+                      style={[
+                        styles.stepCircle,
+                        {
+                          backgroundColor:
+                            lead.status === "RENTED"
+                              ? isDark
+                                ? "#34D399"
+                                : "#16A34A"
+                              : isDark
+                              ? colors.border
+                              : "#E2E8F0",
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name="repeat-outline"
+                        size={12}
+                        color={lead.status === "RENTED" ? "#FFFFFF" : isDark ? colors.textMuted : "#64748B"}
+                      />
+                    </View>
+                    <View style={styles.stepContent}>
+                      <Text
+                        style={[
+                          styles.stepTitle,
+                          { color: isDark ? colors.textPrimary : "#1E293B" },
+                        ]}
+                      >
+                        4. Monthly Recurring Commission
+                      </Text>
+                      <Text
+                        style={[
+                          styles.stepDate,
+                          { color: isDark ? colors.textMuted : "#64748B" },
+                        ]}
+                      >
+                        {lead.status === "RENTED"
+                          ? `Active: ${formatCurrency(lead.recurringMonthlyCommission || Math.round(lead.expectedPrice * 0.05))}/month on each rent paid`
+                          : `Earns ~${formatCurrency(lead.recurringMonthlyCommission || Math.round(lead.expectedPrice * 0.05))}/mo as long as tenant pays rent`}
                       </Text>
                     </View>
                   </View>
@@ -1140,46 +1283,44 @@ const styles = StyleSheet.create({
   },
   weekRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 10,
-    paddingHorizontal: 4,
+    width: "100%",
+    marginBottom: 8,
   },
   weekDayText: {
-    width: "13.5%",
+    width: "14.2857%",
     textAlign: "center",
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   daysGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "space-between",
+    width: "100%",
   },
-  dayCellEmpty: {
-    width: "13.5%",
-    height: 44,
-    marginBottom: 6,
-  },
-  dayCell: {
-    width: "13.5%",
-    height: 44,
-    borderRadius: 12,
+  dayCellContainer: {
+    width: "14.2857%",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 6,
+    marginVertical: 3,
+  },
+  dayCellEmpty: {
+    width: 36,
+    height: 36,
+  },
+  dayCell: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
     position: "relative",
   },
   dayNumberText: {
-    fontSize: 13.5,
+    fontSize: 13,
   },
-  clockDot: {
+  dotIndicator: {
     position: "absolute",
-    bottom: 3,
-    alignSelf: "center",
-  },
-  alertDot: {
-    position: "absolute",
-    bottom: 3,
+    bottom: 2,
     alignSelf: "center",
   },
   legendContainer: {

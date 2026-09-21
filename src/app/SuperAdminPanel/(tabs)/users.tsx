@@ -24,6 +24,7 @@ import {
   SuperAdminCreateUserModal,
   SuperAdminKycModal,
   SuperAdminSideMenu,
+  SuperAdminNotificationModal,
 } from "../../../components/SuperAdminComponent";
 
 export default function SuperAdminUsersScreen() {
@@ -42,6 +43,7 @@ export default function SuperAdminUsersScreen() {
   const [isCreateModalVisible, setIsCreateModalVisible] = useState<boolean>(false);
   const [selectedUserForKyc, setSelectedUserForKyc] = useState<any>(null);
   const [isKycModalVisible, setIsKycModalVisible] = useState<boolean>(false);
+  const [isNotificationModalVisible, setIsNotificationModalVisible] = useState<boolean>(false);
 
   // Commission edit state
   const [editingCommUserId, setEditingCommUserId] = useState<string | null>(null);
@@ -230,13 +232,22 @@ export default function SuperAdminUsersScreen() {
               <Text style={styles.headerTitle}>User & Role Management</Text>
             </View>
           </View>
-          <TouchableOpacity
-            onPress={() => setIsCreateModalVisible(true)}
-            style={styles.addUserHeaderBtn}
-          >
-            <Feather name="user-plus" size={16} color="#0D9488" />
-            <Text style={styles.addUserHeaderBtnText}>Create Account</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <TouchableOpacity
+              onPress={() => setIsNotificationModalVisible(true)}
+              style={styles.headerIconCircle}
+              activeOpacity={0.7}
+            >
+              <Feather name="bell" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setIsCreateModalVisible(true)}
+              style={styles.addUserHeaderBtn}
+            >
+              <Feather name="user-plus" size={16} color="#0D9488" />
+              <Text style={styles.addUserHeaderBtnText}>Create Account</Text>
+            </TouchableOpacity>
+          </View>
         </View>
         <Text style={styles.headerSubtitle}>
           Provision staff, toggle active access, edit commissions, delete accounts & review KYC
@@ -521,6 +532,13 @@ export default function SuperAdminUsersScreen() {
         visible={isSideMenuVisible}
         onClose={() => setIsSideMenuVisible(false)}
         onCreateUserPress={() => setIsCreateModalVisible(true)}
+        onNotificationPress={() => setIsNotificationModalVisible(true)}
+      />
+
+      {/* Notifications Modal */}
+      <SuperAdminNotificationModal
+        visible={isNotificationModalVisible}
+        onClose={() => setIsNotificationModalVisible(false)}
       />
 
       {/* Modals */}
@@ -568,6 +586,14 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   hamburgerBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerIconCircle: {
     width: 38,
     height: 38,
     borderRadius: 12,

@@ -227,7 +227,11 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onPress }) => {
               { color: isDark ? colors.textMuted : "#64748B" },
             ]}
           >
-            Est. Commission
+            {lead.status === "RENTED"
+              ? "Earned + Recurring"
+              : lead.status === "VERIFIED"
+              ? "Commission on Tenant Move-in"
+              : "Est. Move-In + Recurring"}
           </Text>
           <Text
             style={[
@@ -236,7 +240,9 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onPress }) => {
               isRentedOrSold && styles.commissionValueEarned,
             ]}
           >
-            {formatCurrency(lead.commissionAmount)}
+            {lead.status === "RENTED"
+              ? `${formatCurrency(lead.commissionAmount || lead.firstMonthCommission || 0)}${lead.recurringMonthlyCommission ? ` + ${formatCurrency(lead.recurringMonthlyCommission)}/mo` : ""}`
+              : `${formatCurrency(lead.firstMonthCommission || lead.commissionAmount || Math.round(lead.expectedPrice * 0.15))}${lead.listingType === "RENT" ? ` (+${formatCurrency(lead.recurringMonthlyCommission || Math.round(lead.expectedPrice * 0.05))}/mo)` : ""}`}
           </Text>
         </View>
       </View>

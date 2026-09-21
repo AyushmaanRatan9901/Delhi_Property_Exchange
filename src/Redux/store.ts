@@ -1,11 +1,13 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "./Auth/authSlice";
 import verificationStaffReducer from "./VerificationStaff/verificationStaffSlice";
+import superAdminNotificationReducer from "./SuperAdmin/superAdminNotificationSlice";
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     verificationStaff: verificationStaffReducer,
+    superAdminNotifications: superAdminNotificationReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

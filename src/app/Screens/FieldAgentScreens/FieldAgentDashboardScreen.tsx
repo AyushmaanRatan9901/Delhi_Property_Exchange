@@ -475,3 +475,5 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 });
+
+export default FieldAgentDashboardScreen;

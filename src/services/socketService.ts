@@ -9,6 +9,10 @@ import {
   addNotification,
   setSocketConnected,
 } from "../Redux/VerificationStaff/verificationStaffSlice";
+import {
+  addRealTimeSuperAdminNotification,
+  setSuperAdminSocketConnected,
+} from "../Redux/SuperAdmin/superAdminNotificationSlice";
 
 let socket: any = null;
 let registeredUser: any = null;
@@ -29,24 +33,29 @@ export const initSocketService = (): any => {
   s.on("connect", () => {
     console.log(`⚡ [SocketService] Connected to server! Socket ID: ${s.id}`);
     store.dispatch(setSocketConnected(true));
+    store.dispatch(setSuperAdminSocketConnected(true));
 
     if (registeredUser?._id) {
       s.emit("register", {
         userId: registeredUser._id,
         role: registeredUser.role,
       });
-      console.log(`👤 [SocketService] Re-registered user: ${registeredUser.name} (${registeredUser.role})`);
+      console.log(
+        `👤 [SocketService] Re-registered user: ${registeredUser.name} (${registeredUser.role})`
+      );
     }
   });
 
   s.on("disconnect", (reason: string) => {
     console.log(`🔌 [SocketService] Disconnected from server: ${reason}`);
     store.dispatch(setSocketConnected(false));
+    store.dispatch(setSuperAdminSocketConnected(false));
   });
 
   s.on("connect_error", (error: any) => {
     console.warn(`⚠️ [SocketService] Connection error:`, error?.message || error);
     store.dispatch(setSocketConnected(false));
+    store.dispatch(setSuperAdminSocketConnected(false));
   });
 
   // 1. Real-time Lead Assignment to Staff
@@ -65,16 +74,24 @@ export const initSocketService = (): any => {
         notification,
       })
     );
+    if (notification) {
+      store.dispatch(addRealTimeSuperAdminNotification(notification));
+    }
   });
 
-  // 2. Real-time Notifications
+  // 2. Real-time Notifications (Global / Staff / SuperAdmin)
   s.on("notification:new", (notif: any) => {
     console.log(`🔔 [SocketService] Received "notification:new":`, notif);
     try {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      Haptics.notificationAsync(
+        notif?.priority === "urgent" || notif?.priority === "high"
+          ? Haptics.NotificationFeedbackType.Warning
+          : Haptics.NotificationFeedbackType.Success
+      );
     } catch {}
 
     store.dispatch(addNotification(notif));
+    store.dispatch(addRealTimeSuperAdminNotification(notif));
   });
 
   // 3. Real-time Lead Updates
@@ -88,6 +105,14 @@ export const initSocketService = (): any => {
     const lead = data?.lead || data;
     console.log(`🔒 [SocketService] Received "lead:published":`, lead);
     store.dispatch(leadUpdatedRealTime(lead));
+  });
+
+  // 5. Real-time Complaint Created / Fraud Alert
+  s.on("complaint:created", (data: any) => {
+    console.log(`🚨 [SocketService] Received "complaint:created":`, data);
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } catch {}
   });
 
   socket = s;
@@ -118,6 +143,7 @@ export const disconnectSocketUser = () => {
   }
   registeredUser = null;
   store.dispatch(setSocketConnected(false));
+  store.dispatch(setSuperAdminSocketConnected(false));
 };
 
 export const getSocket = () => socket;

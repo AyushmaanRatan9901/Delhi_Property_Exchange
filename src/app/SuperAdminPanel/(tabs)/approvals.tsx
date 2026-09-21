@@ -22,6 +22,7 @@ import {
   SuperAdminCommissionModal,
   SuperAdminDealModal,
   SuperAdminSideMenu,
+  SuperAdminNotificationModal,
 } from "../../../components/SuperAdminComponent";
 
 type TabSegment = "commissions" | "owner_payouts" | "duplicates" | "deals";
@@ -42,6 +43,7 @@ export default function SuperAdminApprovalsScreen() {
 
   // Modals
   const [isSideMenuVisible, setIsSideMenuVisible] = useState<boolean>(false);
+  const [isNotificationModalVisible, setIsNotificationModalVisible] = useState<boolean>(false);
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [isCommissionModalVisible, setIsCommissionModalVisible] = useState<boolean>(false);
   const [isDealModalVisible, setIsDealModalVisible] = useState<boolean>(false);
@@ -160,9 +162,18 @@ export default function SuperAdminApprovalsScreen() {
               <Text style={styles.headerTitle}>Approvals & Payouts</Text>
             </View>
           </View>
-          <TouchableOpacity onPress={onRefresh} style={styles.headerIconCircle}>
-            <Ionicons name="refresh" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <TouchableOpacity
+              onPress={() => setIsNotificationModalVisible(true)}
+              style={styles.headerIconCircle}
+              activeOpacity={0.7}
+            >
+              <Feather name="bell" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onRefresh} style={styles.headerIconCircle}>
+              <Ionicons name="refresh" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
         </View>
         <Text style={styles.headerSubtitle}>
           Approve agent commissions, release owner rent disbursements & resolve duplicate flags
@@ -546,6 +557,19 @@ export default function SuperAdminApprovalsScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* Side Bar Menu */}
+      <SuperAdminSideMenu
+        visible={isSideMenuVisible}
+        onClose={() => setIsSideMenuVisible(false)}
+        onNotificationPress={() => setIsNotificationModalVisible(true)}
+      />
+
+      {/* Notifications Modal */}
+      <SuperAdminNotificationModal
+        visible={isNotificationModalVisible}
+        onClose={() => setIsNotificationModalVisible(false)}
+      />
 
       {/* Modals */}
       <SuperAdminLeadDetailModal

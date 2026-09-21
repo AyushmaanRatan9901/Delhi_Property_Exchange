@@ -9,6 +9,7 @@ interface CommissionCardProps {
   availableBalance: number;
   totalEarnings: number;
   pendingApproval: number;
+  recurringMonthlyActive?: number;
   onWithdrawPress?: () => void;
   onBankDetailsPress?: () => void;
   style?: any;
@@ -18,6 +19,7 @@ export const CommissionCard: React.FC<CommissionCardProps> = ({
   availableBalance,
   totalEarnings,
   pendingApproval,
+  recurringMonthlyActive = 0,
   onWithdrawPress,
   onBankDetailsPress,
   style,
@@ -75,6 +77,18 @@ export const CommissionCard: React.FC<CommissionCardProps> = ({
             {formatCurrency(pendingApproval)}
           </Text>
         </View>
+
+        {recurringMonthlyActive > 0 && (
+          <>
+            <View style={styles.subStatDivider} />
+            <View style={styles.subStatItem}>
+              <Text style={styles.subStatLabel}>Monthly Recurring</Text>
+              <Text style={[styles.subStatValue, { color: "#6EE7B7" }]}>
+                {formatCurrency(recurringMonthlyActive)}/mo
+              </Text>
+            </View>
+          </>
+        )}
       </View>
 
       {/* Action Button: Instant Withdrawal */}

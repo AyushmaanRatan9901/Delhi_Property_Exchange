@@ -25,7 +25,10 @@ import {
   SuperAdminDealModal,
   SuperAdminLeadDetailModal,
   SuperAdminSideMenu,
+  SuperAdminNotificationModal,
 } from "../../../components/SuperAdminComponent";
+import { useSelector } from "react-redux";
+import { RootState } from "../../../Redux/store";
 import { useResponsiveTheme } from "../../../constants/theme";
 import apiClient from "../../../Redux/api/axiosInstance";
 
@@ -34,6 +37,9 @@ const { width } = Dimensions.get("window");
 export default function SuperAdminDashboard() {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useResponsiveTheme();
+  const unreadCount = useSelector(
+    (state: RootState) => state.superAdminNotifications?.unreadCount || 0
+  );
 
   const [leads, setLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -55,6 +61,8 @@ export default function SuperAdminDashboard() {
   const [isCommissionModalVisible, setIsCommissionModalVisible] =
     useState<boolean>(false);
   const [isCreateUserModalVisible, setIsCreateUserModalVisible] =
+    useState<boolean>(false);
+  const [isNotificationModalVisible, setIsNotificationModalVisible] =
     useState<boolean>(false);
 
   const fetchDashboardData = useCallback(async () => {
@@ -236,9 +244,25 @@ export default function SuperAdminDashboard() {
               <Text style={styles.headerTitle}>Overview & Directory</Text>
             </View>
           </View>
-          <TouchableOpacity onPress={onRefresh} style={styles.headerIconCircle}>
-            <Ionicons name="refresh" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <TouchableOpacity
+              onPress={() => setIsNotificationModalVisible(true)}
+              style={styles.headerIconCircle}
+              activeOpacity={0.7}
+            >
+              <Feather name="bell" size={18} color="#FFFFFF" />
+              {unreadCount > 0 && (
+                <View style={styles.headerBellBadge}>
+                  <Text style={styles.headerBellBadgeText}>
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onRefresh} style={styles.headerIconCircle}>
+              <Ionicons name="refresh" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
         </View>
         <Text style={styles.headerSubtitle}>
           Full unmasked owner access, instant approvals, deal booking & live
@@ -775,6 +799,13 @@ export default function SuperAdminDashboard() {
         visible={isSideMenuVisible}
         onClose={() => setIsSideMenuVisible(false)}
         onCreateUserPress={() => setIsCreateUserModalVisible(true)}
+        onNotificationPress={() => setIsNotificationModalVisible(true)}
+      />
+
+      {/* Notifications Modal */}
+      <SuperAdminNotificationModal
+        visible={isNotificationModalVisible}
+        onClose={() => setIsNotificationModalVisible(false)}
       />
 
       {/* Modals */}
@@ -900,6 +931,26 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.2)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  headerBellBadge: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    backgroundColor: "#EF4444",
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 9,
+    minWidth: 18,
+    height: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#0D9488",
+  },
+  headerBellBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "900",
   },
   headerSubtitle: {
     color: "#CCFBF1",

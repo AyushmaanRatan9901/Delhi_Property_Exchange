@@ -1,9 +1,10 @@
 import React, { useEffect } from "react";
 import { View } from "react-native";
 import { Tabs, useRouter } from "expo-router";
-import { useSelector } from "react-redux";
-import { RootState } from "../../../Redux/store";
+import { useSelector, useDispatch } from "react-redux";
+import { AppDispatch, RootState } from "../../../Redux/store";
 import { connectSocketUser } from "../../../services/socketService";
+import { fetchStaffNotifications } from "../../../Redux/VerificationStaff/verificationStaffSlice";
 import {
   FloatingTabBar,
   tabIcon,
@@ -13,13 +14,15 @@ import { RealTimeToastBanner } from "../../../components/VerificationStaffCompon
 
 export default function VerificationStaffTabsLayout() {
   const router = useRouter();
+  const dispatch = useDispatch<AppDispatch>();
   const user = useSelector((state: RootState) => state.auth.user);
 
   useEffect(() => {
     if (user?._id) {
       connectSocketUser(user);
+      dispatch(fetchStaffNotifications());
     }
-  }, [user]);
+  }, [user, dispatch]);
 
   const handleOpenLead = (lead: any) => {
     // Navigate to pending tab

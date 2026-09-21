@@ -30,6 +30,9 @@ export const SuperAdminCommissionModal: React.FC<Props> = ({
   const { colors, isDark } = useResponsiveTheme();
 
   const [approvedAmount, setApprovedAmount] = useState<string>("");
+  const [firstMonthAmount, setFirstMonthAmount] = useState<string>("");
+  const [recurringRate, setRecurringRate] = useState<string>("5");
+  const [recurringMonthlyAmount, setRecurringMonthlyAmount] = useState<string>("");
   const [percentage, setPercentage] = useState<string>("");
   const [status, setStatus] = useState<string>("approved");
   const [remarks, setRemarks] = useState<string>("");
@@ -38,8 +41,15 @@ export const SuperAdminCommissionModal: React.FC<Props> = ({
 
   React.useEffect(() => {
     if (lead) {
-      const estimated = lead.commission?.approvedAmount || lead.commission?.estimatedAmount || 2000;
+      const estimated = lead.commission?.approvedAmount || lead.commission?.firstMonthCommission || lead.commission?.estimatedAmount || 2000;
+      const firstMonth = lead.commission?.firstMonthCommission || estimated;
+      const recRate = lead.commission?.recurringMonthlyRate || 5;
+      const recAmount = lead.commission?.recurringMonthlyCommission || Math.round((lead.expectedPrice || 0) * (recRate / 100));
+
       setApprovedAmount(String(estimated));
+      setFirstMonthAmount(String(firstMonth));
+      setRecurringRate(String(recRate));
+      setRecurringMonthlyAmount(String(recAmount));
       setPercentage(String(lead.commission?.percentage || 15));
       setStatus(lead.commission?.status || "approved");
       setRemarks(lead.commission?.remarks || "Approved by Super Admin");
@@ -57,7 +67,10 @@ export const SuperAdminCommissionModal: React.FC<Props> = ({
     try {
       await apiClient.patch("/leads/" + lead._id + "/commission", {
         approvedAmount: amount,
-        percentage: Number(percentage) || 0,
+        firstMonthCommission: Number(firstMonthAmount) || amount,
+        recurringMonthlyRate: Number(recurringRate) || 5,
+        recurringMonthlyCommission: Number(recurringMonthlyAmount) || Math.round((lead.expectedPrice || 0) * ((Number(recurringRate) || 5) / 100)),
+        percentage: Number(percentage) || 15,
         status,
         remarks: remarks.trim(),
         payoutTransactionId: utrNumber.trim() || undefined,
@@ -109,31 +122,51 @@ export const SuperAdminCommissionModal: React.FC<Props> = ({
               </View>
             </View>
 
-            {/* Form Fields */}
+            {/* Form Fields: 1st Month Commission & Recurring Rate */}
             <View style={styles.formRow}>
               <View style={{ flex: 1.2 }}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>APPROVED COMMISSION (₹)</Text>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>1ST MONTH COMMISSION (₹)</Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFFFFF" : "#0F172A", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
                   placeholder="e.g. 3500"
                   placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                   keyboardType="numeric"
-                  value={approvedAmount}
-                  onChangeText={setApprovedAmount}
+                  value={firstMonthAmount}
+                  onChangeText={(val) => {
+                    setFirstMonthAmount(val);
+                    setApprovedAmount(val);
+                  }}
                 />
               </View>
 
               <View style={{ flex: 0.8 }}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>PERCENTAGE (%)</Text>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>RECURRING RATE (%)</Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFFFFF" : "#0F172A", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
-                  placeholder="e.g. 15"
+                  placeholder="e.g. 5"
                   placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
                   keyboardType="numeric"
-                  value={percentage}
-                  onChangeText={setPercentage}
+                  value={recurringRate}
+                  onChangeText={(val) => {
+                    setRecurringRate(val);
+                    const calculated = Math.round((lead.expectedPrice || 0) * ((Number(val) || 0) / 100));
+                    setRecurringMonthlyAmount(String(calculated));
+                  }}
                 />
               </View>
+            </View>
+
+            {/* Monthly Recurring Amount */}
+            <View style={{ marginBottom: 12 }}>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>EST. RECURRING MONTHLY COMMISSION (₹/MONTH)</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", color: isDark ? "#FFFFFF" : "#0F172A", borderColor: isDark ? "#334155" : "#E2E8F0" }]}
+                placeholder="e.g. 1300"
+                placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+                keyboardType="numeric"
+                value={recurringMonthlyAmount}
+                onChangeText={setRecurringMonthlyAmount}
+              />
             </View>
 
             {/* Status Selection */}

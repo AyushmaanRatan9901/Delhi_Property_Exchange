@@ -39,6 +39,7 @@ interface SuperAdminSideMenuProps {
   visible: boolean;
   onClose: () => void;
   onCreateUserPress?: () => void;
+  onNotificationPress?: () => void;
 }
 
 interface MenuItem {
@@ -58,6 +59,7 @@ export const SuperAdminSideMenu: React.FC<SuperAdminSideMenuProps> = ({
   visible,
   onClose,
   onCreateUserPress,
+  onNotificationPress,
 }) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -268,6 +270,22 @@ export const SuperAdminSideMenu: React.FC<SuperAdminSideMenuProps> = ({
       iconType: "feather",
       iconColor: "#0F766E",
     },
+    {
+      id: "notifications",
+      title: "Live Notifications & Feed",
+      subtitle: "Leads, verifications, KYC & payouts",
+      icon: "bell",
+      iconType: "feather",
+      iconColor: "#EF4444",
+      badge: "Real-Time",
+      badgeColor: "#EF4444",
+      action: () => {
+        handleClose();
+        if (onNotificationPress) {
+          setTimeout(onNotificationPress, 260);
+        }
+      },
+    },
   ];
 
   const QUICK_ACTIONS: MenuItem[] = [
@@ -409,7 +427,13 @@ export const SuperAdminSideMenu: React.FC<SuperAdminSideMenuProps> = ({
                   <TouchableOpacity
                     key={item.id}
                     activeOpacity={0.7}
-                    onPress={() => item.route && navigateTo(item.route)}
+                    onPress={() => {
+                      if (item.action) {
+                        item.action();
+                      } else if (item.route) {
+                        navigateTo(item.route);
+                      }
+                    }}
                     style={[
                       styles.menuItem,
                       {

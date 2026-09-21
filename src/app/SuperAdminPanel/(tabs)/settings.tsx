@@ -21,10 +21,11 @@ import { useResponsiveTheme } from "../../../constants/theme";
 import { useAppDispatch, useAppSelector } from "../../../Redux/hooks";
 import { logout } from "../../../Redux/Auth/authActions";
 import apiClient from "../../../Redux/api/axiosInstance";
-import { SuperAdminSideMenu } from "../../../components/SuperAdminComponent";
+import { SuperAdminSideMenu, SuperAdminNotificationModal } from "../../../components/SuperAdminComponent";
 
 export default function SuperAdminSettingsScreen() {
   const [isSideMenuVisible, setIsSideMenuVisible] = useState<boolean>(false);
+  const [isNotificationModalVisible, setIsNotificationModalVisible] = useState<boolean>(false);
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth?.user);
   const insets = useSafeAreaInsets();
@@ -143,20 +144,39 @@ export default function SuperAdminSettingsScreen() {
         style={[styles.header, { paddingTop: Math.max(insets.top + 10, 36) }]}
       >
         <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.panelBadge}>SYSTEM ENGINE CONFIGURATION</Text>
-            <Text style={styles.headerTitle}>Automation Settings</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <TouchableOpacity
+              onPress={() => setIsSideMenuVisible(true)}
+              style={styles.hamburgerBtn}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Feather name="menu" size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+            <View>
+              <Text style={styles.panelBadge}>SYSTEM ENGINE CONFIGURATION</Text>
+              <Text style={styles.headerTitle}>Automation Settings</Text>
+            </View>
           </View>
-          <TouchableOpacity onPress={handleSaveSettings} disabled={saving} style={styles.saveHeaderBtn}>
-            {saving ? (
-              <ActivityIndicator color="#0D9488" size="small" />
-            ) : (
-              <>
-                <Feather name="check" size={16} color="#0D9488" />
-                <Text style={styles.saveHeaderBtnText}>Save</Text>
-              </>
-            )}
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <TouchableOpacity
+              onPress={() => setIsNotificationModalVisible(true)}
+              style={styles.headerIconCircle}
+              activeOpacity={0.7}
+            >
+              <Feather name="bell" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleSaveSettings} disabled={saving} style={styles.saveHeaderBtn}>
+              {saving ? (
+                <ActivityIndicator color="#0D9488" size="small" />
+              ) : (
+                <>
+                  <Feather name="check" size={16} color="#0D9488" />
+                  <Text style={styles.saveHeaderBtnText}>Save</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
         <Text style={styles.headerSubtitle}>
           WhatsApp reminders, inspection SLAs, commission rules & automated verification
@@ -380,6 +400,13 @@ export default function SuperAdminSettingsScreen() {
       <SuperAdminSideMenu
         visible={isSideMenuVisible}
         onClose={() => setIsSideMenuVisible(false)}
+        onNotificationPress={() => setIsNotificationModalVisible(true)}
+      />
+
+      {/* Notifications Modal */}
+      <SuperAdminNotificationModal
+        visible={isNotificationModalVisible}
+        onClose={() => setIsNotificationModalVisible(false)}
       />
     </View>
   );
@@ -398,6 +425,22 @@ const styles = StyleSheet.create({
   headerTop: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
+  },
+  hamburgerBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    justifyContent: "center",
     alignItems: "center",
   },
   panelBadge: {

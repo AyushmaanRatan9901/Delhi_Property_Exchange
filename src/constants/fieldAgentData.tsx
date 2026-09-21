@@ -19,6 +19,15 @@ export interface GPSLocation {
   formattedAddress: string;
 }
 
+export interface RecurringCommissionItem {
+  month: string;
+  rentAmount: number;
+  commissionAmount: number;
+  type: "first_month" | "monthly_recurring";
+  status: "pending" | "approved" | "paid";
+  paidAt?: string;
+}
+
 export interface LeadItem {
   id: string;
   _id?: string;
@@ -34,6 +43,12 @@ export interface LeadItem {
   status: LeadStatus;
   submissionDate: string;
   commissionAmount: number;
+  firstMonthCommission?: number;
+  recurringMonthlyCommission?: number;
+  recurringMonthlyRate?: number;
+  recurringCommissions?: RecurringCommissionItem[];
+  tenantName?: string;
+  tenantPhone?: string;
   commissionStatus: "PENDING" | "APPROVED" | "PAID";
   photos: string[];
   videoLink?: string;
@@ -109,15 +124,48 @@ export const INITIAL_LEADS: LeadItem[] = [
       accuracyMeters: 3.2,
       formattedAddress: "Royal Palms, Sector 62, Noida, UP 201301",
     },
-    status: "VERIFIED",
+    status: "RENTED",
     submissionDate: "Today, 10:45 AM",
-    commissionAmount: 5200,
+    commissionAmount: 3900,
+    firstMonthCommission: 3900,
+    recurringMonthlyCommission: 1300,
+    recurringMonthlyRate: 5,
+    tenantName: "Vikram Malhotra",
     commissionStatus: "APPROVED",
     photos: [
       "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format&fit=crop&q=80",
     ],
     remarks: "Keys with caretaker. 3 min walk to Electronic City Metro Station.",
-    verificationNotes: "Physically verified by staff. Original registry docs inspected on-site.",
+    verificationNotes: "Physically verified by staff. Tenant registered & 1st month rent confirmed.",
+  },
+  {
+    id: "LD-8821",
+    ownerName: "Sunita Gupta",
+    ownerPhone: "+91 98991 22334",
+    maskedPhone: "+91 98991 •••••",
+    locality: "Indirapuram, Ghaziabad",
+    fullAddress: "Flat 104, Tower C, Shipra Sun City",
+    propertyType: "3BHK",
+    listingType: "RENT",
+    expectedPrice: 32000,
+    gpsLocation: {
+      latitude: 28.6412,
+      longitude: 77.3752,
+      accuracyMeters: 2.8,
+      formattedAddress: "Shipra Sun City, Indirapuram, Ghaziabad",
+    },
+    status: "VERIFIED",
+    submissionDate: "Yesterday",
+    commissionAmount: 0,
+    firstMonthCommission: 4800,
+    recurringMonthlyCommission: 1600,
+    recurringMonthlyRate: 5,
+    commissionStatus: "PENDING",
+    photos: [
+      "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&auto=format&fit=crop&q=80",
+    ],
+    remarks: "Available for family. Modular kitchen ready.",
+    verificationNotes: "Verified on-site by staff. Listed live, awaiting tenant booking.",
   },
 ];
 
@@ -160,6 +208,11 @@ const mapBackendToLeadItem = (doc: any): LeadItem => {
     ? doc.photos.map((p: any) => (typeof p === "string" ? p : p.url))
     : doc.images || [];
 
+  const isRentedOrSold = doc.status === "rented" || doc.status === "sold" || doc.deal?.isClosed === true;
+  const firstMonth = doc.commission?.firstMonthCommission || (isRentedOrSold ? doc.commission?.approvedAmount : 0) || 0;
+  const recurringRate = doc.commission?.recurringMonthlyRate || 5;
+  const recurringAmt = doc.commission?.recurringMonthlyCommission || Math.round((doc.deal?.finalPrice || doc.expectedPrice || 0) * (recurringRate / 100));
+
   return {
     id: doc.leadId || doc._id || "LD-0000",
     _id: doc._id,
@@ -179,8 +232,14 @@ const mapBackendToLeadItem = (doc: any): LeadItem => {
     },
     status: (doc.status || "new").toUpperCase() as LeadStatus,
     submissionDate: doc.createdAt ? new Date(doc.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Recently",
-    commissionAmount: doc.commission?.approvedAmount || doc.commission?.estimatedAmount || doc.commissionAmount || 0,
-    commissionStatus: (doc.commission?.status || doc.commissionStatus || "pending").toUpperCase() as "PENDING" | "APPROVED" | "PAID",
+    commissionAmount: isRentedOrSold ? (doc.commission?.approvedAmount || 0) : 0,
+    firstMonthCommission: firstMonth,
+    recurringMonthlyCommission: recurringAmt,
+    recurringMonthlyRate: recurringRate,
+    recurringCommissions: doc.commission?.recurringCommissions || [],
+    tenantName: doc.deal?.tenantName,
+    tenantPhone: doc.deal?.tenantPhone,
+    commissionStatus: isRentedOrSold ? ((doc.commission?.status || doc.commissionStatus || "pending").toUpperCase() as "PENDING" | "APPROVED" | "PAID") : "PENDING",
     photos: photoUrls.length > 0 ? photoUrls : ["https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format&fit=crop&q=80"],
     videoLink: doc.videoLink || doc.videoUrl,
     remarks: doc.remarks,
@@ -196,6 +255,8 @@ interface FieldAgentContextType {
   totalEarnings: number;
   pendingApproval: number;
   paidEarnings: number;
+  recurringMonthlyActive: number;
+  activeTenantsCount: number;
   isLoading: boolean;
   refreshLeads: () => Promise<void>;
   addNewLead: (lead: Omit<LeadItem, "id" | "maskedPhone" | "submissionDate" | "status" | "commissionAmount" | "commissionStatus">) => Promise<LeadItem>;
@@ -251,14 +312,14 @@ export const FieldAgentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const availableBalance = statsData?.walletBalance !== undefined
     ? statsData.walletBalance
     : leads
-        .filter((l) => l.commissionStatus === "APPROVED")
-        .reduce((acc, curr) => acc + curr.commissionAmount, 0) + 14500;
+        .filter((l) => (l.status === "RENTED" || l.status === "SOLD") && l.commissionStatus === "APPROVED")
+        .reduce((acc, curr) => acc + curr.commissionAmount, 0);
 
   const totalEarnings = statsData?.approvedCommission !== undefined
-    ? statsData.approvedCommission + (statsData.potentialCommission || 0)
+    ? statsData.approvedCommission
     : leads
-        .filter((l) => l.commissionStatus === "PAID" || l.commissionStatus === "APPROVED")
-        .reduce((acc, curr) => acc + curr.commissionAmount, 0) + 23500;
+        .filter((l) => (l.status === "RENTED" || l.status === "SOLD") && (l.commissionStatus === "PAID" || l.commissionStatus === "APPROVED"))
+        .reduce((acc, curr) => acc + curr.commissionAmount, 0);
 
   const paidEarnings = statsData?.paidCommission !== undefined
     ? statsData.paidCommission
@@ -269,8 +330,18 @@ export const FieldAgentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const pendingApproval = statsData?.potentialCommission !== undefined
     ? statsData.potentialCommission
     : leads
-        .filter((l) => l.commissionStatus === "PENDING")
-        .reduce((acc, curr) => acc + curr.commissionAmount, 0);
+        .filter((l) => l.status !== "RENTED" && l.status !== "SOLD" && l.status !== "REJECTED")
+        .reduce((acc, curr) => acc + (curr.firstMonthCommission || curr.commissionAmount || 0), 0);
+
+  const recurringMonthlyActive = statsData?.recurringMonthlyActive !== undefined
+    ? statsData.recurringMonthlyActive
+    : leads
+        .filter((l) => l.status === "RENTED")
+        .reduce((acc, curr) => acc + (curr.recurringMonthlyCommission || 0), 0);
+
+  const activeTenantsCount = statsData?.activeTenantsCount !== undefined
+    ? statsData.activeTenantsCount
+    : leads.filter((l) => l.status === "RENTED").length;
 
   // Submit Lead to Backend & update local state
   const addNewLead = async (
@@ -315,7 +386,8 @@ export const FieldAgentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // Local fallback creation
     const randomId = "LD-" + Math.floor(1000 + Math.random() * 9000);
     const masked = maskPhoneNumber(newLeadData.ownerPhone);
-    const estCommission = newLeadData.listingType === "SALE" ? 15000 : 3500;
+    const est1stMonth = newLeadData.listingType === "SALE" ? 15000 : Math.round(newLeadData.expectedPrice * 0.15);
+    const estRecurring = newLeadData.listingType === "SALE" ? 0 : Math.round(newLeadData.expectedPrice * 0.05);
 
     const createdLead: LeadItem = {
       ...newLeadData,
@@ -323,9 +395,12 @@ export const FieldAgentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       maskedPhone: masked,
       submissionDate: "Just now",
       status: "NEW",
-      commissionAmount: estCommission,
+      commissionAmount: 0,
+      firstMonthCommission: est1stMonth,
+      recurringMonthlyCommission: estRecurring,
+      recurringMonthlyRate: 5,
       commissionStatus: "PENDING",
-      verificationNotes: "Submitted by Field Agent with 1-Click GPS. Verification team scheduled for inspection.",
+      verificationNotes: "Submitted with 1-Click GPS. Verification scheduled. Commission activates upon tenant registration and 1st month rent.",
     };
 
     setLeads((prev) => [createdLead, ...prev]);
@@ -366,6 +441,8 @@ export const FieldAgentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         totalEarnings,
         pendingApproval,
         paidEarnings,
+        recurringMonthlyActive,
+        activeTenantsCount,
         isLoading,
         refreshLeads: fetchMyLeads,
         addNewLead,
