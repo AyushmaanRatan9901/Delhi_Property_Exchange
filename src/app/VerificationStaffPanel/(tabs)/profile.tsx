@@ -1,19 +1,18 @@
-import React from "react";
+import { Feather, Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Image,
   Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
-import { useSelector, useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useResponsiveTheme } from "../../../constants/theme";
 import { logout } from "../../../Redux/Auth/authActions";
 
@@ -24,7 +23,8 @@ export default function VerificationStaffProfileScreen() {
   const { colors, isDark } = useResponsiveTheme();
 
   const textPrimary = colors.textPrimary || (isDark ? "#FFFFFF" : "#0F172A");
-  const textSecondary = colors.textSecondary || (isDark ? "#94A3B8" : "#475569");
+  const textSecondary =
+    colors.textSecondary || (isDark ? "#94A3B8" : "#475569");
   const borderCol = colors.border || (isDark ? "#334155" : "#E2E8F0");
 
   const user = useSelector((state: any) => state.auth?.user) || {
@@ -36,25 +36,42 @@ export default function VerificationStaffProfileScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to log out of Verification Staff App?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Logout",
-        style: "destructive",
-        onPress: () => {
-          try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
-          dispatch(logout() as any);
-          router.replace("/(auth)/LoginScreen" as any);
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to log out of Verification Staff App?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: () => {
+            try {
+              Haptics.notificationAsync(
+                Haptics.NotificationFeedbackType.Success,
+              );
+            } catch {}
+            dispatch(logout() as any);
+            router.replace("/(auth)/login" as any);
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? colors.background : "#F8FAFC" }]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: isDark ? colors.background : "#F8FAFC" },
+      ]}
+    >
       {/* Header Banner */}
       <LinearGradient
-        colors={isDark ? ["#0F172A", "#061A23", "#042F2E"] : ["#0D9488", "#0F766E", "#115E59"]}
+        colors={
+          isDark
+            ? ["#0F172A", "#061A23", "#042F2E"]
+            : ["#0D9488", "#0F766E", "#115E59"]
+        }
         style={[styles.header, { paddingTop: Math.max(insets.top + 10, 36) }]}
       >
         <View style={styles.headerTop}>
@@ -68,7 +85,9 @@ export default function VerificationStaffProfileScreen() {
         <View style={styles.profileRow}>
           <View style={styles.avatarWrap}>
             <Image
-              source={{ uri: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=180&q=80" }}
+              source={{
+                uri: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=180&q=80",
+              }}
               style={styles.avatarImage}
             />
             <View style={styles.avatarVerifiedPin}>
@@ -76,10 +95,14 @@ export default function VerificationStaffProfileScreen() {
             </View>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.profileName}>{user.name || "Verification Staff"}</Text>
+            <Text style={styles.profileName}>
+              {user.name || "Verification Staff"}
+            </Text>
             <Text style={styles.profileRole}>Field Verification Officer</Text>
             <View style={styles.staffIdBadge}>
-              <Text style={styles.staffIdText}>ID: {user.staffId || "VS-2026-981"}</Text>
+              <Text style={styles.staffIdText}>
+                ID: {user.staffId || "VS-2026-981"}
+              </Text>
             </View>
           </View>
         </View>
@@ -87,78 +110,148 @@ export default function VerificationStaffProfileScreen() {
 
       {/* Main Content */}
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom + 80, 110) }]}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: Math.max(insets.bottom + 80, 110) },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {/* Verification Performance Metrics */}
-        <View style={[styles.card, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: borderCol }]}>
-          <Text style={[styles.cardTitle, { color: textPrimary }]}>On-Ground Performance</Text>
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+              borderColor: borderCol,
+            },
+          ]}
+        >
+          <Text style={[styles.cardTitle, { color: textPrimary }]}>
+            On-Ground Performance
+          </Text>
 
           <View style={styles.metricsRow}>
             <View style={styles.metricItem}>
-              <Text style={[styles.metricVal, { color: "#0D9488" }]}>98.6%</Text>
-              <Text style={[styles.metricLbl, { color: textSecondary }]}>Audit Accuracy</Text>
+              <Text style={[styles.metricVal, { color: "#0D9488" }]}>
+                98.6%
+              </Text>
+              <Text style={[styles.metricLbl, { color: textSecondary }]}>
+                Audit Accuracy
+              </Text>
             </View>
             <View style={styles.metricDivider} />
             <View style={styles.metricItem}>
               <Text style={[styles.metricVal, { color: "#10B981" }]}>42</Text>
-              <Text style={[styles.metricLbl, { color: textSecondary }]}>KYC Verified</Text>
+              <Text style={[styles.metricLbl, { color: textSecondary }]}>
+                KYC Verified
+              </Text>
             </View>
             <View style={styles.metricDivider} />
             <View style={styles.metricItem}>
               <Text style={[styles.metricVal, { color: "#3B82F6" }]}>35m</Text>
-              <Text style={[styles.metricLbl, { color: textSecondary }]}>Avg Visit Time</Text>
+              <Text style={[styles.metricLbl, { color: textSecondary }]}>
+                Avg Visit Time
+              </Text>
             </View>
           </View>
         </View>
 
         {/* Access Rights & Security Policies */}
-        <View style={[styles.card, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: borderCol }]}>
-          <Text style={[styles.cardTitle, { color: textPrimary }]}>Operational Access & Privacy</Text>
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+              borderColor: borderCol,
+            },
+          ]}
+        >
+          <Text style={[styles.cardTitle, { color: textPrimary }]}>
+            Operational Access & Privacy
+          </Text>
 
           <View style={styles.policyRow}>
             <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-            <Text style={[styles.policyText, { color: textSecondary }]}>Full on-ground access during assigned verification</Text>
+            <Text style={[styles.policyText, { color: textSecondary }]}>
+              Full on-ground access during assigned verification
+            </Text>
           </View>
           <View style={styles.policyRow}>
             <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-            <Text style={[styles.policyText, { color: textSecondary }]}>Media capture & instant KYC duplicate Aadhaar check</Text>
+            <Text style={[styles.policyText, { color: textSecondary }]}>
+              Media capture & instant KYC duplicate Aadhaar check
+            </Text>
           </View>
           <View style={styles.policyRow}>
             <Ionicons name="shield-checkmark" size={16} color="#0D9488" />
-            <Text style={[styles.policyText, { color: textSecondary }]}>Auto-lock & PII masking enforced once published</Text>
+            <Text style={[styles.policyText, { color: textSecondary }]}>
+              Auto-lock & PII masking enforced once published
+            </Text>
           </View>
           <View style={styles.policyRow}>
             <Ionicons name="lock-closed" size={16} color="#F59E0B" />
-            <Text style={[styles.policyText, { color: textSecondary }]}>Post-publication edits reserved for Super Admin only</Text>
+            <Text style={[styles.policyText, { color: textSecondary }]}>
+              Post-publication edits reserved for Super Admin only
+            </Text>
           </View>
         </View>
 
         {/* Account Details */}
-        <View style={[styles.card, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: borderCol }]}>
-          <Text style={[styles.cardTitle, { color: textPrimary }]}>Staff Account Information</Text>
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+              borderColor: borderCol,
+            },
+          ]}
+        >
+          <Text style={[styles.cardTitle, { color: textPrimary }]}>
+            Staff Account Information
+          </Text>
 
           <View style={styles.infoRow}>
-            <Text style={[styles.infoLabel, { color: textSecondary }]}>Email:</Text>
-            <Text style={[styles.infoVal, { color: textPrimary }]}>{user.email || "staff@delhiexchange.com"}</Text>
+            <Text style={[styles.infoLabel, { color: textSecondary }]}>
+              Email:
+            </Text>
+            <Text style={[styles.infoVal, { color: textPrimary }]}>
+              {user.email || "staff@delhiexchange.com"}
+            </Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={[styles.infoLabel, { color: textSecondary }]}>Mobile:</Text>
-            <Text style={[styles.infoVal, { color: textPrimary }]}>{user.phone || "+91 98765 43210"}</Text>
+            <Text style={[styles.infoLabel, { color: textSecondary }]}>
+              Mobile:
+            </Text>
+            <Text style={[styles.infoVal, { color: textPrimary }]}>
+              {user.phone || "+91 98765 43210"}
+            </Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={[styles.infoLabel, { color: textSecondary }]}>Region / City:</Text>
-            <Text style={[styles.infoVal, { color: textPrimary }]}>Delhi NCR (Zone 1)</Text>
+            <Text style={[styles.infoLabel, { color: textSecondary }]}>
+              Region / City:
+            </Text>
+            <Text style={[styles.infoVal, { color: textPrimary }]}>
+              Delhi NCR (Zone 1)
+            </Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={[styles.infoLabel, { color: textSecondary }]}>App Version:</Text>
-            <Text style={[styles.infoVal, { color: textPrimary }]}>v2.4.0 (Staff Build)</Text>
+            <Text style={[styles.infoLabel, { color: textSecondary }]}>
+              App Version:
+            </Text>
+            <Text style={[styles.infoVal, { color: textPrimary }]}>
+              v2.4.0 (Staff Build)
+            </Text>
           </View>
         </View>
 
         {/* Logout Button */}
         <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-          <Feather name="log-out" size={16} color="#EF4444" style={{ marginRight: 6 }} />
+          <Feather
+            name="log-out"
+            size={16}
+            color="#EF4444"
+            style={{ marginRight: 6 }}
+          />
           <Text style={styles.logoutBtnText}>Log Out of Verification App</Text>
         </TouchableOpacity>
       </ScrollView>
