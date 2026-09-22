@@ -4,6 +4,7 @@ export type UserRole =
   | "PROPERTY_OWNER"
   | "FIELD_AGENT"
   | "CUSTOMER"
+  | "TENANT"
   | "VERIFICATION_STAFF"
   | "ADMIN_PARTNER"
   | "BROKER";

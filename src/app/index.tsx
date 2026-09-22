@@ -89,6 +89,7 @@ export default function SplashScreen() {
               )
                 role = "ADMIN_PARTNER";
               else if (r === "broker") role = "BROKER";
+              else if (r === "tenant" || r === "client") role = "TENANT";
               else role = user.role.toUpperCase();
             }
           } catch (e) {}
@@ -111,6 +112,8 @@ export default function SplashScreen() {
           targetRoute = "/AdminPartnerPanel/(tabs)/Dashboard";
         } else if (role === "BROKER") {
           targetRoute = "/BrokerPanel/(tabs)/Dashboard";
+        } else if (role === "CUSTOMER") {
+          targetRoute = "/TenantPanel/(tabs)/Home";
         } else {
           targetRoute = "/CustomerPanel/(tabs)";
         }

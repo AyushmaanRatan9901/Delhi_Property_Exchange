@@ -24,6 +24,7 @@ export const normalizeBackendRole = (role?: string): UserRole => {
   if (r === "field_staff" || r === "verification_staff") return "VERIFICATION_STAFF";
   if (r === "broker") return "BROKER";
   if (r === "property_owner" || r === "owner") return "PROPERTY_OWNER";
+  if (r === "tenant" || r === "client") return "TENANT";
   return "CUSTOMER";
 };
 

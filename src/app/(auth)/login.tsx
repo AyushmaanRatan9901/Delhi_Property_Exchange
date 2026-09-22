@@ -51,8 +51,16 @@ const SIGNUP_ROLES: Array<{
   gradient: [string, string];
 }> = [
   {
+    id: "TENANT",
+    title: "Tenant / Resident",
+    badge: "Resident",
+    desc: "Manage your rented property, pay rent, view documents & complaints",
+    icon: "key",
+    gradient: ["#0284C7", "#0369A1"],
+  },
+  {
     id: "CUSTOMER",
-    title: "Tenant / Guest",
+    title: "Property Seeker",
     badge: "Most Popular",
     desc: "Find verified rooms, PGs & flats with zero brokerage",
     icon: "home",
@@ -85,7 +93,8 @@ const SIGNUP_ROLES: Array<{
 ];
 
 const ROLE_LABELS: Record<string, string> = {
-  CUSTOMER: "Tenant / Guest",
+  TENANT: "Tenant / Resident",
+  CUSTOMER: "Property Seeker",
   PROPERTY_OWNER: "House Owner / Landlord",
   FIELD_AGENT: "Field Agent / Partner",
   SUPER_ADMIN: "Super Administrator",
@@ -98,7 +107,8 @@ const ROLE_LABELS: Record<string, string> = {
   super_admin: "Super Administrator",
   admin: "Admin Partner",
   tele_caller: "Telecaller Support",
-  customer: "Tenant / Guest",
+  tenant: "Tenant / Resident",
+  customer: "Property Seeker",
   property_owner: "House Owner / Landlord",
   broker: "Broker Partner",
 };
@@ -642,6 +652,8 @@ export default function LoginScreen() {
         router.replace("/AdminPartnerPanel/(tabs)/Dashboard" as any);
       } else if (role === "BROKER") {
         router.replace("/BrokerPanel/(tabs)/Dashboard" as any);
+      } else if (role === "CUSTOMER") {
+        router.replace("/TenantPanel/(tabs)/Home" as any);
       } else {
         router.replace("/CustomerPanel/(tabs)" as any);
       }

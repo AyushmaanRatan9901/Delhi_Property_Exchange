@@ -64,40 +64,55 @@ const DEFAULT_ACCOUNTS: AccountItem[] = [
  * Helper to build iconic renderers from base name (outline when inactive, filled when active)
  */
 export function tabIcon(
-  name: string,
+  name: string = "home",
   iconFamily: "ionicons" | "community" | "feather" = "ionicons",
 ): IconRenderer {
-  function TabIconRenderer({
-    focused,
-    color,
-    size,
-  }: {
-    focused: boolean;
-    color: ColorValue;
-    size: number;
+  const safeBaseName = typeof name === "string" && name.trim() ? name.trim() : "home";
+
+  function TabIconRenderer(props?: {
+    focused?: boolean;
+    color?: ColorValue;
+    size?: number;
   }) {
-    const colorStr = color as string;
-    if (iconFamily === "feather") {
-      return <Feather name={name as any} size={size} color={colorStr} />;
-    }
-    if (iconFamily === "community") {
+    try {
+      const focused = Boolean(props?.focused);
+      const colorStr = (typeof props?.color === "string" ? props.color : "#6366F1") as string;
+      const size = typeof props?.size === "number" && !isNaN(props.size) ? props.size : 23;
+
+      if (iconFamily === "feather") {
+        return <Feather name={safeBaseName as any} size={size} color={colorStr} />;
+      }
+      if (iconFamily === "community") {
+        const iconName = focused
+          ? safeBaseName
+          : safeBaseName.endsWith("-outline")
+          ? safeBaseName
+          : `${safeBaseName}-outline`;
+        return (
+          <MaterialCommunityIcons
+            name={iconName as any}
+            size={size}
+            color={colorStr}
+          />
+        );
+      }
+      const iconName = focused
+        ? safeBaseName
+        : safeBaseName.endsWith("-outline")
+        ? safeBaseName
+        : `${safeBaseName}-outline`;
       return (
-        <MaterialCommunityIcons
-          name={(focused ? name : `${name}-outline`) as any}
+        <Ionicons
+          name={iconName as any}
           size={size}
           color={colorStr}
         />
       );
+    } catch {
+      return <Ionicons name="ellipse-outline" size={22} color="#6366F1" />;
     }
-    return (
-      <Ionicons
-        name={(focused ? name : `${name}-outline`) as any}
-        size={size}
-        color={colorStr}
-      />
-    );
   }
-  TabIconRenderer.displayName = `TabIcon(${name})`;
+  TabIconRenderer.displayName = `TabIcon(${safeBaseName})`;
   return TabIconRenderer;
 }
 
@@ -107,42 +122,51 @@ export function tabIcon(
 export function tabProfileAvatar(
   avatarUri = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=180&q=80",
 ): IconRenderer {
-  function ProfileAvatarRenderer({
-    focused,
-    color,
-    size,
-  }: {
-    focused: boolean;
-    color: ColorValue;
-    size: number;
-  }) {
-    const colorStr = color as string;
-    const avatarDiameter = size + 4;
+  const safeUri =
+    typeof avatarUri === "string" && avatarUri.trim()
+      ? avatarUri.trim()
+      : "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=180&q=80";
 
-    return (
-      <View
-        style={{
-          width: avatarDiameter + 4,
-          height: avatarDiameter + 4,
-          borderRadius: (avatarDiameter + 4) / 2,
-          borderWidth: focused ? 2 : 1,
-          borderColor: focused ? colorStr : "rgba(148, 163, 184, 0.4)",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 1,
-        }}
-      >
-        <Image
-          source={{ uri: avatarUri }}
+  function ProfileAvatarRenderer(props?: {
+    focused?: boolean;
+    color?: ColorValue;
+    size?: number;
+  }) {
+    try {
+      const focused = Boolean(props?.focused);
+      const colorStr = (typeof props?.color === "string" ? props.color : "#6366F1") as string;
+      const size = typeof props?.size === "number" && !isNaN(props.size) ? props.size : 23;
+      const avatarDiameter = size + 4;
+
+      return (
+        <View
           style={{
-            width: avatarDiameter,
-            height: avatarDiameter,
-            borderRadius: avatarDiameter / 2,
+            width: avatarDiameter + 4,
+            height: avatarDiameter + 4,
+            borderRadius: (avatarDiameter + 4) / 2,
+            borderWidth: focused ? 2 : 1,
+            borderColor: focused ? colorStr : "rgba(148, 163, 184, 0.4)",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 1,
           }}
-          resizeMode="cover"
-        />
-      </View>
-    );
+        >
+          <Image
+            source={{
+              uri: safeUri,
+            }}
+            style={{
+              width: avatarDiameter,
+              height: avatarDiameter,
+              borderRadius: avatarDiameter / 2,
+            }}
+            resizeMode="cover"
+          />
+        </View>
+      );
+    } catch {
+      return <Ionicons name="person-circle-outline" size={24} color="#6366F1" />;
+    }
   }
   ProfileAvatarRenderer.displayName = "ProfileAvatarRenderer";
   return ProfileAvatarRenderer;
@@ -440,7 +464,7 @@ export function FloatingTabBar({
                 };
 
                 const onLongPress = () => {
-                  if (route.name === "profile") {
+                  if (route.name?.toLowerCase() === "profile") {
                     handleOpenAccountModal();
                   } else {
                     navigation.emit({
@@ -952,7 +976,7 @@ function TabButton({
     <Pressable
       onPress={onPress}
       onLongPress={onLongPress}
-      delayLongPress={route.name === "profile" ? 1000 : 500}
+      delayLongPress={route.name?.toLowerCase() === "profile" ? 1000 : 500}
       onLayout={onLayout}
       android_ripple={{
         color: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)",
