@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
 import apiClient from "../Redux/api/axiosInstance";
 
 export type LeadStatus = "NEW" | "VERIFIED" | "RENTED" | "SOLD" | "REJECTED";
@@ -97,7 +103,8 @@ export const INITIAL_AGENT_PROFILE: AgentProfile = {
   assignedLocality: "Sector 62 & Indirapuram, Delhi-NCR",
   joinedDate: "12 Jan 2024",
   kycStatus: "VERIFIED",
-  avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+  avatar:
+    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
   bankDetails: {
     upiId: "pooja@okaxis",
     accountHolder: "Pooja Sharma",
@@ -126,8 +133,8 @@ export const INITIAL_LEADS: LeadItem[] = [
     },
     status: "RENTED",
     submissionDate: "Today, 10:45 AM",
-    commissionAmount: 3900,
-    firstMonthCommission: 3900,
+    commissionAmount: 0,
+    firstMonthCommission: 0,
     recurringMonthlyCommission: 1300,
     recurringMonthlyRate: 5,
     tenantName: "Vikram Malhotra",
@@ -135,8 +142,10 @@ export const INITIAL_LEADS: LeadItem[] = [
     photos: [
       "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format&fit=crop&q=80",
     ],
-    remarks: "Keys with caretaker. 3 min walk to Electronic City Metro Station.",
-    verificationNotes: "Physically verified by staff. Tenant registered & 1st month rent confirmed.",
+    remarks:
+      "Keys with caretaker. 3 min walk to Electronic City Metro Station.",
+    verificationNotes:
+      "Physically verified by staff. Tenant registered & 1st month rent confirmed.",
   },
   {
     id: "LD-8821",
@@ -165,7 +174,8 @@ export const INITIAL_LEADS: LeadItem[] = [
       "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&auto=format&fit=crop&q=80",
     ],
     remarks: "Available for family. Modular kitchen ready.",
-    verificationNotes: "Verified on-site by staff. Listed live, awaiting tenant booking.",
+    verificationNotes:
+      "Verified on-site by staff. Listed live, awaiting tenant booking.",
   },
 ];
 
@@ -208,10 +218,20 @@ const mapBackendToLeadItem = (doc: any): LeadItem => {
     ? doc.photos.map((p: any) => (typeof p === "string" ? p : p.url))
     : doc.images || [];
 
-  const isRentedOrSold = doc.status === "rented" || doc.status === "sold" || doc.deal?.isClosed === true;
-  const firstMonth = doc.commission?.firstMonthCommission || (isRentedOrSold ? doc.commission?.approvedAmount : 0) || 0;
+  const isRentedOrSold =
+    doc.status === "rented" ||
+    doc.status === "sold" ||
+    doc.deal?.isClosed === true;
+  const firstMonth =
+    doc.commission?.firstMonthCommission ||
+    (isRentedOrSold ? doc.commission?.approvedAmount : 0) ||
+    0;
   const recurringRate = doc.commission?.recurringMonthlyRate || 5;
-  const recurringAmt = doc.commission?.recurringMonthlyCommission || Math.round((doc.deal?.finalPrice || doc.expectedPrice || 0) * (recurringRate / 100));
+  const recurringAmt =
+    doc.commission?.recurringMonthlyCommission ||
+    Math.round(
+      (doc.deal?.finalPrice || doc.expectedPrice || 0) * (recurringRate / 100),
+    );
 
   return {
     id: doc.leadId || doc._id || "LD-0000",
@@ -220,30 +240,54 @@ const mapBackendToLeadItem = (doc: any): LeadItem => {
     ownerPhone: doc.ownerPhone || "",
     maskedPhone: doc.maskedPhone || maskPhoneNumber(doc.ownerPhone || ""),
     locality: doc.locality || doc.address?.city || "Delhi NCR",
-    fullAddress: doc.address?.fullAddress || doc.address?.street || doc.locality || "",
+    fullAddress:
+      doc.address?.fullAddress || doc.address?.street || doc.locality || "",
     propertyType: (doc.propertyType || "2BHK") as PropertyType,
     listingType: (doc.listingType || "rent").toUpperCase() as ListingType,
     expectedPrice: doc.expectedPrice || 0,
     gpsLocation: {
-      latitude: doc.gpsDetails?.latitude || doc.location?.coordinates?.[1] || 28.6139,
-      longitude: doc.gpsDetails?.longitude || doc.location?.coordinates?.[0] || 77.209,
+      latitude:
+        doc.gpsDetails?.latitude || doc.location?.coordinates?.[1] || 28.6139,
+      longitude:
+        doc.gpsDetails?.longitude || doc.location?.coordinates?.[0] || 77.209,
       accuracyMeters: doc.gpsDetails?.accuracy || 4.2,
-      formattedAddress: doc.gpsDetails?.reverseGeocodedAddress || doc.locality || "Captured Live On-Site",
+      formattedAddress:
+        doc.gpsDetails?.reverseGeocodedAddress ||
+        doc.locality ||
+        "Captured Live On-Site",
     },
     status: (doc.status || "new").toUpperCase() as LeadStatus,
-    submissionDate: doc.createdAt ? new Date(doc.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Recently",
-    commissionAmount: isRentedOrSold ? (doc.commission?.approvedAmount || 0) : 0,
+    submissionDate: doc.createdAt
+      ? new Date(doc.createdAt).toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })
+      : "Recently",
+    commissionAmount: isRentedOrSold ? doc.commission?.approvedAmount || 0 : 0,
     firstMonthCommission: firstMonth,
     recurringMonthlyCommission: recurringAmt,
     recurringMonthlyRate: recurringRate,
     recurringCommissions: doc.commission?.recurringCommissions || [],
     tenantName: doc.deal?.tenantName,
     tenantPhone: doc.deal?.tenantPhone,
-    commissionStatus: isRentedOrSold ? ((doc.commission?.status || doc.commissionStatus || "pending").toUpperCase() as "PENDING" | "APPROVED" | "PAID") : "PENDING",
-    photos: photoUrls.length > 0 ? photoUrls : ["https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format&fit=crop&q=80"],
+    commissionStatus: isRentedOrSold
+      ? ((
+          doc.commission?.status ||
+          doc.commissionStatus ||
+          "pending"
+        ).toUpperCase() as "PENDING" | "APPROVED" | "PAID")
+      : "PENDING",
+    photos:
+      photoUrls.length > 0
+        ? photoUrls
+        : [
+            "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format&fit=crop&q=80",
+          ],
     videoLink: doc.videoLink || doc.videoUrl,
     remarks: doc.remarks,
-    verificationNotes: doc.verificationNotes || doc.inspectionDetails?.staffChecklistRemarks,
+    verificationNotes:
+      doc.verificationNotes || doc.inspectionDetails?.staffChecklistRemarks,
   };
 };
 
@@ -259,17 +303,33 @@ interface FieldAgentContextType {
   activeTenantsCount: number;
   isLoading: boolean;
   refreshLeads: () => Promise<void>;
-  addNewLead: (lead: Omit<LeadItem, "id" | "maskedPhone" | "submissionDate" | "status" | "commissionAmount" | "commissionStatus">) => Promise<LeadItem>;
+  addNewLead: (
+    lead: Omit<
+      LeadItem,
+      | "id"
+      | "maskedPhone"
+      | "submissionDate"
+      | "status"
+      | "commissionAmount"
+      | "commissionStatus"
+    >,
+  ) => Promise<LeadItem>;
   requestPayout: (amount: number, method: string) => Promise<boolean>;
   updateBankDetails: (details: Partial<BankDetails>) => void;
 }
 
 const FieldAgentContext = createContext<FieldAgentContextType | null>(null);
 
-export const FieldAgentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [agentProfile, setAgentProfile] = useState<AgentProfile>(INITIAL_AGENT_PROFILE);
+export const FieldAgentProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [agentProfile, setAgentProfile] = useState<AgentProfile>(
+    INITIAL_AGENT_PROFILE,
+  );
   const [leads, setLeads] = useState<LeadItem[]>(INITIAL_LEADS);
-  const [payoutHistory, setPayoutHistory] = useState<PayoutTransaction[]>(INITIAL_PAYOUT_HISTORY);
+  const [payoutHistory, setPayoutHistory] = useState<PayoutTransaction[]>(
+    INITIAL_PAYOUT_HISTORY,
+  );
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [statsData, setStatsData] = useState<any>(null);
 
@@ -285,7 +345,10 @@ export const FieldAgentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
       }
     } catch (err) {
-      console.log("[FieldAgentProvider] Fetching leads from backend (using cached fallback):", err);
+      console.log(
+        "[FieldAgentProvider] Fetching leads from backend (using cached fallback):",
+        err,
+      );
     } finally {
       setIsLoading(false);
     }
@@ -309,43 +372,78 @@ export const FieldAgentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [fetchMyLeads, fetchMyStats]);
 
   // Derived Financials from Backend or leads
-  const availableBalance = statsData?.walletBalance !== undefined
-    ? statsData.walletBalance
-    : leads
-        .filter((l) => (l.status === "RENTED" || l.status === "SOLD") && l.commissionStatus === "APPROVED")
-        .reduce((acc, curr) => acc + curr.commissionAmount, 0);
+  const availableBalance =
+    statsData?.walletBalance !== undefined
+      ? statsData.walletBalance
+      : leads
+          .filter(
+            (l) =>
+              (l.status === "RENTED" || l.status === "SOLD") &&
+              l.commissionStatus === "APPROVED",
+          )
+          .reduce((acc, curr) => acc + curr.commissionAmount, 0);
 
-  const totalEarnings = statsData?.approvedCommission !== undefined
-    ? statsData.approvedCommission
-    : leads
-        .filter((l) => (l.status === "RENTED" || l.status === "SOLD") && (l.commissionStatus === "PAID" || l.commissionStatus === "APPROVED"))
-        .reduce((acc, curr) => acc + curr.commissionAmount, 0);
+  const totalEarnings =
+    statsData?.approvedCommission !== undefined
+      ? statsData.approvedCommission
+      : leads
+          .filter(
+            (l) =>
+              (l.status === "RENTED" || l.status === "SOLD") &&
+              (l.commissionStatus === "PAID" ||
+                l.commissionStatus === "APPROVED"),
+          )
+          .reduce((acc, curr) => acc + curr.commissionAmount, 0);
 
-  const paidEarnings = statsData?.paidCommission !== undefined
-    ? statsData.paidCommission
-    : payoutHistory
-        .filter((p) => p.status === "COMPLETED")
-        .reduce((acc, curr) => acc + curr.amount, 0);
+  const paidEarnings =
+    statsData?.paidCommission !== undefined
+      ? statsData.paidCommission
+      : payoutHistory
+          .filter((p) => p.status === "COMPLETED")
+          .reduce((acc, curr) => acc + curr.amount, 0);
 
-  const pendingApproval = statsData?.potentialCommission !== undefined
-    ? statsData.potentialCommission
-    : leads
-        .filter((l) => l.status !== "RENTED" && l.status !== "SOLD" && l.status !== "REJECTED")
-        .reduce((acc, curr) => acc + (curr.firstMonthCommission || curr.commissionAmount || 0), 0);
+  const pendingApproval =
+    statsData?.potentialCommission !== undefined
+      ? statsData.potentialCommission
+      : leads
+          .filter(
+            (l) =>
+              l.status !== "RENTED" &&
+              l.status !== "SOLD" &&
+              l.status !== "REJECTED",
+          )
+          .reduce(
+            (acc, curr) =>
+              acc + (curr.firstMonthCommission || curr.commissionAmount || 0),
+            0,
+          );
 
-  const recurringMonthlyActive = statsData?.recurringMonthlyActive !== undefined
-    ? statsData.recurringMonthlyActive
-    : leads
-        .filter((l) => l.status === "RENTED")
-        .reduce((acc, curr) => acc + (curr.recurringMonthlyCommission || 0), 0);
+  const recurringMonthlyActive =
+    statsData?.recurringMonthlyActive !== undefined
+      ? statsData.recurringMonthlyActive
+      : leads
+          .filter((l) => l.status === "RENTED")
+          .reduce(
+            (acc, curr) => acc + (curr.recurringMonthlyCommission || 0),
+            0,
+          );
 
-  const activeTenantsCount = statsData?.activeTenantsCount !== undefined
-    ? statsData.activeTenantsCount
-    : leads.filter((l) => l.status === "RENTED").length;
+  const activeTenantsCount =
+    statsData?.activeTenantsCount !== undefined
+      ? statsData.activeTenantsCount
+      : leads.filter((l) => l.status === "RENTED").length;
 
   // Submit Lead to Backend & update local state
   const addNewLead = async (
-    newLeadData: Omit<LeadItem, "id" | "maskedPhone" | "submissionDate" | "status" | "commissionAmount" | "commissionStatus">
+    newLeadData: Omit<
+      LeadItem,
+      | "id"
+      | "maskedPhone"
+      | "submissionDate"
+      | "status"
+      | "commissionAmount"
+      | "commissionStatus"
+    >,
   ): Promise<LeadItem> => {
     try {
       const payload = {
@@ -380,14 +478,23 @@ export const FieldAgentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return createdFromBackend;
       }
     } catch (err) {
-      console.log("[FieldAgentProvider] API submit failed, saving locally:", err);
+      console.log(
+        "[FieldAgentProvider] API submit failed, saving locally:",
+        err,
+      );
     }
 
     // Local fallback creation
     const randomId = "LD-" + Math.floor(1000 + Math.random() * 9000);
     const masked = maskPhoneNumber(newLeadData.ownerPhone);
-    const est1stMonth = newLeadData.listingType === "SALE" ? 15000 : Math.round(newLeadData.expectedPrice * 0.15);
-    const estRecurring = newLeadData.listingType === "SALE" ? 0 : Math.round(newLeadData.expectedPrice * 0.05);
+    const est1stMonth =
+      newLeadData.listingType === "SALE"
+        ? 15000
+        : Math.round(newLeadData.expectedPrice * 0.15);
+    const estRecurring =
+      newLeadData.listingType === "SALE"
+        ? 0
+        : Math.round(newLeadData.expectedPrice * 0.05);
 
     const createdLead: LeadItem = {
       ...newLeadData,
@@ -400,14 +507,18 @@ export const FieldAgentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       recurringMonthlyCommission: estRecurring,
       recurringMonthlyRate: 5,
       commissionStatus: "PENDING",
-      verificationNotes: "Submitted with 1-Click GPS. Verification scheduled. Commission activates upon tenant registration and 1st month rent.",
+      verificationNotes:
+        "Submitted with 1-Click GPS. Verification scheduled. Commission activates upon tenant registration and 1st month rent.",
     };
 
     setLeads((prev) => [createdLead, ...prev]);
     return createdLead;
   };
 
-  const requestPayout = async (amount: number, method: string): Promise<boolean> => {
+  const requestPayout = async (
+    amount: number,
+    method: string,
+  ): Promise<boolean> => {
     const newTxn: PayoutTransaction = {
       id: "TXN-" + Math.floor(10000 + Math.random() * 90000),
       amount,

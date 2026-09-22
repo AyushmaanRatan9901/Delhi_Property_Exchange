@@ -758,7 +758,7 @@ export default function SuperAdminDashboard() {
                     </Text>
                   </TouchableOpacity>
 
-                  {!lead.deal?.isClosed && (
+                  {!lead.deal?.isClosed && lead.status !== "rented" ? (
                     <TouchableOpacity
                       onPress={() => {
                         setSelectedLead(lead);
@@ -771,6 +771,20 @@ export default function SuperAdminDashboard() {
                     >
                       <Feather name="check-circle" size={14} color="#FFFFFF" />
                       <Text style={styles.actionFilledBtnText}>Close Deal</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setSelectedLead(lead);
+                        setIsDealModalVisible(true);
+                      }}
+                      style={[
+                        styles.actionFilledBtn,
+                        { backgroundColor: "#0284C7" },
+                      ]}
+                    >
+                      <Feather name="users" size={14} color="#FFFFFF" />
+                      <Text style={styles.actionFilledBtnText}>Manage Tenant</Text>
                     </TouchableOpacity>
                   )}
 

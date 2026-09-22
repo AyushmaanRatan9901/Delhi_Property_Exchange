@@ -652,7 +652,7 @@ export default function LoginScreen() {
         router.replace("/AdminPartnerPanel/(tabs)/Dashboard" as any);
       } else if (role === "BROKER") {
         router.replace("/BrokerPanel/(tabs)/Dashboard" as any);
-      } else if (role === "CUSTOMER") {
+      } else if (role === "TENANT") {
         router.replace("/TenantPanel/(tabs)/Home" as any);
       } else {
         router.replace("/CustomerPanel/(tabs)" as any);

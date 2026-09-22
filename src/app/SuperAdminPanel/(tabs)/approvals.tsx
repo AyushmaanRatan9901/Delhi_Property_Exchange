@@ -65,11 +65,11 @@ export default function SuperAdminApprovalsScreen() {
         setDuplicateLeads(duplicatesRes.data.data);
       }
       if (leadsRes.data?.data?.leads) {
-        // Pending deals: verified leads not yet closed as rented/sold
-        const verifiedNotClosed = leadsRes.data.data.leads.filter(
-          (l: any) => l.status === "verified" && !l.deal?.isClosed
+        // Deals tab: verified leads ready for deals, and active deals ready for tenant management
+        const dealsList = leadsRes.data.data.leads.filter(
+          (l: any) => l.status === "verified" || l.status === "rented" || l.deal?.isClosed
         );
-        setPendingDeals(verifiedNotClosed);
+        setPendingDeals(dealsList);
       }
     } catch (e: any) {
       console.warn("Error fetching approvals data:", e.message);
@@ -500,13 +500,36 @@ export default function SuperAdminApprovalsScreen() {
                       >
                         <View style={styles.cardHeader}>
                           <View style={{ flex: 1 }}>
-                            <Text style={styles.leadIdText}>{lead.leadId || "VERIFIED"}</Text>
+                            <Text style={styles.leadIdText}>{lead.leadId || "LEAD"}</Text>
                             <Text style={[styles.cardTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
                               {lead.title || lead.propertyType + " in " + lead.locality}
                             </Text>
                           </View>
-                          <View style={[styles.statusTag, { backgroundColor: "#DCFCE7" }]}>
-                            <Text style={{ color: "#166534", fontSize: 11, fontWeight: "700" }}>VERIFIED</Text>
+                          <View
+                            style={[
+                              styles.statusTag,
+                              {
+                                backgroundColor:
+                                  lead.deal?.isClosed || lead.status === "rented"
+                                    ? "#E0F2FE"
+                                    : "#DCFCE7",
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={{
+                                color:
+                                  lead.deal?.isClosed || lead.status === "rented"
+                                    ? "#0369A1"
+                                    : "#166534",
+                                fontSize: 11,
+                                fontWeight: "700",
+                              }}
+                            >
+                              {lead.deal?.isClosed || lead.status === "rented"
+                                ? `OCCUPIED (${lead.deal?.tenantName?.split(" ")[0] || "TENANT"})`
+                                : "READY FOR DEAL"}
+                            </Text>
                           </View>
                         </View>
 
@@ -521,7 +544,7 @@ export default function SuperAdminApprovalsScreen() {
                           </View>
 
                           <Text style={[styles.amountValue, { color: "#0D9488" }]}>
-                            ₹{(lead.expectedPrice || 0).toLocaleString("en-IN")}
+                            ₹{(lead.deal?.finalPrice || lead.expectedPrice || 0).toLocaleString("en-IN")}
                           </Text>
                         </View>
 
@@ -542,10 +565,30 @@ export default function SuperAdminApprovalsScreen() {
                               setSelectedLead(lead);
                               setIsDealModalVisible(true);
                             }}
-                            style={[styles.filledBtn, { backgroundColor: "#10B981" }]}
+                            style={[
+                              styles.filledBtn,
+                              {
+                                backgroundColor:
+                                  lead.deal?.isClosed || lead.status === "rented"
+                                    ? "#0284C7"
+                                    : "#10B981",
+                              },
+                            ]}
                           >
-                            <Feather name="check-circle" size={14} color="#FFFFFF" />
-                            <Text style={styles.filledBtnText}>Finalize Deal</Text>
+                            <Feather
+                              name={
+                                lead.deal?.isClosed || lead.status === "rented"
+                                  ? "users"
+                                  : "check-circle"
+                              }
+                              size={14}
+                              color="#FFFFFF"
+                            />
+                            <Text style={styles.filledBtnText}>
+                              {lead.deal?.isClosed || lead.status === "rented"
+                                ? "Manage / Vacate Tenant"
+                                : "Finalize Deal"}
+                            </Text>
                           </TouchableOpacity>
                         </View>
                       </View>

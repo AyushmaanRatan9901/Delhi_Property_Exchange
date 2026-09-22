@@ -115,6 +115,22 @@ export const initSocketService = (): any => {
     } catch {}
   });
 
+  // 6. Real-time Tenant Property Assignment / Deal Confirmation
+  s.on("tenant:property_assigned", (data: any) => {
+    console.log(`🏠 [SocketService] Received "tenant:property_assigned":`, data);
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {}
+  });
+
+  // 7. Real-time Tenant Vacated / Property Removed
+  s.on("tenant:property_removed", (data: any) => {
+    console.log(`🚪 [SocketService] Received "tenant:property_removed":`, data);
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    } catch {}
+  });
+
   socket = s;
   return socket;
 };

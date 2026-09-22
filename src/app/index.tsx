@@ -112,7 +112,7 @@ export default function SplashScreen() {
           targetRoute = "/AdminPartnerPanel/(tabs)/Dashboard";
         } else if (role === "BROKER") {
           targetRoute = "/BrokerPanel/(tabs)/Dashboard";
-        } else if (role === "CUSTOMER") {
+        } else if (role === "TENANT") {
           targetRoute = "/TenantPanel/(tabs)/Home";
         } else {
           targetRoute = "/CustomerPanel/(tabs)";

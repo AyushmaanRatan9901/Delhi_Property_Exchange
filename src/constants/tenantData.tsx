@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import apiClient from "../Redux/api/axiosInstance";
+import { getSocket } from "../services/socketService";
 
 export interface TenantProperty {
   id: string;
@@ -675,6 +676,28 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   useEffect(() => {
     refreshAll();
+
+    const socket = getSocket();
+    if (socket) {
+      const handleRealtimeUpdate = () => {
+        console.log("⚡ [TenantProvider] Real-time property/deal update received, refreshing data...");
+        refreshAll();
+      };
+
+      socket.on("tenant:property_assigned", handleRealtimeUpdate);
+      socket.on("tenant:property_removed", handleRealtimeUpdate);
+      socket.on("lead:deal_closed", handleRealtimeUpdate);
+      socket.on("lead:updated", handleRealtimeUpdate);
+      socket.on("notification:new", handleRealtimeUpdate);
+
+      return () => {
+        socket.off("tenant:property_assigned", handleRealtimeUpdate);
+        socket.off("tenant:property_removed", handleRealtimeUpdate);
+        socket.off("lead:deal_closed", handleRealtimeUpdate);
+        socket.off("lead:updated", handleRealtimeUpdate);
+        socket.off("notification:new", handleRealtimeUpdate);
+      };
+    }
   }, [refreshAll]);
 
   // Pay Rent Action
