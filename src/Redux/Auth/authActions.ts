@@ -279,10 +279,7 @@ export const restoreSession = createAsyncThunk<
   }
 });
 
-/**
- * 5. Logout Action
- */
-export const logout = createAsyncThunk<void, void>("auth/logout", async () => {
+export const logout = createAsyncThunk<void, void>("auth/logout", async (_, { dispatch }) => {
   try {
     await appStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
     await appStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
@@ -290,4 +287,8 @@ export const logout = createAsyncThunk<void, void>("auth/logout", async () => {
   } catch (e) {
     // Silently continue
   }
+  try {
+    const { resetSuperAdminNotifications } = await import("../SuperAdmin/superAdminNotificationSlice");
+    dispatch(resetSuperAdminNotifications());
+  } catch (e) {}
 });

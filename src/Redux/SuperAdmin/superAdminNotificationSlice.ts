@@ -240,6 +240,14 @@ export const superAdminNotificationSlice = createSlice({
     setSuperAdminSocketConnected: (state, action: PayloadAction<boolean>) => {
       state.isSocketConnected = action.payload;
     },
+
+    resetSuperAdminNotifications: (state) => {
+      state.notifications = [];
+      state.unreadCount = 0;
+      state.total = 0;
+      state.loading = false;
+      state.error = null;
+    },
   },
 
   extraReducers: (builder) => {
@@ -313,6 +321,7 @@ export const {
   addRealTimeSuperAdminNotification,
   markLocalSuperAdminNotifRead,
   setSuperAdminSocketConnected,
+  resetSuperAdminNotifications,
 } = superAdminNotificationSlice.actions;
 
 export default superAdminNotificationSlice.reducer;

@@ -5,6 +5,8 @@ export default function SuperAdminLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="user-detail" options={{ headerShown: false }} />
+      <Stack.Screen name="tenant-history" options={{ headerShown: false }} />
+      <Stack.Screen name="notification-automations" options={{ headerShown: false }} />
     </Stack>
   );
 }
