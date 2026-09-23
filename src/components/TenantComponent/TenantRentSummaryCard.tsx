@@ -28,6 +28,15 @@ export const TenantRentSummaryCard: React.FC<TenantRentSummaryCardProps> = ({
   const isOverdue = activeRent?.isOverdue && !isPaid;
 
   const getStatusBadge = () => {
+    if (!activeRent) {
+      return {
+        bg: isDark ? "#062A1C" : "#DCFCE7",
+        text: isDark ? "#34D399" : "#15803D",
+        border: isDark ? "#065F46" : "#86EFAC",
+        label: "NO DUES",
+        icon: "checkmark-circle" as const,
+      };
+    }
     if (isPaid) {
       return {
         bg: isDark ? "#062A1C" : "#DCFCE7",
@@ -58,7 +67,7 @@ export const TenantRentSummaryCard: React.FC<TenantRentSummaryCardProps> = ({
   const badge = getStatusBadge();
   const formattedDueDate = activeRent?.dueDate
     ? new Date(activeRent.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-    : "5th of this month";
+    : "No Pending Due Date";
 
   return (
     <View
@@ -81,7 +90,7 @@ export const TenantRentSummaryCard: React.FC<TenantRentSummaryCardProps> = ({
               Rent Summary
             </Text>
             <Text style={[styles.headerSub, { color: isDark ? colors.textMuted : "#64748B" }]}>
-              {activeRent?.month || "Current Month"}
+              {activeRent?.month || "No Active Invoice"}
             </Text>
           </View>
         </View>
@@ -116,7 +125,7 @@ export const TenantRentSummaryCard: React.FC<TenantRentSummaryCardProps> = ({
             {isPaid ? "Total Paid Amount" : "Payable Rent Amount"}
           </Text>
           <Text style={[styles.amountValue, { color: isDark ? colors.textPrimary : "#0F172A" }]}>
-            {formatCurrency(activeRent?.amount || 18500)}
+            {formatCurrency(activeRent?.amount || 0)}
           </Text>
         </View>
 

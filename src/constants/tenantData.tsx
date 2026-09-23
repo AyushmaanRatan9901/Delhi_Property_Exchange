@@ -168,6 +168,9 @@ export interface TenantProfile {
   email: string;
   profilePhoto?: string;
   occupation: string;
+  aadhaarNumber?: string;
+  aadhaarDoc?: string;
+  aadhaarStatus?: "NOT_UPLOADED" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED";
   emergencyContact: {
     name: string;
     phone: string;
@@ -534,32 +537,42 @@ export const INITIAL_NOTIFICATIONS: TenantNotification[] = [
   },
 ];
 
-export const INITIAL_PROFILE: TenantProfile = {
-  id: "USR-TNT-8842",
-  tenantId: "TNT-8842",
-  name: "Rohan Verma",
-  phone: "+91 98112 34567",
-  email: "rohan.verma@example.com",
-  profilePhoto: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80",
-  occupation: "Senior Software Engineer (Noida Tech Hub)",
+export const EMPTY_PROFILE: TenantProfile = {
+  id: "",
+  tenantId: "",
+  name: "",
+  phone: "",
+  email: "",
+  profilePhoto: "",
+  occupation: "",
+  aadhaarNumber: "",
+  aadhaarDoc: "",
+  aadhaarStatus: "NOT_UPLOADED",
   emergencyContact: {
-    name: "Sunita Verma (Mother)",
-    phone: "+91 98765 43210",
-    relation: "Mother",
+    name: "",
+    phone: "",
+    relation: "",
   },
-  permanentAddress: "House 42, Civil Lines, Jaipur, Rajasthan - 302006",
-  assignedPropertyId: "DPX-8842",
-  assignedPropertyTitle: "Sunlit 2BHK Luxury High-Rise Apartment",
-  leaseStartDate: "2026-04-01",
-  agreementNumber: "AGR-DEL-2026-8842",
-  verificationStatus: "VERIFIED",
+  permanentAddress: "",
+  assignedPropertyId: null,
+  assignedPropertyTitle: null,
+  verificationStatus: "PENDING",
+};
+
+export const EMPTY_PAYMENT_INSTRUCTIONS: PaymentInstructions = {
+  upiId: "",
+  merchantName: "Delhi Property Exchange",
+  accountNumber: "",
+  ifscCode: "",
+  bankName: "",
+  qrCodeData: "",
 };
 
 export const INITIAL_QUICK_STATS: TenantQuickStats = {
-  unpaidRentCount: 1,
-  openComplaintsCount: 1,
-  upcomingInspectionsCount: 1,
-  unreadNotificationsCount: 2,
+  unpaidRentCount: 0,
+  openComplaintsCount: 0,
+  upcomingInspectionsCount: 0,
+  unreadNotificationsCount: 0,
 };
 
 // ── Tenant Context Interface ──────────────────────────────────────
@@ -587,23 +600,29 @@ interface TenantContextType {
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
   updateProfile: (data: Partial<TenantProfile>) => Promise<boolean>;
+  uploadAadhaar: (formData: FormData) => Promise<{ success: boolean; message?: string; aadhaarDoc?: string }>;
 }
 
 const TenantContext = createContext<TenantContextType | null>(null);
 
 export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [property, setProperty] = useState<TenantProperty | null>(INITIAL_PROPERTY);
-  const [activeRent, setActiveRent] = useState<ActiveRent | null>(INITIAL_ACTIVE_RENT);
-  const [ledgerHistory, setLedgerHistory] = useState<RentLedgerItem[]>(INITIAL_RENT_LEDGER);
-  const [paymentInstructions, setPaymentInstructions] = useState<PaymentInstructions>(INITIAL_PAYMENT_INSTRUCTIONS);
-  const [documents, setDocuments] = useState<TenantDocument[]>(INITIAL_DOCUMENTS);
-  const [complaints, setComplaints] = useState<TenantComplaint[]>(INITIAL_COMPLAINTS);
-  const [inspections, setInspections] = useState<TenantInspection[]>(INITIAL_INSPECTIONS);
-  const [roomChangeRequests, setRoomChangeRequests] = useState<RoomChangeRequest[]>(INITIAL_ROOM_CHANGES);
-  const [notifications, setNotifications] = useState<TenantNotification[]>(INITIAL_NOTIFICATIONS);
-  const [profile, setProfile] = useState<TenantProfile>(INITIAL_PROFILE);
-  const [quickStats, setQuickStats] = useState<TenantQuickStats>(INITIAL_QUICK_STATS);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [property, setProperty] = useState<TenantProperty | null>(null);
+  const [activeRent, setActiveRent] = useState<ActiveRent | null>(null);
+  const [ledgerHistory, setLedgerHistory] = useState<RentLedgerItem[]>([]);
+  const [paymentInstructions, setPaymentInstructions] = useState<PaymentInstructions>(EMPTY_PAYMENT_INSTRUCTIONS);
+  const [documents, setDocuments] = useState<TenantDocument[]>([]);
+  const [complaints, setComplaints] = useState<TenantComplaint[]>([]);
+  const [inspections, setInspections] = useState<TenantInspection[]>([]);
+  const [roomChangeRequests, setRoomChangeRequests] = useState<RoomChangeRequest[]>([]);
+  const [notifications, setNotifications] = useState<TenantNotification[]>([]);
+  const [profile, setProfile] = useState<TenantProfile>(EMPTY_PROFILE);
+  const [quickStats, setQuickStats] = useState<TenantQuickStats>({
+    unpaidRentCount: 0,
+    openComplaintsCount: 0,
+    upcomingInspectionsCount: 0,
+    unreadNotificationsCount: 0,
+  });
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   // Fetch all live tenant data from backend API
@@ -624,50 +643,56 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       if (dashRes.status === "fulfilled" && dashRes.value.data?.data) {
         const d = dashRes.value.data.data;
-        if (d.property) setProperty(d.property);
+        setProperty(d.property || null);
         if (d.activeRent) setActiveRent(d.activeRent);
         if (d.quickStats) setQuickStats(d.quickStats);
-        if (Array.isArray(d.recentNotifications) && d.recentNotifications.length > 0) {
+        if (Array.isArray(d.recentNotifications)) {
           setNotifications(d.recentNotifications);
         }
       }
 
-      if (propRes.status === "fulfilled" && propRes.value.data?.data?.property) {
-        setProperty(propRes.value.data.data.property);
+      if (propRes.status === "fulfilled") {
+        const propData = propRes.value.data?.data?.property ?? propRes.value.data?.property;
+        setProperty(propData || null);
       }
 
-      if (docRes.status === "fulfilled" && Array.isArray(docRes.value.data?.data?.documents) && docRes.value.data.data.documents.length > 0) {
-        setDocuments(docRes.value.data.data.documents);
+      if (docRes.status === "fulfilled") {
+        const docs = docRes.value.data?.data?.documents ?? docRes.value.data?.documents ?? [];
+        setDocuments(Array.isArray(docs) ? docs : []);
       }
 
       if (rentRes.status === "fulfilled" && rentRes.value.data?.data) {
         const r = rentRes.value.data.data;
         if (r.currentRent) setActiveRent(r.currentRent);
-        if (Array.isArray(r.ledgerHistory) && r.ledgerHistory.length > 0) setLedgerHistory(r.ledgerHistory);
+        if (Array.isArray(r.ledgerHistory)) setLedgerHistory(r.ledgerHistory);
         if (r.paymentInstructions) setPaymentInstructions(r.paymentInstructions);
       }
 
-      if (compRes.status === "fulfilled" && Array.isArray(compRes.value.data?.data?.complaints) && compRes.value.data.data.complaints.length > 0) {
-        setComplaints(compRes.value.data.data.complaints);
+      if (compRes.status === "fulfilled") {
+        const comps = compRes.value.data?.data?.complaints ?? compRes.value.data?.complaints ?? [];
+        setComplaints(Array.isArray(comps) ? comps : []);
       }
 
-      if (inspRes.status === "fulfilled" && Array.isArray(inspRes.value.data?.data?.inspections) && inspRes.value.data.data.inspections.length > 0) {
-        setInspections(inspRes.value.data.data.inspections);
+      if (inspRes.status === "fulfilled") {
+        const insps = inspRes.value.data?.data?.inspections ?? inspRes.value.data?.inspections ?? [];
+        setInspections(Array.isArray(insps) ? insps : []);
       }
 
-      if (roomRes.status === "fulfilled" && Array.isArray(roomRes.value.data?.data?.requests) && roomRes.value.data.data.requests.length > 0) {
-        setRoomChangeRequests(roomRes.value.data.data.requests);
+      if (roomRes.status === "fulfilled") {
+        const reqs = roomRes.value.data?.data?.requests ?? roomRes.value.data?.requests ?? [];
+        setRoomChangeRequests(Array.isArray(reqs) ? reqs : []);
       }
 
-      if (notifRes.status === "fulfilled" && Array.isArray(notifRes.value.data?.data?.notifications) && notifRes.value.data.data.notifications.length > 0) {
-        setNotifications(notifRes.value.data.data.notifications);
+      if (notifRes.status === "fulfilled") {
+        const notifs = notifRes.value.data?.data?.notifications ?? notifRes.value.data?.notifications ?? [];
+        setNotifications(Array.isArray(notifs) ? notifs : []);
       }
 
       if (profRes.status === "fulfilled" && profRes.value.data?.data?.profile) {
         setProfile(profRes.value.data.data.profile);
       }
     } catch (err) {
-      console.log("[TenantProvider] Sync error (using cached fallback data):", err);
+      console.log("[TenantProvider] Sync error:", err);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -908,6 +933,34 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return true;
   };
 
+  // Upload Tenant Aadhaar Card
+  const uploadAadhaar = async (formData: FormData): Promise<{ success: boolean; message?: string; aadhaarDoc?: string }> => {
+    try {
+      const res = await apiClient.post("/tenant/aadhaar", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      const data = res.data?.data;
+      if (data?.aadhaarDoc || data?.url) {
+        const docUrl = data.aadhaarDoc || data.url;
+        setProfile((prev) => ({
+          ...prev,
+          aadhaarDoc: docUrl,
+          aadhaarNumber: data.aadhaarNumber || prev.aadhaarNumber,
+          aadhaarStatus: (data.aadhaarStatus || "UNDER_REVIEW") as any,
+        }));
+        // Refresh documents & profile to reflect new state
+        refreshAll();
+        return { success: true, message: res.data?.message || "Aadhaar uploaded successfully", aadhaarDoc: docUrl };
+      }
+      return { success: true, message: res.data?.message };
+    } catch (err: any) {
+      console.log("[TenantProvider] uploadAadhaar error:", err?.response?.data || err?.message);
+      return { success: false, message: err?.response?.data?.message || err?.message || "Failed to upload Aadhaar card" };
+    }
+  };
+
   return (
     <TenantContext.Provider
       value={{
@@ -933,6 +986,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         markNotificationRead,
         markAllNotificationsRead,
         updateProfile,
+        uploadAadhaar,
       }}
     >
       {children}

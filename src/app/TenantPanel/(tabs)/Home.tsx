@@ -22,6 +22,7 @@ import { TenantQuickActionsGrid } from "../../../components/TenantComponent/Tena
 import { TenantRaiseComplaintModal } from "../../../components/TenantComponent/TenantRaiseComplaintModal";
 import { TenantReceiptModal } from "../../../components/TenantComponent/TenantReceiptModal";
 import { TenantRoomChangeModal } from "../../../components/TenantComponent/TenantRoomChangeModal";
+import { TenantHomeSkeleton } from "../../../components/TenantComponent/TenantSkeleton";
 import {
   RentLedgerItem,
   TenantDocument,
@@ -42,6 +43,7 @@ export default function TenantHomeScreen() {
     notifications,
     profile,
     quickStats,
+    isLoading,
     isRefreshing,
     refreshAll,
     payRent,
@@ -93,6 +95,10 @@ export default function TenantHomeScreen() {
     }
   };
 
+  if (isLoading) {
+    return <TenantHomeSkeleton />;
+  }
+
   return (
     <SafeAreaView
       style={[
@@ -137,7 +143,7 @@ export default function TenantHomeScreen() {
               Welcome home,
             </Text>
             <Text style={[styles.tenantName, { color: isDark ? colors.textPrimary : "#0F172A" }]}>
-              {profile?.name || "Rohan Verma"}
+              {profile?.name || "Resident"}
             </Text>
           </View>
         </View>

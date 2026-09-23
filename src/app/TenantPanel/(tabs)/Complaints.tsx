@@ -14,12 +14,13 @@ import { useResponsiveTheme } from "../../../constants/theme";
 import { useTenant, TenantComplaint } from "../../../constants/tenantData";
 import { TenantRaiseComplaintModal } from "../../../components/TenantComponent/TenantRaiseComplaintModal";
 import { TenantComplaintDetailModal } from "../../../components/TenantComponent/TenantComplaintDetailModal";
+import { TenantComplaintsSkeleton } from "../../../components/TenantComponent/TenantSkeleton";
 
 const STATUS_FILTERS = ["all", "active", "in_progress", "resolved"] as const;
 
 export default function ComplaintsScreen() {
   const { colors, isDark } = useResponsiveTheme();
-  const { complaints, refreshAll, isRefreshing, raiseComplaint, addComplaintMessage, reopenComplaint } = useTenant();
+  const { complaints, refreshAll, isLoading, isRefreshing, raiseComplaint, addComplaintMessage, reopenComplaint } = useTenant();
 
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -78,6 +79,10 @@ export default function ComplaintsScreen() {
         return { label: "Low", bg: "#F1F5F9", text: "#64748B" };
     }
   };
+
+  if (isLoading) {
+    return <TenantComplaintsSkeleton />;
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : "#F8FAFC" }]}>

@@ -12,11 +12,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useResponsiveTheme } from "../../constants/theme";
 import { useTenant, TenantInspection } from "../../constants/tenantData";
+import { TenantInspectionsSkeleton } from "../../components/TenantComponent/TenantSkeleton";
 
 export default function TenantInspectionsScreen() {
   const { colors, isDark } = useResponsiveTheme();
   const router = useRouter();
-  const { inspections, refreshAll, isRefreshing } = useTenant();
+  const { inspections, refreshAll, isLoading, isRefreshing } = useTenant();
 
   const [activeTab, setActiveTab] = useState<"all" | "upcoming" | "completed">("all");
 
@@ -32,6 +33,10 @@ export default function TenantInspectionsScreen() {
     }
     return { label: "Upcoming Visit", bg: "#EFF6FF", text: "#2563EB", icon: "time" };
   };
+
+  if (isLoading) {
+    return <TenantInspectionsSkeleton />;
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : "#F8FAFC" }]}>

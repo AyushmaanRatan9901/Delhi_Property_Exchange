@@ -14,11 +14,12 @@ import { useRouter } from "expo-router";
 import { useResponsiveTheme } from "../../constants/theme";
 import { useTenant, TenantDocument } from "../../constants/tenantData";
 import { TenantDocumentViewerModal } from "../../components/TenantComponent/TenantDocumentViewerModal";
+import { TenantDocumentsSkeleton } from "../../components/TenantComponent/TenantSkeleton";
 
 export default function TenantDocumentsScreen() {
   const { colors, isDark } = useResponsiveTheme();
   const router = useRouter();
-  const { documents, refreshAll, isRefreshing } = useTenant();
+  const { documents, refreshAll, isLoading, isRefreshing } = useTenant();
 
   const [selectedDoc, setSelectedDoc] = useState<TenantDocument | null>(null);
 
@@ -44,6 +45,10 @@ export default function TenantDocumentsScreen() {
       console.log(e);
     }
   };
+
+  if (isLoading) {
+    return <TenantDocumentsSkeleton />;
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : "#F8FAFC" }]}>
@@ -89,7 +94,30 @@ export default function TenantDocumentsScreen() {
           Available Records ({documents.length})
         </Text>
 
-        {documents.map((doc: TenantDocument) => {
+        {documents.length === 0 ? (
+          <View
+            style={[
+              styles.docCard,
+              {
+                backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+                borderColor: isDark ? colors.border : "#E2E8F0",
+                alignItems: "center",
+                justifyContent: "center",
+                paddingVertical: 32,
+                gap: 8,
+              },
+            ]}
+          >
+            <Ionicons name="document-text-outline" size={40} color={isDark ? colors.textMuted : "#94A3B8"} />
+            <Text style={[styles.docTitle, { color: isDark ? colors.textPrimary : "#0F172A", textAlign: "center" }]}>
+              No Documents Available
+            </Text>
+            <Text style={[styles.docMeta, { color: isDark ? colors.textMuted : "#64748B", textAlign: "center", maxWidth: 260 }]}>
+              Your tenancy agreements, KYC certificates, and police verification will appear here once issued.
+            </Text>
+          </View>
+        ) : (
+          documents.map((doc: TenantDocument) => {
           const meta = getDocIconAndColor(doc.type);
           return (
             <TouchableOpacity
@@ -143,7 +171,7 @@ export default function TenantDocumentsScreen() {
               </View>
             </TouchableOpacity>
           );
-        })}
+        }))}
       </ScrollView>
 
       {/* Document Viewer Modal */}

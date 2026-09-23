@@ -13,6 +13,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { TenantPaymentModal } from "../../../components/TenantComponent/TenantPaymentModal";
 import { TenantReceiptModal } from "../../../components/TenantComponent/TenantReceiptModal";
+import { TenantRentSkeleton } from "../../../components/TenantComponent/TenantSkeleton";
 import {
   formatCurrency,
   RentLedgerItem,
@@ -30,6 +31,7 @@ export default function TenantRentScreen() {
     ledgerHistory,
     paymentInstructions,
     profile,
+    isLoading,
     isRefreshing,
     refreshAll,
     payRent,
@@ -75,6 +77,10 @@ export default function TenantRentScreen() {
         return { bg: isDark ? "#2E1E08" : "#FEF3C7", text: isDark ? "#FBBF24" : "#D97706", label: "PENDING" };
     }
   };
+
+  if (isLoading) {
+    return <TenantRentSkeleton />;
+  }
 
   return (
     <SafeAreaView
@@ -139,7 +145,7 @@ export default function TenantRentScreen() {
                 Current Rent • {activeRent?.month || "This Month"}
               </Text>
               <Text style={[styles.heroAmount, { color: isDark ? colors.textPrimary : "#0F172A" }]}>
-                {formatCurrency(activeRent?.amount || 18500)}
+                {formatCurrency(activeRent?.amount || property?.rentAmount || 0)}
               </Text>
             </View>
 

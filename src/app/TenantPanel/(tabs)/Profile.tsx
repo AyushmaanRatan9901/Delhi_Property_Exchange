@@ -15,12 +15,14 @@ import { useRouter } from "expo-router";
 import { useDispatch } from "react-redux";
 import { useResponsiveTheme } from "../../../constants/theme";
 import { useTenant } from "../../../constants/tenantData";
+import { API_BASE_URL } from "../../../Redux/api/apiConfig";
 import { logout } from "../../../Redux/Auth/authActions";
 import { TenantEditProfileModal } from "../../../components/TenantComponent/TenantEditProfileModal";
+import { TenantProfileSkeleton } from "../../../components/TenantComponent/TenantSkeleton";
 
 export default function ProfileScreen() {
   const { colors, isDark } = useResponsiveTheme();
-  const { profile, property, updateProfile } = useTenant();
+  const { profile, property, isLoading, updateProfile } = useTenant();
   const router = useRouter();
   const dispatch = useDispatch();
 
@@ -28,6 +30,15 @@ export default function ProfileScreen() {
   const [pushNotif, setPushNotif] = useState(true);
   const [waNotif, setWaNotif] = useState(true);
   const [emailNotif, setEmailNotif] = useState(true);
+
+  const getDocUri = (uri?: string) => {
+    if (!uri) return "";
+    if (uri.startsWith("http://") || uri.startsWith("https://") || uri.startsWith("file://") || uri.startsWith("data:")) {
+      return uri;
+    }
+    const serverHost = API_BASE_URL.replace("/api/v1", "");
+    return `${serverHost}${uri.startsWith("/") ? "" : "/"}${uri}`;
+  };
 
   const handleLogout = () => {
     Alert.alert("Log Out", "Are you sure you want to log out of Delhi Property Exchange?", [
@@ -42,6 +53,44 @@ export default function ProfileScreen() {
       },
     ]);
   };
+
+  const renderAadhaarStatusBadge = () => {
+    const status = profile?.aadhaarStatus || (profile?.aadhaarDoc ? "UNDER_REVIEW" : "NOT_UPLOADED");
+    switch (status) {
+      case "VERIFIED":
+        return (
+          <View style={[styles.kycStatusBadge, { backgroundColor: "#ECFDF5", borderColor: "#A7F3D0" }]}>
+            <Ionicons name="shield-checkmark" size={12} color="#10B981" />
+            <Text style={[styles.kycStatusText, { color: "#065F46" }]}>VERIFIED</Text>
+          </View>
+        );
+      case "UNDER_REVIEW":
+        return (
+          <View style={[styles.kycStatusBadge, { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" }]}>
+            <Ionicons name="time-outline" size={12} color="#D97706" />
+            <Text style={[styles.kycStatusText, { color: "#92400E" }]}>UNDER REVIEW</Text>
+          </View>
+        );
+      case "REJECTED":
+        return (
+          <View style={[styles.kycStatusBadge, { backgroundColor: "#FEF2F2", borderColor: "#FECACA" }]}>
+            <Ionicons name="alert-circle" size={12} color="#EF4444" />
+            <Text style={[styles.kycStatusText, { color: "#991B1B" }]}>REJECTED</Text>
+          </View>
+        );
+      default:
+        return (
+          <View style={[styles.kycStatusBadge, { backgroundColor: "#F1F5F9", borderColor: "#E2E8F0" }]}>
+            <Ionicons name="cloud-upload-outline" size={12} color="#64748B" />
+            <Text style={[styles.kycStatusText, { color: "#475569" }]}>PENDING UPLOAD</Text>
+          </View>
+        );
+    }
+  };
+
+  if (isLoading) {
+    return <TenantProfileSkeleton />;
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : "#F8FAFC" }]}>
@@ -84,12 +133,14 @@ export default function ProfileScreen() {
             {profile?.verificationStatus === "VERIFIED" ? "VERIFIED TENANT" : "TENANT PROFILE"}
           </Text>
 
+          {/* Contact Details with Immutable Badges */}
           <View style={styles.contactRow}>
             <View style={styles.contactItem}>
               <Ionicons name="call-outline" size={14} color={isDark ? colors.textMuted : "#64748B"} />
               <Text style={[styles.contactText, { color: isDark ? colors.textMuted : "#64748B" }]}>
                 {profile?.phone || "N/A"}
               </Text>
+              <Ionicons name="lock-closed" size={10} color={isDark ? "#94A3B8" : "#94A3B8"} />
             </View>
             <View style={styles.contactDot} />
             <View style={styles.contactItem}>
@@ -97,6 +148,7 @@ export default function ProfileScreen() {
               <Text style={[styles.contactText, { color: isDark ? colors.textMuted : "#64748B" }]}>
                 {profile?.email || "N/A"}
               </Text>
+              <Ionicons name="lock-closed" size={10} color={isDark ? "#94A3B8" : "#94A3B8"} />
             </View>
           </View>
 
@@ -106,11 +158,83 @@ export default function ProfileScreen() {
             activeOpacity={0.7}
           >
             <Ionicons name="pencil" size={14} color="#6366F1" />
-            <Text style={styles.editProfileBtnText}>Edit Contact Details</Text>
+            <Text style={styles.editProfileBtnText}>Edit Profile & KYC</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Locked Tenancy Parameters Card */}
+        {/* Aadhaar Card Verification Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: isDark ? colors.textPrimary : "#0F172A" }]}>
+            Identity & KYC (Aadhaar)
+          </Text>
+          <View style={[styles.card, { backgroundColor: isDark ? colors.cardBackground : "#FFFFFF", borderColor: isDark ? colors.border : "#E2E8F0" }]}>
+            <View style={styles.kycCardHeader}>
+              <View style={styles.kycIconBox}>
+                <Ionicons name="card" size={20} color="#6366F1" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.kycCardTitle, { color: isDark ? colors.textPrimary : "#0F172A" }]}>
+                  Aadhaar Card Identification
+                </Text>
+                <Text style={[styles.kycCardSub, { color: isDark ? colors.textMuted : "#64748B" }]}>
+                  {profile?.aadhaarNumber ? `UIDAI: ${profile.aadhaarNumber}` : "Government ID required for verification"}
+                </Text>
+              </View>
+              {renderAadhaarStatusBadge()}
+            </View>
+
+            {profile?.aadhaarDoc ? (
+              <View style={styles.aadhaarPreviewWrap}>
+                <Image
+                  source={{ uri: getDocUri(profile.aadhaarDoc) }}
+                  style={styles.aadhaarThumb}
+                  resizeMode="cover"
+                />
+                <View style={styles.aadhaarDocInfo}>
+                  <Text style={[styles.aadhaarDocStatus, { color: isDark ? colors.textPrimary : "#0F172A" }]}>
+                    Document Attached
+                  </Text>
+                  <Text style={[styles.aadhaarDocDetail, { color: isDark ? colors.textMuted : "#64748B" }]}>
+                    Encrypted and stored in government KYC vault
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.updateAadhaarSmallBtn}
+                  onPress={() => setIsEditModalVisible(true)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="cloud-upload" size={14} color="#6366F1" />
+                  <Text style={styles.updateAadhaarSmallBtnText}>Update</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[
+                  styles.uploadAadhaarPrompt,
+                  {
+                    backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC",
+                    borderColor: isDark ? colors.border : "#CBD5E1",
+                  },
+                ]}
+                onPress={() => setIsEditModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="cloud-upload" size={22} color="#6366F1" />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.uploadPromptTitle, { color: isDark ? colors.textPrimary : "#0F172A" }]}>
+                    Upload your Aadhaar Card photo
+                  </Text>
+                  <Text style={[styles.uploadPromptSub, { color: isDark ? colors.textMuted : "#64748B" }]}>
+                    Required for agreement generation & background compliance
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#6366F1" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Tenancy Terms Card */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: isDark ? colors.textPrimary : "#0F172A" }]}>
             Tenancy Terms & Lock-in
@@ -119,7 +243,7 @@ export default function ProfileScreen() {
             <View style={styles.lockHeader}>
               <Ionicons name="shield-checkmark" size={18} color="#10B981" />
               <Text style={[styles.lockTitle, { color: isDark ? colors.textPrimary : "#0F172A" }]}>
-                Verified Contract Terms
+                {property ? "Verified Contract Terms" : "No Active Lease"}
               </Text>
               <View style={styles.lockedBadge}>
                 <Ionicons name="lock-closed" size={11} color="#64748B" />
@@ -127,49 +251,58 @@ export default function ProfileScreen() {
               </View>
             </View>
 
-            <View style={styles.termsGrid}>
-              <View style={styles.termItem}>
-                <Text style={[styles.termLabel, { color: isDark ? colors.textMuted : "#64748B" }]}>Agreement Start</Text>
-                <Text style={[styles.termVal, { color: isDark ? colors.textPrimary : "#0F172A" }]}>
-                  {property?.leaseStartDate
-                    ? new Date(property.leaseStartDate).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })
-                    : "01 Apr 2026"}
+            {property ? (
+              <View style={styles.termsGrid}>
+                <View style={styles.termItem}>
+                  <Text style={[styles.termLabel, { color: isDark ? colors.textMuted : "#64748B" }]}>Agreement Start</Text>
+                  <Text style={[styles.termVal, { color: isDark ? colors.textPrimary : "#0F172A" }]}>
+                    {property.leaseStartDate
+                      ? new Date(property.leaseStartDate).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })
+                      : "Active"}
+                  </Text>
+                </View>
+
+                <View style={styles.termItem}>
+                  <Text style={[styles.termLabel, { color: isDark ? colors.textMuted : "#64748B" }]}>Agreement Number</Text>
+                  <Text style={[styles.termVal, { color: isDark ? colors.textPrimary : "#0F172A" }]}>
+                    {property.agreementNumber || "AGR-PENDING"}
+                  </Text>
+                </View>
+
+                <View style={styles.termItem}>
+                  <Text style={[styles.termLabel, { color: isDark ? colors.textMuted : "#64748B" }]}>Rent Cycle</Text>
+                  <Text style={[styles.termVal, { color: isDark ? colors.textPrimary : "#0F172A" }]}>Monthly (1st to 5th)</Text>
+                </View>
+
+                <View style={styles.termItem}>
+                  <Text style={[styles.termLabel, { color: isDark ? colors.textMuted : "#64748B" }]}>Lock-in Period</Text>
+                  <Text style={[styles.termVal, { color: isDark ? colors.textPrimary : "#0F172A" }]}>
+                    {property.leaseDurationMonths || 11} Months
+                  </Text>
+                </View>
+
+                <View style={styles.termItem}>
+                  <Text style={[styles.termLabel, { color: isDark ? colors.textMuted : "#64748B" }]}>Monthly Rent</Text>
+                  <Text style={[styles.termVal, { color: "#6366F1" }]}>
+                    ₹{(property.rentAmount || 0).toLocaleString("en-IN")}
+                  </Text>
+                </View>
+
+                <View style={styles.termItem}>
+                  <Text style={[styles.termLabel, { color: isDark ? colors.textMuted : "#64748B" }]}>Security Deposit</Text>
+                  <Text style={[styles.termVal, { color: "#10B981" }]}>
+                    ₹{(property.securityDeposit || 0).toLocaleString("en-IN")} (Held)
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.noPropertyTerms}>
+                <Ionicons name="home-outline" size={24} color={isDark ? colors.textMuted : "#94A3B8"} />
+                <Text style={[styles.noPropertyText, { color: isDark ? colors.textMuted : "#64748B" }]}>
+                  You do not currently have an active property lease agreement assigned to your profile.
                 </Text>
               </View>
-
-              <View style={styles.termItem}>
-                <Text style={[styles.termLabel, { color: isDark ? colors.textMuted : "#64748B" }]}>Agreement Number</Text>
-                <Text style={[styles.termVal, { color: isDark ? colors.textPrimary : "#0F172A" }]}>
-                  {property?.agreementNumber || "AGR-DEL-2026-8842"}
-                </Text>
-              </View>
-
-              <View style={styles.termItem}>
-                <Text style={[styles.termLabel, { color: isDark ? colors.textMuted : "#64748B" }]}>Rent Cycle</Text>
-                <Text style={[styles.termVal, { color: isDark ? colors.textPrimary : "#0F172A" }]}>Monthly (1st to 5th)</Text>
-              </View>
-
-              <View style={styles.termItem}>
-                <Text style={[styles.termLabel, { color: isDark ? colors.textMuted : "#64748B" }]}>Lock-in Period</Text>
-                <Text style={[styles.termVal, { color: isDark ? colors.textPrimary : "#0F172A" }]}>
-                  {property?.leaseDurationMonths || 11} Months
-                </Text>
-              </View>
-
-              <View style={styles.termItem}>
-                <Text style={[styles.termLabel, { color: isDark ? colors.textMuted : "#64748B" }]}>Monthly Rent</Text>
-                <Text style={[styles.termVal, { color: "#6366F1" }]}>
-                  ₹{(property?.rentAmount || 18500).toLocaleString("en-IN")}
-                </Text>
-              </View>
-
-              <View style={styles.termItem}>
-                <Text style={[styles.termLabel, { color: isDark ? colors.textMuted : "#64748B" }]}>Security Deposit</Text>
-                <Text style={[styles.termVal, { color: "#10B981" }]}>
-                  ₹{(property?.securityDeposit || 37000).toLocaleString("en-IN")} (Held)
-                </Text>
-              </View>
-            </View>
+            )}
           </View>
         </View>
 
@@ -185,10 +318,12 @@ export default function ProfileScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.emergencyName, { color: isDark ? colors.textPrimary : "#0F172A" }]}>
-                  {profile?.emergencyContact?.name || "Sunita Verma"}
+                  {profile?.emergencyContact?.name || "Not Added Yet"}
                 </Text>
                 <Text style={[styles.emergencyRelation, { color: isDark ? colors.textMuted : "#64748B" }]}>
-                  {profile?.emergencyContact?.relation || "Mother"} • {profile?.emergencyContact?.phone || "+91 98765 43210"}
+                  {profile?.emergencyContact?.name
+                    ? `${profile.emergencyContact.relation || "Contact"} • ${profile.emergencyContact.phone || "No phone"}`
+                    : "Tap pencil to add emergency guardian"}
                 </Text>
               </View>
               <TouchableOpacity
@@ -516,6 +651,98 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 3,
   },
+  kycCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  kycIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "rgba(99, 102, 241, 0.12)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  kycCardTitle: {
+    fontSize: 13.5,
+    fontWeight: "800",
+  },
+  kycCardSub: {
+    fontSize: 11,
+    marginTop: 1,
+  },
+  kycStatusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    gap: 3,
+  },
+  kycStatusText: {
+    fontSize: 9.5,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  aadhaarPreviewWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.06)",
+    gap: 10,
+  },
+  aadhaarThumb: {
+    width: 50,
+    height: 36,
+    borderRadius: 6,
+    backgroundColor: "#0F172A",
+  },
+  aadhaarDocInfo: {
+    flex: 1,
+  },
+  aadhaarDocStatus: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  aadhaarDocDetail: {
+    fontSize: 10.5,
+    marginTop: 1,
+  },
+  updateAadhaarSmallBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: "rgba(99, 102, 241, 0.1)",
+  },
+  updateAadhaarSmallBtnText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#6366F1",
+  },
+  uploadAadhaarPrompt: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 12,
+  },
+  uploadPromptTitle: {
+    fontSize: 12.5,
+    fontWeight: "700",
+  },
+  uploadPromptSub: {
+    fontSize: 10.5,
+    marginTop: 2,
+  },
   lockHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -559,6 +786,17 @@ const styles = StyleSheet.create({
   termVal: {
     fontSize: 13,
     fontWeight: "700",
+  },
+  noPropertyTerms: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    gap: 6,
+  },
+  noPropertyText: {
+    fontSize: 12,
+    textAlign: "center",
+    lineHeight: 17,
   },
   emergencyRow: {
     flexDirection: "row",

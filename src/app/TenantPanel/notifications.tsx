@@ -12,13 +12,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useResponsiveTheme } from "../../constants/theme";
 import { useTenant, TenantNotification } from "../../constants/tenantData";
+import { TenantNotificationsSkeleton } from "../../components/TenantComponent/TenantSkeleton";
 
 const NOTIF_FILTERS = ["all", "rent_due", "inspection_scheduled", "complaint_update", "announcement"] as const;
 
 export default function TenantNotificationsScreen() {
   const { colors, isDark } = useResponsiveTheme();
   const router = useRouter();
-  const { notifications, markNotificationRead, markAllNotificationsRead, refreshAll, isRefreshing } = useTenant();
+  const { notifications, markNotificationRead, markAllNotificationsRead, refreshAll, isLoading, isRefreshing } = useTenant();
 
   const [activeFilter, setActiveFilter] = useState<string>("all");
 
@@ -57,6 +58,10 @@ export default function TenantNotificationsScreen() {
       router.push("/TenantPanel/inspections" as any);
     }
   };
+
+  if (isLoading) {
+    return <TenantNotificationsSkeleton />;
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : "#F8FAFC" }]}>

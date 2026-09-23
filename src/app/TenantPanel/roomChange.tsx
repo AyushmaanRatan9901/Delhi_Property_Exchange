@@ -13,11 +13,12 @@ import { useRouter } from "expo-router";
 import { useResponsiveTheme } from "../../constants/theme";
 import { useTenant, RoomChangeRequest } from "../../constants/tenantData";
 import { TenantRoomChangeModal } from "../../components/TenantComponent/TenantRoomChangeModal";
+import { TenantRoomChangeSkeleton } from "../../components/TenantComponent/TenantSkeleton";
 
 export default function TenantRoomChangeScreen() {
   const { colors, isDark } = useResponsiveTheme();
   const router = useRouter();
-  const { roomChangeRequests, property, refreshAll, isRefreshing, submitRoomChangeRequest } = useTenant();
+  const { roomChangeRequests, property, refreshAll, isLoading, isRefreshing, submitRoomChangeRequest } = useTenant();
 
   const [isModalVisible, setIsModalVisible] = useState(false);
 
@@ -31,6 +32,10 @@ export default function TenantRoomChangeScreen() {
         return { label: "Under Review", bg: "#FEF3C7", text: "#D97706", icon: "time" };
     }
   };
+
+  if (isLoading) {
+    return <TenantRoomChangeSkeleton />;
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : "#F8FAFC" }]}>
