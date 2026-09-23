@@ -5,7 +5,6 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
   Image,
   Linking,
   RefreshControl,
@@ -16,6 +15,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -32,11 +32,16 @@ import { RootState } from "../../../Redux/store";
 import { useResponsiveTheme } from "../../../constants/theme";
 import apiClient from "../../../Redux/api/axiosInstance";
 
-const { width } = Dimensions.get("window");
-
 export default function SuperAdminDashboard() {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useResponsiveTheme();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+
+  // Responsive device checks
+  const isTablet = windowWidth >= 768;
+  const isSmallDevice = windowWidth < 380;
+  const isMediumScreen = windowWidth >= 380 && windowWidth < 768;
+
   const unreadCount = useSelector(
     (state: RootState) => state.superAdminNotifications?.unreadCount || 0
   );
@@ -274,6 +279,7 @@ export default function SuperAdminDashboard() {
       <ScrollView
         contentContainerStyle={[
           styles.content,
+          isTablet && { maxWidth: 1040, alignSelf: "center", width: "94%" },
           { paddingBottom: Math.max(insets.bottom + 85, 115) },
         ]}
         showsVerticalScrollIndicator={false}
@@ -286,10 +292,11 @@ export default function SuperAdminDashboard() {
         }
       >
         {/* Metric Quick Stats */}
-        <View style={styles.statsRow}>
+        <View style={[styles.statsRow, isSmallDevice && { flexWrap: "wrap", gap: 8 }]}>
           <View
             style={[
               styles.statCard,
+              isSmallDevice && { width: "48%", flex: undefined },
               {
                 backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
                 borderColor: colors.border,
@@ -306,6 +313,7 @@ export default function SuperAdminDashboard() {
           <View
             style={[
               styles.statCard,
+              isSmallDevice && { width: "48%", flex: undefined },
               {
                 backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
                 borderColor: colors.border,
@@ -322,6 +330,7 @@ export default function SuperAdminDashboard() {
           <View
             style={[
               styles.statCard,
+              isSmallDevice && { width: "48%", flex: undefined },
               {
                 backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
                 borderColor: colors.border,
@@ -338,6 +347,7 @@ export default function SuperAdminDashboard() {
           <View
             style={[
               styles.statCard,
+              isSmallDevice && { width: "48%", flex: undefined },
               {
                 backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
                 borderColor: dupCount > 0 ? "#F59E0B" : colors.border,
@@ -359,10 +369,10 @@ export default function SuperAdminDashboard() {
         </View>
 
         {/* Quick Action Navigation Bar */}
-        <View style={styles.quickActionsRow}>
+        <View style={[styles.quickActionsRow, isSmallDevice && { flexWrap: "wrap", gap: 8 }]}>
           <TouchableOpacity
             onPress={() => setIsCreateUserModalVisible(true)}
-            style={[styles.quickActionBtn, { backgroundColor: "#0D9488" }]}
+            style={[styles.quickActionBtn, isSmallDevice && { minWidth: "48%", flex: undefined }, { backgroundColor: "#0D9488" }]}
           >
             <Feather name="user-plus" size={16} color="#FFFFFF" />
             <Text style={styles.quickActionBtnText}>Add User</Text>
@@ -372,7 +382,7 @@ export default function SuperAdminDashboard() {
             onPress={() =>
               router.push("/SuperAdminPanel/(tabs)/approvals" as any)
             }
-            style={[styles.quickActionBtn, { backgroundColor: "#3B82F6" }]}
+            style={[styles.quickActionBtn, isSmallDevice && { minWidth: "48%", flex: undefined }, { backgroundColor: "#3B82F6" }]}
           >
             <Feather name="shield" size={16} color="#FFFFFF" />
             <Text style={styles.quickActionBtnText}>Approvals</Text>
@@ -382,7 +392,7 @@ export default function SuperAdminDashboard() {
             onPress={() =>
               router.push("/SuperAdminPanel/(tabs)/analytics" as any)
             }
-            style={[styles.quickActionBtn, { backgroundColor: "#8B5CF6" }]}
+            style={[styles.quickActionBtn, isSmallDevice && { minWidth: "48%", flex: undefined }, { backgroundColor: "#8B5CF6" }]}
           >
             <Ionicons name="receipt-outline" size={16} color="#FFFFFF" />
             <Text style={styles.quickActionBtnText}>Rent Ledger</Text>
@@ -392,7 +402,7 @@ export default function SuperAdminDashboard() {
             onPress={() =>
               router.push("/SuperAdminPanel/(tabs)/settings" as any)
             }
-            style={[styles.quickActionBtn, { backgroundColor: "#0F766E" }]}
+            style={[styles.quickActionBtn, isSmallDevice && { minWidth: "48%", flex: undefined }, { backgroundColor: "#0F766E" }]}
           >
             <Feather name="sliders" size={16} color="#FFFFFF" />
             <Text style={styles.quickActionBtnText}>Settings</Text>
@@ -722,13 +732,13 @@ export default function SuperAdminDashboard() {
                 </View>
 
                 {/* Super Admin Quick Actions */}
-                <View style={styles.cardActionsRow}>
+                <View style={[styles.cardActionsRow, isSmallDevice && { flexWrap: "wrap", gap: 6 }]}>
                   <TouchableOpacity
                     onPress={() => {
                       setSelectedLead(lead);
                       setIsDetailModalVisible(true);
                     }}
-                    style={[styles.outlineBtn, { borderColor: colors.border }]}
+                    style={[styles.outlineBtn, isSmallDevice && { minWidth: "48%", flex: undefined }, { borderColor: colors.border }]}
                   >
                     <Feather
                       name="eye"
@@ -750,7 +760,7 @@ export default function SuperAdminDashboard() {
                       setSelectedLead(lead);
                       setIsAssignModalVisible(true);
                     }}
-                    style={[styles.outlineBtn, { borderColor: "#3B82F6" }]}
+                    style={[styles.outlineBtn, isSmallDevice && { minWidth: "48%", flex: undefined }, { borderColor: "#3B82F6" }]}
                   >
                     <Feather name="user-check" size={14} color="#3B82F6" />
                     <Text style={[styles.outlineBtnText, { color: "#3B82F6" }]}>
@@ -766,6 +776,7 @@ export default function SuperAdminDashboard() {
                       }}
                       style={[
                         styles.actionFilledBtn,
+                        isSmallDevice && { minWidth: "48%", flex: undefined },
                         { backgroundColor: "#10B981" },
                       ]}
                     >
@@ -780,6 +791,7 @@ export default function SuperAdminDashboard() {
                       }}
                       style={[
                         styles.actionFilledBtn,
+                        isSmallDevice && { minWidth: "48%", flex: undefined },
                         { backgroundColor: "#0284C7" },
                       ]}
                     >
@@ -795,6 +807,7 @@ export default function SuperAdminDashboard() {
                     }}
                     style={[
                       styles.actionFilledBtn,
+                      isSmallDevice && { minWidth: "48%", flex: undefined },
                       { backgroundColor: "#0D9488" },
                     ]}
                   >

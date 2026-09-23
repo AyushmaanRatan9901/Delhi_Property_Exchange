@@ -9,6 +9,9 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  useWindowDimensions,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useResponsiveTheme } from "../../constants/theme";
@@ -28,6 +31,8 @@ export const SuperAdminCommissionModal: React.FC<Props> = ({
   onSuccess,
 }) => {
   const { colors, isDark } = useResponsiveTheme();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isTablet = windowWidth >= 768;
 
   const [approvedAmount, setApprovedAmount] = useState<string>("");
   const [firstMonthAmount, setFirstMonthAmount] = useState<string>("");
@@ -87,40 +92,58 @@ export const SuperAdminCommissionModal: React.FC<Props> = ({
 
   if (!lead) return null;
 
+  const dynamicCardStyle = isTablet
+    ? {
+        width: Math.min(windowWidth * 0.85, 600),
+        maxHeight: Math.min(windowHeight * 0.85, 720),
+        borderRadius: 24,
+        alignSelf: "center" as const,
+      }
+    : {
+        width: "100%" as const,
+        maxHeight: Math.min(windowHeight * 0.88, windowHeight - 40),
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+      };
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <View style={[styles.modalCard, { backgroundColor: isDark ? "#0F172A" : "#FFFFFF" }]}>
-          {/* Header */}
-          <View style={[styles.header, { borderBottomColor: isDark ? "#1E293B" : "#F1F5F9" }]}>
-            <View>
-              <Text style={styles.badge}>FINANCIAL DISBURSEMENT</Text>
-              <Text style={[styles.title, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                Agent Commission Approval
-              </Text>
-            </View>
-            <TouchableOpacity onPress={onClose} style={[styles.closeBtn, { backgroundColor: isDark ? "#1E293B" : "#F1F5F9" }]}>
-              <Feather name="x" size={20} color={isDark ? "#94A3B8" : "#64748B"} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-            {/* Agent Details */}
-            <View style={[styles.agentBox, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC" }]}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {(lead.agentName || lead.agent?.name || "A").slice(0, 1).toUpperCase()}
-                </Text>
-              </View>
+      <View style={[styles.backdrop, isTablet && { justifyContent: "center", alignItems: "center", padding: 20 }]}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={{ width: "100%", justifyContent: isTablet ? "center" : "flex-end", alignItems: isTablet ? "center" : undefined }}
+        >
+          <View style={[styles.modalCard, dynamicCardStyle, { backgroundColor: isDark ? "#0F172A" : "#FFFFFF" }]}>
+            {/* Header */}
+            <View style={[styles.header, { borderBottomColor: isDark ? "#1E293B" : "#F1F5F9" }]}>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.agentName, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                  {lead.agentName || lead.agent?.name || "Partner Agent"}
-                </Text>
-                <Text style={[styles.agentSub, { color: colors.textSecondary }]}>
-                  {lead.agentPhone || lead.agent?.phone} • {lead.agentStaffId || "AGT"}
+                <Text style={styles.badge}>FINANCIAL DISBURSEMENT</Text>
+                <Text style={[styles.title, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
+                  Agent Commission Approval
                 </Text>
               </View>
+              <TouchableOpacity onPress={onClose} style={[styles.closeBtn, { backgroundColor: isDark ? "#1E293B" : "#F1F5F9" }]}>
+                <Feather name="x" size={20} color={isDark ? "#94A3B8" : "#64748B"} />
+              </TouchableOpacity>
             </View>
+
+            <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              {/* Agent Details */}
+              <View style={[styles.agentBox, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC" }]}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>
+                    {(lead.agentName || lead.agent?.name || "A").slice(0, 1).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.agentName, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
+                    {lead.agentName || lead.agent?.name || "Partner Agent"}
+                  </Text>
+                  <Text style={[styles.agentSub, { color: colors.textSecondary }]}>
+                    {lead.agentPhone || lead.agent?.phone} • {lead.agentStaffId || "AGT"}
+                  </Text>
+                </View>
+              </View>
 
             {/* Form Fields: 1st Month Commission & Recurring Rate */}
             <View style={styles.formRow}>
@@ -240,8 +263,9 @@ export const SuperAdminCommissionModal: React.FC<Props> = ({
             </TouchableOpacity>
           </ScrollView>
         </View>
-      </View>
-    </Modal>
+      </KeyboardAvoidingView>
+    </View>
+  </Modal>
   );
 };
 

@@ -9,6 +9,9 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  useWindowDimensions,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useResponsiveTheme } from "../../constants/theme";
@@ -28,6 +31,9 @@ export const SuperAdminAssignModal: React.FC<Props> = ({
   onSuccess,
 }) => {
   const { colors, isDark } = useResponsiveTheme();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isTablet = windowWidth >= 768;
+
   const [staffList, setStaffList] = useState<any[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
@@ -80,29 +86,47 @@ export const SuperAdminAssignModal: React.FC<Props> = ({
 
   if (!lead) return null;
 
+  const dynamicCardStyle = isTablet
+    ? {
+        width: Math.min(windowWidth * 0.85, 600),
+        maxHeight: Math.min(windowHeight * 0.85, 700),
+        borderRadius: 24,
+        alignSelf: "center" as const,
+      }
+    : {
+        width: "100%" as const,
+        maxHeight: Math.min(windowHeight * 0.88, windowHeight - 40),
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+      };
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <View style={[styles.modalCard, { backgroundColor: isDark ? "#0F172A" : "#FFFFFF" }]}>
-          {/* Header */}
-          <View style={[styles.header, { borderBottomColor: isDark ? "#1E293B" : "#F1F5F9" }]}>
-            <View>
-              <Text style={styles.badge}>PHYSICAL INSPECTION DISPATCH</Text>
-              <Text style={[styles.title, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                Assign Verification Staff
-              </Text>
+      <View style={[styles.backdrop, isTablet && { justifyContent: "center", alignItems: "center", padding: 20 }]}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={{ width: "100%", justifyContent: isTablet ? "center" : "flex-end", alignItems: isTablet ? "center" : undefined }}
+        >
+          <View style={[styles.modalCard, dynamicCardStyle, { backgroundColor: isDark ? "#0F172A" : "#FFFFFF" }]}>
+            {/* Header */}
+            <View style={[styles.header, { borderBottomColor: isDark ? "#1E293B" : "#F1F5F9" }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.badge}>PHYSICAL INSPECTION DISPATCH</Text>
+                <Text style={[styles.title, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
+                  Assign Verification Staff
+                </Text>
+              </View>
+              <TouchableOpacity onPress={onClose} style={[styles.closeBtn, { backgroundColor: isDark ? "#1E293B" : "#F1F5F9" }]}>
+                <Feather name="x" size={20} color={isDark ? "#94A3B8" : "#64748B"} />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={onClose} style={[styles.closeBtn, { backgroundColor: isDark ? "#1E293B" : "#F1F5F9" }]}>
-              <Feather name="x" size={20} color={isDark ? "#94A3B8" : "#64748B"} />
-            </TouchableOpacity>
-          </View>
 
-          {/* Body */}
-          <ScrollView contentContainerStyle={styles.body}>
-            <View style={[styles.propertyPill, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC" }]}>
-              <Text style={[styles.propertyPillTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
-                {lead.leadId || "LEAD"} • {lead.propertyType} in {lead.locality}
-              </Text>
+            {/* Body */}
+            <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+              <View style={[styles.propertyPill, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC" }]}>
+                <Text style={[styles.propertyPillTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
+                  {lead.leadId || "LEAD"} • {lead.propertyType} in {lead.locality}
+                </Text>
               <Text style={[styles.propertyPillOwner, { color: colors.textSecondary }]}>
                 Owner: {lead.ownerName} ({lead.ownerPhone})
               </Text>
@@ -195,8 +219,9 @@ export const SuperAdminAssignModal: React.FC<Props> = ({
             </TouchableOpacity>
           </ScrollView>
         </View>
-      </View>
-    </Modal>
+      </KeyboardAvoidingView>
+    </View>
+  </Modal>
   );
 };
 

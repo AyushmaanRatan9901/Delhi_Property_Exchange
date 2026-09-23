@@ -78,17 +78,23 @@ export function CommissionWalletScreen() {
                 referenceId: `LEAD/${l.leadId || l._id}`,
               });
             });
-          } else if ((l.status === "rented" || l.status === "sold" || l.deal?.isClosed) && (l.commission?.approvedAmount > 0 || l.commission?.status === "paid")) {
+          } else if (
+            (l.commission?.approvedAmount > 0 || l.commission?.status === "paid" || l.commission?.status === "approved" || l.deal?.isClosed || (l.tenancyHistory && l.tenancyHistory.length > 0)) &&
+            (l.commission?.approvedAmount > 0 || l.commission?.firstMonthCommission > 0)
+          ) {
+            const commAmt = l.commission?.approvedAmount || l.commission?.firstMonthCommission || 0;
             dynamicPayouts.push({
               id: `TXN-${l.leadId || l._id || idx}`,
-              amount: l.commission?.approvedAmount || 0,
-              method: l.status === "rented" ? "Tenant Move-In Commission" : "Direct Wallet Credit",
+              amount: commAmt,
+              method: l.listingType === "sale" ? "Property Sale Commission" : "Tenant Move-In Commission",
               date: l.commission?.paidAt
                 ? new Date(l.commission.paidAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                : l.commission?.decidedAt
+                ? new Date(l.commission.decidedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
                 : l.createdAt
                 ? new Date(l.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
                 : "Recently",
-              status: (l.commission?.status === "paid" ? "COMPLETED" : "PROCESSING") as "COMPLETED" | "PROCESSING",
+              status: (l.commission?.status === "paid" || l.commission?.status === "approved" ? "COMPLETED" : "PROCESSING") as "COMPLETED" | "PROCESSING",
               referenceId: `LEAD/${l.leadId || l._id}`,
             });
           }
