@@ -53,6 +53,7 @@ export default function TenantHomeScreen() {
 
   // Modals state
   const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
+  const [paymentConfig, setPaymentConfig] = useState<{ month: string; amount: number; isDeposit?: boolean } | null>(null);
   const [showReceiptModal, setShowReceiptModal] = useState<boolean>(false);
   const [selectedReceiptItem, setSelectedReceiptItem] = useState<RentLedgerItem | null>(null);
   const [showComplaintModal, setShowComplaintModal] = useState<boolean>(false);
@@ -67,13 +68,32 @@ export default function TenantHomeScreen() {
     await refreshAll();
   };
 
+  const handleOpenRentPay = () => {
+    setPaymentConfig({
+      month: activeRent?.month || "Current Month",
+      amount: activeRent?.amount || property?.rentAmount || 0,
+      isDeposit: false,
+    });
+    setShowPaymentModal(true);
+  };
+
+  const handleOpenDepositPay = () => {
+    setPaymentConfig({
+      month: "Security Deposit",
+      amount: property?.securityDeposit || 0,
+      isDeposit: true,
+    });
+    setShowPaymentModal(true);
+  };
+
   const handlePaySuccess = (res: { month: string; amount: number; paymentMode: string; utrNumber: string; receiptId: string }) => {
     payRent({
       month: res.month,
       amount: res.amount,
       paymentMode: res.paymentMode,
       utrNumber: res.utrNumber,
-    });
+      ...(paymentConfig?.isDeposit ? { isDepositPayment: true } : {}),
+    } as any);
   };
 
   const handleOpenReceipt = () => {
@@ -98,6 +118,13 @@ export default function TenantHomeScreen() {
   if (isLoading) {
     return <TenantHomeSkeleton />;
   }
+
+  const isDepositPending = Boolean(
+    property &&
+    !property.isSecurityDepositPaid &&
+    property.securityDepositStatus !== "PAID" &&
+    (property.securityDeposit || 0) > 0
+  );
 
   return (
     <SafeAreaView
@@ -188,17 +215,61 @@ export default function TenantHomeScreen() {
           />
         }
       >
+        {/* 0. Security Deposit Pending Alert Banner */}
+        {isDepositPending && property && (
+          <View
+            style={[
+              styles.depositAlertCard,
+              {
+                backgroundColor: isDark ? "#2A1805" : "#FFFBEB",
+                borderColor: isDark ? "#78350F" : "#FDE68A",
+              },
+            ]}
+          >
+            <View style={styles.depositAlertHeader}>
+              <View style={[styles.depositAlertIconBox, { backgroundColor: isDark ? "#78350F" : "#FEF3C7" }]}>
+                <Ionicons name="warning" size={20} color="#D97706" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={styles.depositAlertTitleRow}>
+                  <Text style={[styles.depositAlertTitle, { color: isDark ? "#FDE68A" : "#92400E" }]}>
+                    Security Deposit Pending
+                  </Text>
+                  <View style={styles.pendingTag}>
+                    <Text style={styles.pendingTagText}>ACTION REQUIRED</Text>
+                  </View>
+                </View>
+                <Text style={[styles.depositAlertSub, { color: isDark ? "#FCD34D" : "#B45309" }]}>
+                  Your move-in security deposit of ₹{(property.securityDeposit || 0).toLocaleString("en-IN")} is unpaid. Pay now to activate digital tenancy agreement & move-in guarantee.
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.payDepositBtn}
+              onPress={handleOpenDepositPay}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="shield-checkmark" size={15} color="#FFFFFF" />
+              <Text style={styles.payDepositBtnText}>
+                Pay Security Deposit (₹{(property.securityDeposit || 0).toLocaleString("en-IN")})
+              </Text>
+              <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* 1. Rent Summary Hero Card */}
         <TenantRentSummaryCard
           activeRent={activeRent}
-          onPressPay={() => setShowPaymentModal(true)}
-          onPressQR={() => setShowPaymentModal(true)}
+          onPressPay={handleOpenRentPay}
+          onPressQR={handleOpenRentPay}
           onPressHistory={handleOpenReceipt}
         />
 
         {/* 2. Quick Actions Grid */}
         <TenantQuickActionsGrid
-          onPayRent={() => setShowPaymentModal(true)}
+          onPayRent={handleOpenRentPay}
           onViewProperty={() => router.push("/TenantPanel/(tabs)/Property" as any)}
           onRaiseComplaint={() => setShowComplaintModal(true)}
           onRoomChange={() => setShowRoomChangeModal(true)}
@@ -246,10 +317,13 @@ export default function TenantHomeScreen() {
       {/* Payment Flow Modal */}
       <TenantPaymentModal
         visible={showPaymentModal}
-        month={activeRent?.month || "Current Month"}
-        amount={activeRent?.amount || 18500}
+        month={paymentConfig?.month || activeRent?.month || "Current Month"}
+        amount={paymentConfig?.amount || activeRent?.amount || property?.rentAmount || 0}
         instructions={paymentInstructions}
-        onClose={() => setShowPaymentModal(false)}
+        onClose={() => {
+          setShowPaymentModal(false);
+          setPaymentConfig(null);
+        }}
         onPaymentSuccess={handlePaySuccess}
       />
 
@@ -373,13 +447,79 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 110,
-    gap: 4,
+    gap: 12,
+  },
+  depositAlertCard: {
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1.5,
+    gap: 12,
+    elevation: 2,
+    shadowColor: "#D97706",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+  },
+  depositAlertHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  depositAlertIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  depositAlertTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    marginBottom: 4,
+  },
+  depositAlertTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  pendingTag: {
+    backgroundColor: "#DC2626",
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 4,
+  },
+  pendingTagText: {
+    color: "#FFFFFF",
+    fontSize: 8.5,
+    fontWeight: "900",
+    letterSpacing: 0.4,
+  },
+  depositAlertSub: {
+    fontSize: 11.5,
+    lineHeight: 16,
+    fontWeight: "500",
+  },
+  payDepositBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#D97706",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    gap: 6,
+  },
+  payDepositBtnText: {
+    color: "#FFFFFF",
+    fontSize: 12.5,
+    fontWeight: "800",
   },
   sectionHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 4,
     marginTop: 4,
   },
   sectionHeading: {
