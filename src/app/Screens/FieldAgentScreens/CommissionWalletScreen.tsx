@@ -1,6 +1,6 @@
 import { Ionicons, Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -20,7 +20,12 @@ import {
   PayoutHistoryItem,
   PayoutRequestModal,
 } from "../../../components/FieldAgentComponent";
-import { formatCurrency, LeadItem, PayoutTransaction } from "../../../constants/fieldAgentData";
+import {
+  formatCurrency,
+  LeadItem,
+  PayoutTransaction,
+  useFieldAgent,
+} from "../../../constants/fieldAgentData";
 import { useResponsiveTheme } from "../../../constants/theme";
 import { useAppSelector } from "../../../Redux/hooks";
 import apiClient from "../../../Redux/api/axiosInstance";
@@ -31,108 +36,139 @@ export function CommissionWalletScreen() {
   const { t } = useTranslation();
   const reduxUser = useAppSelector((state) => state.auth.user);
 
-  const [stats, setStats] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(reduxUser || {});
-  const [realLeads, setRealLeads] = useState<LeadItem[]>([]);
-  const [payoutList, setPayoutList] = useState<PayoutTransaction[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Central Source of Truth from FieldAgentContext (same as Dashboard.tsx)
+  const {
+    agentProfile,
+    leads,
+    payoutHistory,
+    availableBalance,
+    totalEarnings,
+    pendingApproval,
+    recurringMonthlyActive,
+    refreshLeads,
+    requestPayout: contextRequestPayout,
+    updateBankDetails: contextUpdateBankDetails,
+  } = useFieldAgent();
+
+  const [profile, setProfile] = useState<any>(reduxUser || agentProfile || {});
   const [refreshing, setRefreshing] = useState(false);
 
   // Modals
   const [isWithdrawModalVisible, setIsWithdrawModalVisible] = useState(false);
   const [isBankModalVisible, setIsBankModalVisible] = useState(false);
 
-  // ── Fetch Real Data from Backend ─────────────────────────────
-  const loadWalletData = useCallback(async () => {
+  // Fetch updated profile for bank details
+  const loadProfile = useCallback(async () => {
     try {
-      const [statsRes, meRes, leadsRes] = await Promise.allSettled([
-        apiClient.get("/leads/my-stats"),
-        apiClient.get("/auth/me"),
-        apiClient.get("/leads/my-leads"),
-      ]);
-
-      if (statsRes.status === "fulfilled" && statsRes.value.data?.data) {
-        setStats(statsRes.value.data.data);
-      }
-
-      if (meRes.status === "fulfilled" && meRes.value.data?.data) {
-        setProfile(meRes.value.data.data);
-      }
-
-      if (leadsRes.status === "fulfilled" && leadsRes.value.data?.data?.leads) {
-        const docs = leadsRes.value.data.data.leads;
-        setRealLeads(docs);
-
-        const dynamicPayouts: PayoutTransaction[] = [];
-        docs.forEach((l: any, idx: number) => {
-          if (Array.isArray(l.commission?.recurringCommissions) && l.commission.recurringCommissions.length > 0) {
-            l.commission.recurringCommissions.forEach((rc: any, rcIdx: number) => {
-              dynamicPayouts.push({
-                id: `TXN-${l.leadId || l._id}-${rc.month}-${rcIdx}`,
-                amount: rc.commissionAmount || 0,
-                method: rc.type === "first_month" ? "1st Month Tenant Move-in" : `Monthly Recurring (${rc.month})`,
-                date: rc.createdAt
-                  ? new Date(rc.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-                  : rc.month || "Recently",
-                status: (rc.status === "paid" ? "COMPLETED" : "PROCESSING") as "COMPLETED" | "PROCESSING",
-                referenceId: `LEAD/${l.leadId || l._id}`,
-              });
-            });
-          } else if (
-            (l.commission?.approvedAmount > 0 || l.commission?.status === "paid" || l.commission?.status === "approved" || l.deal?.isClosed || (l.tenancyHistory && l.tenancyHistory.length > 0)) &&
-            (l.commission?.approvedAmount > 0 || l.commission?.firstMonthCommission > 0)
-          ) {
-            const commAmt = l.commission?.approvedAmount || l.commission?.firstMonthCommission || 0;
-            dynamicPayouts.push({
-              id: `TXN-${l.leadId || l._id || idx}`,
-              amount: commAmt,
-              method: l.listingType === "sale" ? "Property Sale Commission" : "Tenant Move-In Commission",
-              date: l.commission?.paidAt
-                ? new Date(l.commission.paidAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-                : l.commission?.decidedAt
-                ? new Date(l.commission.decidedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-                : l.createdAt
-                ? new Date(l.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-                : "Recently",
-              status: (l.commission?.status === "paid" || l.commission?.status === "approved" ? "COMPLETED" : "PROCESSING") as "COMPLETED" | "PROCESSING",
-              referenceId: `LEAD/${l.leadId || l._id}`,
-            });
-          }
-        });
-
-        setPayoutList(dynamicPayouts);
+      const res = await apiClient.get("/auth/me");
+      if (res.data?.data) {
+        setProfile(res.data.data);
       }
     } catch (err) {
-      console.log("[CommissionWalletScreen] Error loading real wallet data:", err);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+      // Continue with redux / context fallback
     }
-  }, [profile.upiId]);
+  }, []);
 
   useEffect(() => {
-    loadWalletData();
-  }, [loadWalletData]);
+    loadProfile();
+  }, [loadProfile]);
 
   const handleRefresh = async () => {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch {}
     setRefreshing(true);
-    await loadWalletData();
+    await Promise.allSettled([refreshLeads(), loadProfile()]);
+    setRefreshing(false);
   };
 
-  // Real Calculated Balances
-  const availableBalance = stats?.walletBalance ?? stats?.approvedCommission ?? 0;
-  const totalEarnings = (stats?.approvedCommission || 0) + (stats?.paidCommission || 0);
-  const pendingApproval = stats?.potentialCommission || 0;
+  // Construct dynamic payout transaction list from leads + payoutHistory
+  const payoutList = useMemo(() => {
+    const dynamicPayouts: PayoutTransaction[] = [];
+
+    leads.forEach((l: any, idx: number) => {
+      if (
+        Array.isArray(l.recurringCommissions) &&
+        l.recurringCommissions.length > 0
+      ) {
+        l.recurringCommissions.forEach((rc: any, rcIdx: number) => {
+          dynamicPayouts.push({
+            id: `TXN-${l.id || l._id}-${rc.month}-${rcIdx}`,
+            amount: rc.commissionAmount || 0,
+            method:
+              rc.type === "first_month"
+                ? "1st Month Move-In Commission"
+                : `Monthly Recurring (${rc.month})`,
+            date: rc.createdAt
+              ? new Date(rc.createdAt).toLocaleDateString("en-IN", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })
+              : rc.month || "Recently",
+            status:
+              rc.status === "paid" ? "COMPLETED" : "PROCESSING",
+            referenceId: `LEAD/${l.id || l._id}`,
+          });
+        });
+      } else if (
+        (l.status === "RENTED" || l.status === "SOLD") &&
+        (l.commissionAmount > 0 || l.firstMonthCommission > 0)
+      ) {
+        const commAmt = l.commissionAmount || l.firstMonthCommission || 0;
+        dynamicPayouts.push({
+          id: `TXN-${l.id || l._id || idx}`,
+          amount: commAmt,
+          method:
+            l.listingType === "SALE"
+              ? "Property Sale Commission"
+              : "Tenant Move-In Commission",
+          date: l.submissionDate || "Recently",
+          status:
+            l.commissionStatus === "PAID"
+              ? "COMPLETED"
+              : "PROCESSING",
+          referenceId: `LEAD/${l.id || l._id}`,
+        });
+      }
+    });
+
+    // Merge with payout requests
+    const combined = [...payoutHistory, ...dynamicPayouts];
+    // Remove potential duplicates by id
+    const seen = new Set();
+    return combined.filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+  }, [leads, payoutHistory]);
 
   const currentBankDetails = {
-    upiId: profile.bankDetails?.upiId || profile.upiId || "",
-    accountHolder: profile.bankDetails?.accountHolder || profile.bankDetails?.accountHolderName || profile.name || "",
-    bankName: profile.bankDetails?.bankName || "",
-    accountNumber: profile.bankDetails?.accountNumber || "",
-    ifsc: profile.bankDetails?.ifsc || profile.bankDetails?.ifscCode || "",
+    upiId:
+      profile.bankDetails?.upiId ||
+      profile.upiId ||
+      agentProfile.bankDetails?.upiId ||
+      "",
+    accountHolder:
+      profile.bankDetails?.accountHolder ||
+      profile.bankDetails?.accountHolderName ||
+      agentProfile.bankDetails?.accountHolder ||
+      profile.name ||
+      "",
+    bankName:
+      profile.bankDetails?.bankName ||
+      agentProfile.bankDetails?.bankName ||
+      "",
+    accountNumber:
+      profile.bankDetails?.accountNumber ||
+      agentProfile.bankDetails?.accountNumber ||
+      "",
+    ifsc:
+      profile.bankDetails?.ifsc ||
+      profile.bankDetails?.ifscCode ||
+      agentProfile.bankDetails?.ifsc ||
+      "",
   };
 
   const handleUpdateBank = async (details: any) => {
@@ -153,18 +189,29 @@ export function CommissionWalletScreen() {
       if (res.data?.data) {
         setProfile(res.data.data);
       }
+      if (contextUpdateBankDetails) {
+        contextUpdateBankDetails(details);
+      }
       setIsBankModalVisible(false);
       Alert.alert(t("wallet.accountLinkedTitle"), t("wallet.accountLinkedMsg"));
     } catch (err: any) {
-      Alert.alert(t("wallet.updateFailed"), err.message || "Could not save payout details.");
+      Alert.alert(
+        t("wallet.updateFailed"),
+        err.message || "Could not save payout details."
+      );
     }
   };
 
-  const handleRequestPayout = async (amount: number, method: string): Promise<boolean> => {
+  const handleRequestPayout = async (
+    amount: number,
+    method: string
+  ): Promise<boolean> => {
     if (amount <= 0 || amount > availableBalance) {
       Alert.alert(
         t("wallet.invalidAmountTitle"),
-        t("wallet.invalidAmountMsg", { amount: formatCurrency(availableBalance) })
+        t("wallet.invalidAmountMsg", {
+          amount: formatCurrency(availableBalance),
+        })
       );
       return false;
     }
@@ -173,16 +220,10 @@ export function CommissionWalletScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {}
 
-    const newTxn: PayoutTransaction = {
-      id: "REQ-" + Math.floor(10000 + Math.random() * 90000),
-      amount,
-      method,
-      date: "Just now",
-      status: "PROCESSING",
-      referenceId: "PAYOUT/" + Date.now().toString().slice(-8),
-    };
+    if (contextRequestPayout) {
+      await contextRequestPayout(amount, method);
+    }
 
-    setPayoutList((prev) => [newTxn, ...prev]);
     setIsWithdrawModalVisible(false);
 
     Alert.alert(
@@ -194,6 +235,17 @@ export function CommissionWalletScreen() {
     );
     return true;
   };
+
+  const totalLeadsCount = leads.length;
+  const verifiedLeadsCount = leads.filter(
+    (l) => l.status === "VERIFIED" || l.status === "RENTED" || l.status === "SOLD"
+  ).length;
+  const inReviewLeadsCount = leads.filter(
+    (l) =>
+      l.status === "NEW" ||
+      (l.status as string) === "ASSIGNED" ||
+      (l.status as string) === "UNDER_VERIFICATION"
+  ).length;
 
   return (
     <View
@@ -266,329 +318,339 @@ export function CommissionWalletScreen() {
         </TouchableOpacity>
       </View>
 
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator
-            size="large"
-            color={isDark ? "#2DD4BF" : "#0D9488"}
+      <FlatList
+        data={payoutList}
+        keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={["#0D9488"]}
+            tintColor="#0D9488"
           />
-          <Text
-            style={[
-              styles.loadingText,
-              { color: isDark ? "#2DD4BF" : "#0D9488" },
-            ]}
-          >
-            {t("wallet.syncingBalance")}
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={payoutList}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              colors={["#0D9488"]}
-              tintColor="#0D9488"
+        }
+        ListHeaderComponent={
+          <>
+            {/* Wallet Overview Card - Exact same values as Dashboard */}
+            <CommissionCard
+              availableBalance={availableBalance}
+              totalEarnings={totalEarnings}
+              pendingApproval={pendingApproval}
+              recurringMonthlyActive={recurringMonthlyActive}
+              onWithdrawPress={() => {
+                if (availableBalance <= 0) {
+                  Alert.alert(
+                    t("wallet.noBalanceTitle"),
+                    t("wallet.noBalanceMsg")
+                  );
+                  return;
+                }
+                setIsWithdrawModalVisible(true);
+              }}
+              onBankDetailsPress={() => setIsBankModalVisible(true)}
             />
-          }
-          ListHeaderComponent={
-            <>
-              {/* Wallet Overview Card */}
-              <CommissionCard
-                availableBalance={availableBalance}
-                totalEarnings={totalEarnings}
-                pendingApproval={pendingApproval}
-                recurringMonthlyActive={stats?.recurringMonthlyActive || 0}
-                onWithdrawPress={() => {
-                  if (availableBalance <= 0) {
-                    Alert.alert(
-                      t("wallet.noBalanceTitle"),
-                      t("wallet.noBalanceMsg")
-                    );
-                    return;
-                  }
-                  setIsWithdrawModalVisible(true);
-                }}
-                onBankDetailsPress={() => setIsBankModalVisible(true)}
-              />
 
-              {/* Recurring Commission Model Notice Banner */}
+            {/* Recurring Commission Model Notice Banner */}
+            <View
+              style={{
+                backgroundColor: isDark ? "#0A2540" : "#EFF6FF",
+                borderColor: isDark ? "#1E40AF" : "#BFDBFE",
+                borderWidth: 1,
+                borderRadius: 16,
+                padding: 14,
+                marginTop: 12,
+                gap: 6,
+              }}
+            >
               <View
                 style={{
-                  backgroundColor: isDark ? "#0A2540" : "#EFF6FF",
-                  borderColor: isDark ? "#1E40AF" : "#BFDBFE",
-                  borderWidth: 1,
-                  borderRadius: 16,
-                  padding: 14,
-                  marginTop: 12,
+                  flexDirection: "row",
+                  alignItems: "center",
                   gap: 6,
                 }}
               >
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                  <Ionicons name="repeat" size={16} color={isDark ? "#60A5FA" : "#2563EB"} />
-                  <Text style={{ fontSize: 13, fontWeight: "800", color: isDark ? "#93C5FD" : "#1E40AF" }}>
-                    Recurring Monthly Commission Model
-                  </Text>
-                </View>
-                <Text style={{ fontSize: 11.5, lineHeight: 16, color: isDark ? "#CBD5E1" : "#3B82F6" }}>
-                  • <Text style={{ fontWeight: "700" }}>Initial Commission</Text>: Earned when a tenant is registered and pays the 1st month rent.{"\n"}
-                  • <Text style={{ fontWeight: "700" }}>Monthly Recurring</Text>: Earn continuous monthly commission on every rent payment as long as the tenant resides.{"\n"}
-                  • <Text style={{ fontWeight: "700" }}>Verification</Text>: Property verification approves the listing live, but commission activates upon tenant move-in.
+                <Ionicons
+                  name="repeat"
+                  size={16}
+                  color={isDark ? "#60A5FA" : "#2563EB"}
+                />
+                <Text
+                  style={{
+                    fontSize: 13,
+                    fontWeight: "800",
+                    color: isDark ? "#93C5FD" : "#1E40AF",
+                  }}
+                >
+                  Recurring Monthly Commission Model
                 </Text>
               </View>
-
-              {/* Payout Destination Card */}
-              <View
-                style={[
-                  styles.destCard,
-                  {
-                    backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
-                    borderColor: isDark ? colors.border : "#E2E8F0",
-                  },
-                ]}
+              <Text
+                style={{
+                  fontSize: 11.5,
+                  lineHeight: 16,
+                  color: isDark ? "#CBD5E1" : "#3B82F6",
+                }}
               >
-                <View style={styles.destTopRow}>
-                  <View
-                    style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
-                  >
-                    <Ionicons
-                      name="shield-checkmark"
-                      size={18}
-                      color={isDark ? "#2DD4BF" : "#0D9488"}
-                    />
-                    <Text
-                      style={[
-                        styles.destTitle,
-                        { color: isDark ? colors.textPrimary : "#0F172A" },
-                      ]}
-                    >
-                      {t("wallet.registeredDestination")}
-                    </Text>
-                  </View>
-                  <TouchableOpacity onPress={() => setIsBankModalVisible(true)}>
-                    <Text
-                      style={[
-                        styles.editText,
-                        { color: isDark ? "#2DD4BF" : "#0D9488" },
-                      ]}
-                    >
-                      {profile.upiId || profile.bankDetails?.accountNumber
-                        ? t("wallet.edit")
-                        : t("wallet.add")}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                • <Text style={{ fontWeight: "700" }}>Initial Commission</Text>
+                : Earned when a tenant is registered and pays the 1st month rent.
+                {"\n"}•{" "}
+                <Text style={{ fontWeight: "700" }}>Monthly Recurring</Text>:
+                Earn continuous monthly commission on every rent payment as long
+                as the tenant resides.{"\n"}•{" "}
+                <Text style={{ fontWeight: "700" }}>Verification</Text>:
+                Property verification approves the listing live, but commission
+                activates upon tenant move-in.
+              </Text>
+            </View>
 
-                <View
-                  style={[
-                    styles.destDetailsRow,
-                    { backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC" },
-                  ]}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={[
-                        styles.destLabel,
-                        { color: isDark ? colors.textMuted : "#64748B" },
-                      ]}
-                    >
-                      {t("wallet.upiId")}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.destValue,
-                        { color: isDark ? colors.textPrimary : "#0F172A" },
-                      ]}
-                    >
-                      {profile.upiId || t("wallet.notLinked")}
-                    </Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={[
-                        styles.destLabel,
-                        { color: isDark ? colors.textMuted : "#64748B" },
-                      ]}
-                    >
-                      {t("wallet.bankAccount")}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.destValue,
-                        { color: isDark ? colors.textPrimary : "#0F172A" },
-                      ]}
-                    >
-                      {profile.bankDetails?.bankName
-                        ? `${profile.bankDetails.bankName} (••${String(
-                            profile.bankDetails.accountNumber || ""
-                          ).slice(-4)})`
-                        : t("wallet.notLinked")}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Commission Leads Breakdown */}
-              {realLeads.length > 0 && (
-                <View
-                  style={[
-                    styles.leadsBreakdownCard,
-                    {
-                      backgroundColor: isDark
-                        ? colors.cardBackground
-                        : "#FFFFFF",
-                      borderColor: isDark ? colors.border : "#E2E8F0",
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.breakdownHeader,
-                      { color: isDark ? colors.textPrimary : "#0F172A" },
-                    ]}
-                  >
-                    {t("wallet.leadCommissionSummary")}
-                  </Text>
-                  <View style={styles.breakdownRow}>
-                    <View style={styles.breakdownItem}>
-                      <Text
-                        style={[
-                          styles.breakdownVal,
-                          { color: isDark ? colors.textPrimary : "#0F172A" },
-                        ]}
-                      >
-                        {stats?.totalSubmitted ?? realLeads.length}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.breakdownLbl,
-                          { color: isDark ? colors.textMuted : "#64748B" },
-                        ]}
-                      >
-                        {t("wallet.totalLeads")}
-                      </Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.breakdownDivider,
-                        { backgroundColor: isDark ? colors.border : "#E2E8F0" },
-                      ]}
-                    />
-                    <View style={styles.breakdownItem}>
-                      <Text
-                        style={[
-                          styles.breakdownVal,
-                          { color: isDark ? "#34D399" : "#059669" },
-                        ]}
-                      >
-                        {stats?.verified ??
-                          realLeads.filter((l: any) => l.status === "verified")
-                            .length}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.breakdownLbl,
-                          { color: isDark ? colors.textMuted : "#64748B" },
-                        ]}
-                      >
-                        {t("wallet.verified")}
-                      </Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.breakdownDivider,
-                        { backgroundColor: isDark ? colors.border : "#E2E8F0" },
-                      ]}
-                    />
-                    <View style={styles.breakdownItem}>
-                      <Text
-                        style={[
-                          styles.breakdownVal,
-                          { color: isDark ? "#FBBF24" : "#D97706" },
-                        ]}
-                      >
-                        {stats?.underVerification ??
-                          realLeads.filter(
-                            (l: any) =>
-                              l.status === "new" ||
-                              l.status === "assigned" ||
-                              l.status === "under_verification"
-                          ).length}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.breakdownLbl,
-                          { color: isDark ? colors.textMuted : "#64748B" },
-                        ]}
-                      >
-                        {t("wallet.inReview")}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              {/* Section Header */}
-              <View style={styles.payoutHeaderRow}>
-                <Text
-                  style={[
-                    styles.payoutHeaderTitle,
-                    { color: isDark ? colors.textPrimary : "#0F172A" },
-                  ]}
-                >
-                  {t("wallet.ledgerTitle")}
-                </Text>
-                <Text
-                  style={[
-                    styles.payoutHeaderSub,
-                    { color: isDark ? colors.textMuted : "#64748B" },
-                  ]}
-                >
-                  {t("wallet.ledgerSub")}
-                </Text>
-              </View>
-            </>
-          }
-          renderItem={({ item }) => <PayoutHistoryItem transaction={item} />}
-          ListEmptyComponent={
+            {/* Payout Destination Card */}
             <View
               style={[
-                styles.emptyBox,
+                styles.destCard,
                 {
                   backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
                   borderColor: isDark ? colors.border : "#E2E8F0",
                 },
               ]}
             >
-              <Feather
-                name="clock"
-                size={32}
-                color={isDark ? colors.textMuted : "#94A3B8"}
-              />
-              <Text
+              <View style={styles.destTopRow}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <Ionicons
+                    name="shield-checkmark"
+                    size={18}
+                    color={isDark ? "#2DD4BF" : "#0D9488"}
+                  />
+                  <Text
+                    style={[
+                      styles.destTitle,
+                      { color: isDark ? colors.textPrimary : "#0F172A" },
+                    ]}
+                  >
+                    {t("wallet.registeredDestination")}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setIsBankModalVisible(true)}>
+                  <Text
+                    style={[
+                      styles.editText,
+                      { color: isDark ? "#2DD4BF" : "#0D9488" },
+                    ]}
+                  >
+                    {currentBankDetails.upiId ||
+                    currentBankDetails.accountNumber
+                      ? t("wallet.edit")
+                      : t("wallet.add")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View
                 style={[
-                  styles.emptyTitle,
-                  { color: isDark ? colors.textSecondary : "#475569" },
+                  styles.destDetailsRow,
+                  {
+                    backgroundColor: isDark ? colors.surfaceLight : "#F8FAFC",
+                  },
                 ]}
               >
-                {t("wallet.noTransactionsYet")}
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={[
+                      styles.destLabel,
+                      { color: isDark ? colors.textMuted : "#64748B" },
+                    ]}
+                  >
+                    {t("wallet.upiId")}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.destValue,
+                      { color: isDark ? colors.textPrimary : "#0F172A" },
+                    ]}
+                  >
+                    {currentBankDetails.upiId || t("wallet.notLinked")}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={[
+                      styles.destLabel,
+                      { color: isDark ? colors.textMuted : "#64748B" },
+                    ]}
+                  >
+                    {t("wallet.bankAccount")}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.destValue,
+                      { color: isDark ? colors.textPrimary : "#0F172A" },
+                    ]}
+                  >
+                    {currentBankDetails.bankName
+                      ? `${currentBankDetails.bankName} (••${String(
+                          currentBankDetails.accountNumber || ""
+                        ).slice(-4)})`
+                      : t("wallet.notLinked")}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Commission Leads Breakdown */}
+            {totalLeadsCount > 0 && (
+              <View
+                style={[
+                  styles.leadsBreakdownCard,
+                  {
+                    backgroundColor: isDark
+                      ? colors.cardBackground
+                      : "#FFFFFF",
+                    borderColor: isDark ? colors.border : "#E2E8F0",
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.breakdownHeader,
+                    { color: isDark ? colors.textPrimary : "#0F172A" },
+                  ]}
+                >
+                  {t("wallet.leadCommissionSummary")}
+                </Text>
+                <View style={styles.breakdownRow}>
+                  <View style={styles.breakdownItem}>
+                    <Text
+                      style={[
+                        styles.breakdownVal,
+                        { color: isDark ? colors.textPrimary : "#0F172A" },
+                      ]}
+                    >
+                      {totalLeadsCount}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.breakdownLbl,
+                        { color: isDark ? colors.textMuted : "#64748B" },
+                      ]}
+                    >
+                      {t("wallet.totalLeads")}
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.breakdownDivider,
+                      { backgroundColor: isDark ? colors.border : "#E2E8F0" },
+                    ]}
+                  />
+                  <View style={styles.breakdownItem}>
+                    <Text
+                      style={[
+                        styles.breakdownVal,
+                        { color: isDark ? "#34D399" : "#059669" },
+                      ]}
+                    >
+                      {verifiedLeadsCount}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.breakdownLbl,
+                        { color: isDark ? colors.textMuted : "#64748B" },
+                      ]}
+                    >
+                      {t("wallet.verified")}
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.breakdownDivider,
+                      { backgroundColor: isDark ? colors.border : "#E2E8F0" },
+                    ]}
+                  />
+                  <View style={styles.breakdownItem}>
+                    <Text
+                      style={[
+                        styles.breakdownVal,
+                        { color: isDark ? "#FBBF24" : "#D97706" },
+                      ]}
+                    >
+                      {inReviewLeadsCount}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.breakdownLbl,
+                        { color: isDark ? colors.textMuted : "#64748B" },
+                      ]}
+                    >
+                      {t("wallet.inReview")}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Section Header */}
+            <View style={styles.payoutHeaderRow}>
+              <Text
+                style={[
+                  styles.payoutHeaderTitle,
+                  { color: isDark ? colors.textPrimary : "#0F172A" },
+                ]}
+              >
+                {t("wallet.ledgerTitle")}
               </Text>
               <Text
                 style={[
-                  styles.emptySub,
-                  { color: isDark ? colors.textMuted : "#94A3B8" },
+                  styles.payoutHeaderSub,
+                  { color: isDark ? colors.textMuted : "#64748B" },
                 ]}
               >
-                {t("wallet.noTransactionsSub")}
+                {t("wallet.ledgerSub")}
               </Text>
             </View>
-          }
-        />
-      )}
+          </>
+        }
+        renderItem={({ item }) => <PayoutHistoryItem transaction={item} />}
+        ListEmptyComponent={
+          <View
+            style={[
+              styles.emptyBox,
+              {
+                backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+                borderColor: isDark ? colors.border : "#E2E8F0",
+              },
+            ]}
+          >
+            <Feather
+              name="clock"
+              size={32}
+              color={isDark ? colors.textMuted : "#94A3B8"}
+            />
+            <Text
+              style={[
+                styles.emptyTitle,
+                { color: isDark ? colors.textSecondary : "#475569" },
+              ]}
+            >
+              {t("wallet.noTransactionsYet")}
+            </Text>
+            <Text
+              style={[
+                styles.emptySub,
+                { color: isDark ? colors.textMuted : "#94A3B8" },
+              ]}
+            >
+              {t("wallet.noTransactionsSub")}
+            </Text>
+          </View>
+        }
+      />
 
       {/* Payout Modal */}
       <PayoutRequestModal
@@ -643,16 +705,6 @@ const styles = StyleSheet.create({
   bankBtnText: {
     fontSize: 12,
     fontWeight: "800",
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 13,
-    fontWeight: "600",
   },
   scrollContent: {
     padding: 20,

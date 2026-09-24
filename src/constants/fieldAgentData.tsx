@@ -94,109 +94,28 @@ export interface AgentProfile {
 }
 
 export const INITIAL_AGENT_PROFILE: AgentProfile = {
-  id: "AGT-7821-DEL",
-  name: "Pooja Sharma",
-  phone: "+91 98765 43210",
-  email: "pooja.sharma@estatepartner.in",
-  tier: "Gold Field Partner",
-  tierLevel: 2,
-  assignedLocality: "Sector 62 & Indirapuram, Delhi-NCR",
-  joinedDate: "12 Jan 2024",
-  kycStatus: "VERIFIED",
-  avatar:
-    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+  id: "",
+  name: "",
+  phone: "",
+  email: "",
+  tier: "Field Partner",
+  tierLevel: 1,
+  assignedLocality: "",
+  joinedDate: "",
+  kycStatus: "PENDING",
+  avatar: "",
   bankDetails: {
-    upiId: "pooja@okaxis",
-    accountHolder: "Pooja Sharma",
-    bankName: "HDFC Bank Ltd",
-    accountNumber: "•••• •••• 4912",
-    ifsc: "HDFC0001824",
+    upiId: "",
+    accountHolder: "",
+    bankName: "",
+    accountNumber: "",
+    ifsc: "",
   },
 };
 
-export const INITIAL_LEADS: LeadItem[] = [
-  {
-    id: "LD-9042",
-    ownerName: "Rajesh Verma",
-    ownerPhone: "+91 98112 34567",
-    maskedPhone: "+91 98112 •••••",
-    locality: "Sector 62, Noida",
-    fullAddress: "Flat 402, Tower B, Royal Palms, Sector 62",
-    propertyType: "2BHK",
-    listingType: "RENT",
-    expectedPrice: 26000,
-    gpsLocation: {
-      latitude: 28.6289,
-      longitude: 77.3649,
-      accuracyMeters: 3.2,
-      formattedAddress: "Royal Palms, Sector 62, Noida, UP 201301",
-    },
-    status: "RENTED",
-    submissionDate: "Today, 10:45 AM",
-    commissionAmount: 0,
-    firstMonthCommission: 0,
-    recurringMonthlyCommission: 1300,
-    recurringMonthlyRate: 5,
-    tenantName: "Vikram Malhotra",
-    commissionStatus: "APPROVED",
-    photos: [
-      "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format&fit=crop&q=80",
-    ],
-    remarks:
-      "Keys with caretaker. 3 min walk to Electronic City Metro Station.",
-    verificationNotes:
-      "Physically verified by staff. Tenant registered & 1st month rent confirmed.",
-  },
-  {
-    id: "LD-8821",
-    ownerName: "Sunita Gupta",
-    ownerPhone: "+91 98991 22334",
-    maskedPhone: "+91 98991 •••••",
-    locality: "Indirapuram, Ghaziabad",
-    fullAddress: "Flat 104, Tower C, Shipra Sun City",
-    propertyType: "3BHK",
-    listingType: "RENT",
-    expectedPrice: 32000,
-    gpsLocation: {
-      latitude: 28.6412,
-      longitude: 77.3752,
-      accuracyMeters: 2.8,
-      formattedAddress: "Shipra Sun City, Indirapuram, Ghaziabad",
-    },
-    status: "VERIFIED",
-    submissionDate: "Yesterday",
-    commissionAmount: 0,
-    firstMonthCommission: 4800,
-    recurringMonthlyCommission: 1600,
-    recurringMonthlyRate: 5,
-    commissionStatus: "PENDING",
-    photos: [
-      "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&auto=format&fit=crop&q=80",
-    ],
-    remarks: "Available for family. Modular kitchen ready.",
-    verificationNotes:
-      "Verified on-site by staff. Listed live, awaiting tenant booking.",
-  },
-];
+export const INITIAL_LEADS: LeadItem[] = [];
 
-export const INITIAL_PAYOUT_HISTORY: PayoutTransaction[] = [
-  {
-    id: "TXN-88123",
-    amount: 6000,
-    method: "UPI (pooja@okaxis)",
-    date: "07 Sep 2026",
-    status: "COMPLETED",
-    referenceId: "UPI/62491048102",
-  },
-  {
-    id: "TXN-87940",
-    amount: 12500,
-    method: "Bank Transfer (HDFC ••4912)",
-    date: "29 Aug 2026",
-    status: "COMPLETED",
-    referenceId: "NEFT/HDFC98214019",
-  },
-];
+export const INITIAL_PAYOUT_HISTORY: PayoutTransaction[] = [];
 
 export const maskPhoneNumber = (phone: string): string => {
   if (!phone) return "+91 ••••• •••••";
@@ -278,12 +197,7 @@ const mapBackendToLeadItem = (doc: any): LeadItem => {
           "pending"
         ).toUpperCase() as "PENDING" | "APPROVED" | "PAID")
       : "PENDING",
-    photos:
-      photoUrls.length > 0
-        ? photoUrls
-        : [
-            "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format&fit=crop&q=80",
-          ],
+    photos: photoUrls.length > 0 ? photoUrls : [],
     videoLink: doc.videoLink || doc.videoUrl,
     remarks: doc.remarks,
     verificationNotes:
@@ -340,9 +254,12 @@ export const FieldAgentProvider: React.FC<{ children: React.ReactNode }> = ({
       const res = await apiClient.get("/leads/my-leads");
       if (res.data?.data?.leads && Array.isArray(res.data.data.leads)) {
         const backendLeads = res.data.data.leads.map(mapBackendToLeadItem);
-        if (backendLeads.length > 0) {
-          setLeads(backendLeads);
-        }
+        setLeads(backendLeads);
+      } else if (Array.isArray(res.data?.data)) {
+        const backendLeads = res.data.data.map(mapBackendToLeadItem);
+        setLeads(backendLeads);
+      } else {
+        setLeads([]);
       }
     } catch (err) {
       console.log(
