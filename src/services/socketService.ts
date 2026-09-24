@@ -1,18 +1,18 @@
 // @ts-ignore
-import ioClient from "socket.io-client/dist/socket.io.js";
 import * as Haptics from "expo-haptics";
+import ioClient from "socket.io-client/dist/socket.io.js";
 import { SOCKET_URL } from "../Redux/api/apiConfig";
 import { store } from "../Redux/store";
-import {
-  leadAssignedRealTime,
-  leadUpdatedRealTime,
-  addNotification,
-  setSocketConnected,
-} from "../Redux/VerificationStaff/verificationStaffSlice";
 import {
   addRealTimeSuperAdminNotification,
   setSuperAdminSocketConnected,
 } from "../Redux/SuperAdmin/superAdminNotificationSlice";
+import {
+  addNotification,
+  leadAssignedRealTime,
+  leadUpdatedRealTime,
+  setSocketConnected,
+} from "../Redux/VerificationStaff/verificationStaffSlice";
 
 let socket: any = null;
 let registeredUser: any = null;
@@ -20,7 +20,9 @@ let registeredUser: any = null;
 export const initSocketService = (): any => {
   if (socket) return socket;
 
-  console.log(`🔌 [SocketService] Initializing socket connection to ${SOCKET_URL}`);
+  console.log(
+    `🔌 [SocketService] Initializing socket connection to ${SOCKET_URL}`,
+  );
 
   const s = ioClient(SOCKET_URL, {
     transports: ["websocket", "polling"],
@@ -41,7 +43,7 @@ export const initSocketService = (): any => {
         role: registeredUser.role,
       });
       console.log(
-        `👤 [SocketService] Re-registered user: ${registeredUser.name} (${registeredUser.role})`
+        `👤 [SocketService] Re-registered user: ${registeredUser.name} (${registeredUser.role})`,
       );
     }
   });
@@ -53,7 +55,10 @@ export const initSocketService = (): any => {
   });
 
   s.on("connect_error", (error: any) => {
-    console.warn(`⚠️ [SocketService] Connection error:`, error?.message || error);
+    console.warn(
+      `⚠️ [SocketService] Connection error:`,
+      error?.message || error,
+    );
     store.dispatch(setSocketConnected(false));
     store.dispatch(setSuperAdminSocketConnected(false));
   });
@@ -72,7 +77,7 @@ export const initSocketService = (): any => {
       leadAssignedRealTime({
         lead,
         notification,
-      })
+      }),
     );
     if (notification) {
       store.dispatch(addRealTimeSuperAdminNotification(notification));
@@ -86,7 +91,7 @@ export const initSocketService = (): any => {
       Haptics.notificationAsync(
         notif?.priority === "urgent" || notif?.priority === "high"
           ? Haptics.NotificationFeedbackType.Warning
-          : Haptics.NotificationFeedbackType.Success
+          : Haptics.NotificationFeedbackType.Success,
       );
     } catch {}
 
@@ -117,7 +122,10 @@ export const initSocketService = (): any => {
 
   // 6. Real-time Tenant Property Assignment / Deal Confirmation
   s.on("tenant:property_assigned", (data: any) => {
-    console.log(`🏠 [SocketService] Received "tenant:property_assigned":`, data);
+    console.log(
+      `🏠 [SocketService] Received "tenant:property_assigned":`,
+      data,
+    );
     try {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {}
