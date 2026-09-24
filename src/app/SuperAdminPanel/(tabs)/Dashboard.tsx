@@ -1,4 +1,9 @@
-import { Feather, FontAwesome5, Ionicons } from "@expo/vector-icons";
+import {
+  Feather,
+  FontAwesome5,
+  Ionicons,
+  MaterialIcons,
+} from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -489,57 +494,29 @@ export default function SuperAdminDashboard() {
           <TouchableOpacity
             onPress={() => {
               try {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               } catch {}
-              setIsCreateUserModalVisible(true);
+              router.push("/SuperAdminPanel/crm-monitoring" as any);
             }}
             style={[styles.quickActionBtn, { backgroundColor: "#0D9488" }]}
             activeOpacity={0.8}
           >
+            <MaterialIcons name="headset-mic" size={14} color="#FFFFFF" />
+            <Text style={styles.quickActionBtnText}>CRM Ops</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => {
+              try {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              } catch {}
+              setIsCreateUserModalVisible(true);
+            }}
+            style={[styles.quickActionBtn, { backgroundColor: "#047857" }]}
+            activeOpacity={0.8}
+          >
             <Feather name="user-plus" size={14} color="#FFFFFF" />
             <Text style={styles.quickActionBtnText}>Add User</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => {
-              try {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              } catch {}
-              router.push("/SuperAdminPanel/(tabs)/approvals" as any);
-            }}
-            style={[styles.quickActionBtn, { backgroundColor: "#3B82F6" }]}
-            activeOpacity={0.8}
-          >
-            <Feather name="shield" size={14} color="#FFFFFF" />
-            <Text style={styles.quickActionBtnText}>Approvals</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => {
-              try {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              } catch {}
-              router.push("/SuperAdminPanel/(tabs)/analytics" as any);
-            }}
-            style={[styles.quickActionBtn, { backgroundColor: "#8B5CF6" }]}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="receipt-outline" size={14} color="#FFFFFF" />
-            <Text style={styles.quickActionBtnText}>Ledger</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => {
-              try {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              } catch {}
-              router.push("/SuperAdminPanel/(tabs)/settings" as any);
-            }}
-            style={[styles.quickActionBtn, { backgroundColor: "#0F766E" }]}
-            activeOpacity={0.8}
-          >
-            <Feather name="sliders" size={14} color="#FFFFFF" />
-            <Text style={styles.quickActionBtnText}>Settings</Text>
           </TouchableOpacity>
         </View>
 

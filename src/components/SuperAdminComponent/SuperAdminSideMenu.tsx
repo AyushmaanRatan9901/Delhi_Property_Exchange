@@ -242,6 +242,17 @@ export const SuperAdminSideMenu: React.FC<SuperAdminSideMenuProps> = ({
       badgeColor: "#3B82F6",
     },
     {
+      id: "crm_monitoring",
+      route: "/SuperAdminPanel/crm-monitoring",
+      title: "CRM & Tele-Caller Ops",
+      subtitle: "Live calls, AI summaries & SLA monitoring",
+      icon: "headset",
+      iconType: "material",
+      iconColor: "#0D9488",
+      badge: "Live CRM",
+      badgeColor: "#0D9488",
+    },
+    {
       id: "tenant_history",
       route: "/SuperAdminPanel/tenant-history",
       title: "Tenant History & Rent",

@@ -2,6 +2,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "./Auth/authSlice";
 import verificationStaffReducer from "./VerificationStaff/verificationStaffSlice";
 import superAdminNotificationReducer from "./SuperAdmin/superAdminNotificationSlice";
+import superAdminCrmReducer from "./SuperAdmin/superAdminCrmSlice";
 import tenantReducer from "./Tenant/tenantSlice";
 
 export const store = configureStore({
@@ -9,6 +10,7 @@ export const store = configureStore({
     auth: authReducer,
     verificationStaff: verificationStaffReducer,
     superAdminNotifications: superAdminNotificationReducer,
+    superAdminCrm: superAdminCrmReducer,
     tenant: tenantReducer,
   },
   middleware: (getDefaultMiddleware) =>
