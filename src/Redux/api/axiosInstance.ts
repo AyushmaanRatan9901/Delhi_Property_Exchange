@@ -24,7 +24,7 @@ apiClient.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // Response Interceptor: Format error messages cleanly from ApiResponse / ApiError
@@ -35,18 +35,20 @@ apiClient.interceptors.response.use(
       const errorMessage =
         error.response.data?.message ||
         (Array.isArray(error.response.data?.errors)
-          ? error.response.data.errors.map((err: any) => err.msg || err).join(", ")
+          ? error.response.data.errors
+              .map((err: any) => err.msg || err)
+              .join(", ")
           : "Server error occurred");
       return Promise.reject(new Error(errorMessage));
     } else if (error.request) {
       return Promise.reject(
         new Error(
-          "Network Error: Unable to connect to server at 192.168.1.16:5000. Please ensure the backend is running."
-        )
+          "Network Error: Unable to connect to server at 192.168.1.12:5000. Please ensure the backend is running.",
+        ),
       );
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default apiClient;

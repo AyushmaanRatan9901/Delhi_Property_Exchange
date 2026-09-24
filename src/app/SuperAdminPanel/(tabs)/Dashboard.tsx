@@ -1,7 +1,8 @@
 import { Feather, FontAwesome5, Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -18,32 +19,50 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSelector } from "react-redux";
+import apiClient from "../../../Redux/api/axiosInstance";
+import { RootState } from "../../../Redux/store";
 import {
   SuperAdminAssignModal,
   SuperAdminCommissionModal,
   SuperAdminCreateUserModal,
   SuperAdminDealModal,
   SuperAdminLeadDetailModal,
-  SuperAdminSideMenu,
   SuperAdminNotificationModal,
+  SuperAdminSideMenu,
 } from "../../../components/SuperAdminComponent";
-import { useSelector } from "react-redux";
-import { RootState } from "../../../Redux/store";
 import { useResponsiveTheme } from "../../../constants/theme";
-import apiClient from "../../../Redux/api/axiosInstance";
+
+type ViewModeType = "list" | "grid";
+
+interface FilterOption {
+  id: string;
+  label: string;
+  icon: keyof typeof Feather.glyphMap;
+}
+
+const FILTER_OPTIONS: FilterOption[] = [
+  { id: "ALL", label: "All Units", icon: "layers" },
+  { id: "NEW", label: "New Leads", icon: "plus-circle" },
+  { id: "ASSIGNED", label: "Assigned", icon: "user-check" },
+  { id: "UNDER_VERIFICATION", label: "In Review", icon: "clock" },
+  { id: "VERIFIED", label: "Verified", icon: "check-circle" },
+  { id: "RENTED", label: "Rented", icon: "home" },
+  { id: "SOLD", label: "Sold", icon: "award" },
+  { id: "REJECTED", label: "Rejected", icon: "x-circle" },
+];
 
 export default function SuperAdminDashboard() {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useResponsiveTheme();
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
 
   // Responsive device checks
   const isTablet = windowWidth >= 768;
   const isSmallDevice = windowWidth < 380;
-  const isMediumScreen = windowWidth >= 380 && windowWidth < 768;
 
   const unreadCount = useSelector(
-    (state: RootState) => state.superAdminNotifications?.unreadCount || 0
+    (state: RootState) => state.superAdminNotifications?.unreadCount || 0,
   );
 
   const [leads, setLeads] = useState<any[]>([]);
@@ -51,6 +70,7 @@ export default function SuperAdminDashboard() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
+  const [viewMode, setViewMode] = useState<ViewModeType>("list");
 
   // Analytics summary
   const [analytics, setAnalytics] = useState<any>(null);
@@ -99,31 +119,45 @@ export default function SuperAdminDashboard() {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
-  const onRefresh = () => {
+  const onRefresh = useCallback(() => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {}
     setRefreshing(true);
     fetchDashboardData();
-  };
+  }, [fetchDashboardData]);
 
-  const handleCall = (phone: string) => {
-    if (phone) Linking.openURL("tel:" + phone.replace(/\s+/g, ""));
-  };
-
-  const handleWhatsApp = (phone: string) => {
+  const handleCall = (phone?: string) => {
     if (phone) {
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      } catch {}
+      Linking.openURL("tel:" + phone.replace(/\s+/g, "")).catch(() => {});
+    }
+  };
+
+  const handleWhatsApp = (phone?: string) => {
+    if (phone) {
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      } catch {}
       const clean = phone.replace(/\D/g, "");
       const full = clean.length === 10 ? "91" + clean : clean;
       Linking.openURL(
         "whatsapp://send?phone=" +
           full +
           "&text=Hello%20from%20Delhi%20Property%20Exchange%20SuperAdmin",
-      );
+      ).catch(() => {});
     }
   };
 
   const handleResolveDuplicate = async (lead: any) => {
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    } catch {}
     Alert.alert(
       "Resolve Duplicate Flag",
-      "Choose action for duplicate listing " + (lead.leadId || lead._id) + ":",
+      `Choose action for duplicate listing ${lead.leadId || lead._id}:`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -134,6 +168,11 @@ export default function SuperAdminDashboard() {
                 "/leads/" + lead._id + "/resolve-duplicate",
                 { action: "dismiss" },
               );
+              try {
+                Haptics.notificationAsync(
+                  Haptics.NotificationFeedbackType.Success,
+                );
+              } catch {}
               Alert.alert("Success", "Duplicate flag dismissed.");
               fetchDashboardData();
             } catch (err: any) {
@@ -150,6 +189,11 @@ export default function SuperAdminDashboard() {
                 "/leads/" + lead._id + "/resolve-duplicate",
                 { action: "archive", notes: "Archived duplicate listing" },
               );
+              try {
+                Haptics.notificationAsync(
+                  Haptics.NotificationFeedbackType.Success,
+                );
+              } catch {}
               Alert.alert("Archived", "Duplicate property archived.");
               fetchDashboardData();
             } catch (err: any) {
@@ -162,35 +206,20 @@ export default function SuperAdminDashboard() {
   };
 
   // Filter leads based on search query
-  const filteredLeads = leads.filter((l) => {
-    if (!searchQuery.trim()) return true;
+  const filteredLeads = useMemo(() => {
+    if (!searchQuery.trim()) return leads;
     const q = searchQuery.toLowerCase();
-    return (
-      (l.leadId && l.leadId.toLowerCase().includes(q)) ||
-      (l.title && l.title.toLowerCase().includes(q)) ||
-      (l.ownerName && l.ownerName.toLowerCase().includes(q)) ||
-      (l.ownerPhone && l.ownerPhone.includes(q)) ||
-      (l.locality && l.locality.toLowerCase().includes(q)) ||
-      (l.agentName && l.agentName.toLowerCase().includes(q))
-    );
-  });
-
-  const getStatusColor = (st: string) => {
-    switch (st?.toLowerCase()) {
-      case "verified":
-        return "#10B981";
-      case "rented":
-      case "sold":
-        return "#0D9488";
-      case "under_verification":
-      case "assigned":
-        return "#F59E0B";
-      case "rejected":
-        return "#EF4444";
-      default:
-        return "#3B82F6";
-    }
-  };
+    return leads.filter((l) => {
+      return (
+        (l.leadId && l.leadId.toLowerCase().includes(q)) ||
+        (l.title && l.title.toLowerCase().includes(q)) ||
+        (l.ownerName && l.ownerName.toLowerCase().includes(q)) ||
+        (l.ownerPhone && l.ownerPhone.includes(q)) ||
+        (l.locality && l.locality.toLowerCase().includes(q)) ||
+        (l.agentName && l.agentName.toLowerCase().includes(q))
+      );
+    });
+  }, [leads, searchQuery]);
 
   const totalProps = analytics?.totalProperties || leads.length || 0;
   const verifiedCount = analytics?.statusBreakdown?.verified || 0;
@@ -208,7 +237,7 @@ export default function SuperAdminDashboard() {
     >
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
-      {/* Header Banner */}
+      {/* Top Gradient Header */}
       <LinearGradient
         colors={
           isDark
@@ -229,33 +258,43 @@ export default function SuperAdminDashboard() {
             }}
           >
             <TouchableOpacity
-              onPress={() => setIsSideMenuVisible(true)}
+              onPress={() => {
+                try {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                } catch {}
+                setIsSideMenuVisible(true);
+              }}
               style={styles.hamburgerBtn}
               activeOpacity={0.7}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Feather name="menu" size={22} color="#FFFFFF" />
+              <Feather name="menu" size={20} color="#FFFFFF" />
             </TouchableOpacity>
+
             <View style={{ flex: 1 }}>
               <View style={styles.badgeRow}>
-                <Text style={styles.panelBadge}>
-                  SUPER ADMIN COMMAND CENTER
-                </Text>
+                <Text style={styles.panelBadge}>COMMAND CENTER</Text>
                 <View style={styles.liveIndicator}>
                   <View style={styles.liveDot} />
                   <Text style={styles.liveText}>LIVE</Text>
                 </View>
               </View>
-              <Text style={styles.headerTitle}>Overview & Directory</Text>
+              <Text style={styles.headerTitle}>Overview & Properties</Text>
             </View>
           </View>
+
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <TouchableOpacity
-              onPress={() => setIsNotificationModalVisible(true)}
+              onPress={() => {
+                try {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                } catch {}
+                setIsNotificationModalVisible(true);
+              }}
               style={styles.headerIconCircle}
-              activeOpacity={0.7}
+              activeOpacity={0.75}
             >
-              <Feather name="bell" size={18} color="#FFFFFF" />
+              <Feather name="bell" size={17} color="#FFFFFF" />
               {unreadCount > 0 && (
                 <View style={styles.headerBellBadge}>
                   <Text style={styles.headerBellBadgeText}>
@@ -264,22 +303,28 @@ export default function SuperAdminDashboard() {
                 </View>
               )}
             </TouchableOpacity>
-            <TouchableOpacity onPress={onRefresh} style={styles.headerIconCircle}>
-              <Ionicons name="refresh" size={20} color="#FFFFFF" />
+
+            <TouchableOpacity
+              onPress={onRefresh}
+              style={styles.headerIconCircle}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="refresh" size={18} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         </View>
+
         <Text style={styles.headerSubtitle}>
-          Full unmasked owner access, instant approvals, deal booking & live
-          stream
+          Full unmasked owner PII, real-time approvals, deal execution &
+          commission desk
         </Text>
       </LinearGradient>
 
-      {/* Content */}
+      {/* Content Area */}
       <ScrollView
         contentContainerStyle={[
           styles.content,
-          isTablet && { maxWidth: 1040, alignSelf: "center", width: "94%" },
+          isTablet && { maxWidth: 1100, alignSelf: "center", width: "94%" },
           { paddingBottom: Math.max(insets.bottom + 85, 115) },
         ]}
         showsVerticalScrollIndicator={false}
@@ -291,69 +336,140 @@ export default function SuperAdminDashboard() {
           />
         }
       >
-        {/* Metric Quick Stats */}
-        <View style={[styles.statsRow, isSmallDevice && { flexWrap: "wrap", gap: 8 }]}>
-          <View
+        {/* Metric Quick Stats Carousel / Grid */}
+        <View style={styles.statsRow}>
+          {/* Total Properties */}
+          <TouchableOpacity
+            onPress={() => {
+              try {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              } catch {}
+              setSelectedStatus("ALL");
+            }}
+            activeOpacity={0.8}
             style={[
               styles.statCard,
-              isSmallDevice && { width: "48%", flex: undefined },
               {
                 backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
-                borderColor: colors.border,
+                borderColor:
+                  selectedStatus === "ALL" ? "#0D9488" : colors.border,
+                borderWidth: selectedStatus === "ALL" ? 2 : 1,
               },
             ]}
           >
+            <View
+              style={[
+                styles.statIconBadge,
+                { backgroundColor: "rgba(13, 148, 136, 0.12)" },
+              ]}
+            >
+              <Feather name="layers" size={14} color="#0D9488" />
+            </View>
             <Text style={[styles.statValue, { color: "#0D9488" }]}>
               {totalProps}
             </Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-              Total Properties
+              Total Units
             </Text>
-          </View>
-          <View
+          </TouchableOpacity>
+
+          {/* Deals Closed */}
+          <TouchableOpacity
+            onPress={() => {
+              try {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              } catch {}
+              setSelectedStatus("RENTED");
+            }}
+            activeOpacity={0.8}
             style={[
               styles.statCard,
-              isSmallDevice && { width: "48%", flex: undefined },
               {
                 backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
-                borderColor: colors.border,
+                borderColor:
+                  selectedStatus === "RENTED" ? "#10B981" : colors.border,
+                borderWidth: selectedStatus === "RENTED" ? 2 : 1,
               },
             ]}
           >
+            <View
+              style={[
+                styles.statIconBadge,
+                { backgroundColor: "rgba(16, 185, 129, 0.12)" },
+              ]}
+            >
+              <Feather name="check-circle" size={14} color="#10B981" />
+            </View>
             <Text style={[styles.statValue, { color: "#10B981" }]}>
               {closedCount}
             </Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-              Deals Closed
+              Closed Deals
             </Text>
-          </View>
-          <View
+          </TouchableOpacity>
+
+          {/* Verified Units */}
+          <TouchableOpacity
+            onPress={() => {
+              try {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              } catch {}
+              setSelectedStatus("VERIFIED");
+            }}
+            activeOpacity={0.8}
             style={[
               styles.statCard,
-              isSmallDevice && { width: "48%", flex: undefined },
               {
                 backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
-                borderColor: colors.border,
+                borderColor:
+                  selectedStatus === "VERIFIED" ? "#F59E0B" : colors.border,
+                borderWidth: selectedStatus === "VERIFIED" ? 2 : 1,
               },
             ]}
           >
+            <View
+              style={[
+                styles.statIconBadge,
+                { backgroundColor: "rgba(245, 158, 11, 0.12)" },
+              ]}
+            >
+              <Feather name="shield" size={14} color="#F59E0B" />
+            </View>
             <Text style={[styles.statValue, { color: "#F59E0B" }]}>
               {verifiedCount}
             </Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-              Verified Units
+              Verified
             </Text>
-          </View>
+          </TouchableOpacity>
+
+          {/* Duplicates */}
           <View
             style={[
               styles.statCard,
-              isSmallDevice && { width: "48%", flex: undefined },
               {
                 backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
                 borderColor: dupCount > 0 ? "#F59E0B" : colors.border,
               },
             ]}
           >
+            <View
+              style={[
+                styles.statIconBadge,
+                {
+                  backgroundColor:
+                    dupCount > 0
+                      ? "rgba(245, 158, 11, 0.15)"
+                      : "rgba(100, 116, 139, 0.1)",
+                },
+              ]}
+            >
+              <Feather
+                name={dupCount > 0 ? "alert-triangle" : "copy"}
+                size={14}
+                color={dupCount > 0 ? "#D97706" : "#64748B"}
+              />
+            </View>
             <Text
               style={[
                 styles.statValue,
@@ -369,143 +485,237 @@ export default function SuperAdminDashboard() {
         </View>
 
         {/* Quick Action Navigation Bar */}
-        <View style={[styles.quickActionsRow, isSmallDevice && { flexWrap: "wrap", gap: 8 }]}>
+        <View style={styles.quickActionsRow}>
           <TouchableOpacity
-            onPress={() => setIsCreateUserModalVisible(true)}
-            style={[styles.quickActionBtn, isSmallDevice && { minWidth: "48%", flex: undefined }, { backgroundColor: "#0D9488" }]}
+            onPress={() => {
+              try {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              } catch {}
+              setIsCreateUserModalVisible(true);
+            }}
+            style={[styles.quickActionBtn, { backgroundColor: "#0D9488" }]}
+            activeOpacity={0.8}
           >
-            <Feather name="user-plus" size={16} color="#FFFFFF" />
+            <Feather name="user-plus" size={14} color="#FFFFFF" />
             <Text style={styles.quickActionBtnText}>Add User</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() =>
-              router.push("/SuperAdminPanel/(tabs)/approvals" as any)
-            }
-            style={[styles.quickActionBtn, isSmallDevice && { minWidth: "48%", flex: undefined }, { backgroundColor: "#3B82F6" }]}
+            onPress={() => {
+              try {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              } catch {}
+              router.push("/SuperAdminPanel/(tabs)/approvals" as any);
+            }}
+            style={[styles.quickActionBtn, { backgroundColor: "#3B82F6" }]}
+            activeOpacity={0.8}
           >
-            <Feather name="shield" size={16} color="#FFFFFF" />
+            <Feather name="shield" size={14} color="#FFFFFF" />
             <Text style={styles.quickActionBtnText}>Approvals</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() =>
-              router.push("/SuperAdminPanel/(tabs)/analytics" as any)
-            }
-            style={[styles.quickActionBtn, isSmallDevice && { minWidth: "48%", flex: undefined }, { backgroundColor: "#8B5CF6" }]}
+            onPress={() => {
+              try {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              } catch {}
+              router.push("/SuperAdminPanel/(tabs)/analytics" as any);
+            }}
+            style={[styles.quickActionBtn, { backgroundColor: "#8B5CF6" }]}
+            activeOpacity={0.8}
           >
-            <Ionicons name="receipt-outline" size={16} color="#FFFFFF" />
-            <Text style={styles.quickActionBtnText}>Rent Ledger</Text>
+            <Ionicons name="receipt-outline" size={14} color="#FFFFFF" />
+            <Text style={styles.quickActionBtnText}>Ledger</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() =>
-              router.push("/SuperAdminPanel/(tabs)/settings" as any)
-            }
-            style={[styles.quickActionBtn, isSmallDevice && { minWidth: "48%", flex: undefined }, { backgroundColor: "#0F766E" }]}
+            onPress={() => {
+              try {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              } catch {}
+              router.push("/SuperAdminPanel/(tabs)/settings" as any);
+            }}
+            style={[styles.quickActionBtn, { backgroundColor: "#0F766E" }]}
+            activeOpacity={0.8}
           >
-            <Feather name="sliders" size={16} color="#FFFFFF" />
+            <Feather name="sliders" size={14} color="#FFFFFF" />
             <Text style={styles.quickActionBtnText}>Settings</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Search & Filter Bar */}
-        <View style={styles.searchSection}>
+        {/* Search Input Section */}
+        <View
+          style={[
+            styles.searchBar,
+            {
+              backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          <Feather name="search" size={16} color="#0D9488" />
+          <TextInput
+            style={[
+              styles.searchInput,
+              { color: isDark ? "#FFFFFF" : "#0F172A" },
+            ]}
+            placeholder="Search by ID, owner, phone, locality, or agent..."
+            placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setSearchQuery("")}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <View style={styles.clearSearchBtn}>
+                <Feather name="x" size={12} color="#64748B" />
+              </View>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Status Filter Chips Carousel */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterChipsRow}
+        >
+          {FILTER_OPTIONS.map((opt) => {
+            const isSelected = selectedStatus === opt.id;
+            return (
+              <TouchableOpacity
+                key={opt.id}
+                onPress={() => {
+                  try {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  } catch {}
+                  setSelectedStatus(opt.id);
+                }}
+                style={[
+                  styles.filterChip,
+                  {
+                    backgroundColor: isSelected
+                      ? "#0D9488"
+                      : isDark
+                        ? colors.cardBackground
+                        : "#FFFFFF",
+                    borderColor: isSelected ? "#0D9488" : colors.border,
+                  },
+                ]}
+                activeOpacity={0.75}
+              >
+                <Feather
+                  name={opt.icon}
+                  size={12}
+                  color={
+                    isSelected ? "#FFFFFF" : isDark ? "#94A3B8" : "#64748B"
+                  }
+                />
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    { color: isSelected ? "#FFFFFF" : colors.textSecondary },
+                  ]}
+                >
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Section Header with View Toggle (Grid / List) */}
+        <View style={styles.sectionHeaderRow}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Text
+              style={[
+                styles.sectionTitle,
+                { color: isDark ? "#FFFFFF" : "#0F172A" },
+              ]}
+            >
+              Property Directory
+            </Text>
+            <View
+              style={[
+                styles.countBadge,
+                { backgroundColor: isDark ? "#1E293B" : "#E2E8F0" },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.countBadgeText,
+                  { color: isDark ? "#94A3B8" : "#475569" },
+                ]}
+              >
+                {filteredLeads.length}
+              </Text>
+            </View>
+          </View>
+
+          {/* View Mode Switcher (List / Grid) */}
           <View
             style={[
-              styles.searchBar,
+              styles.viewModeToggle,
               {
-                backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+                backgroundColor: isDark ? colors.cardBackground : "#F1F5F9",
                 borderColor: colors.border,
               },
             ]}
           >
-            <Feather name="search" size={18} color="#64748B" />
-            <TextInput
+            <TouchableOpacity
+              onPress={() => {
+                try {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                } catch {}
+                setViewMode("list");
+              }}
               style={[
-                styles.searchInput,
-                { color: isDark ? "#FFFFFF" : "#0F172A" },
+                styles.viewModeBtn,
+                viewMode === "list" && styles.viewModeBtnActive,
               ]}
-              placeholder="Search by ID, owner, phone, locality, agent..."
-              placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery("")}>
-                <Feather name="x" size={16} color="#64748B" />
-              </TouchableOpacity>
-            )}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
+              <Feather
+                name="list"
+                size={14}
+                color={viewMode === "list" ? "#FFFFFF" : colors.textSecondary}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                try {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                } catch {}
+                setViewMode("grid");
+              }}
+              style={[
+                styles.viewModeBtn,
+                viewMode === "grid" && styles.viewModeBtnActive,
+              ]}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
+              <Feather
+                name="grid"
+                size={14}
+                color={viewMode === "grid" ? "#FFFFFF" : colors.textSecondary}
+              />
+            </TouchableOpacity>
           </View>
-
-          {/* Status Filter Chips */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterChipsRow}
-          >
-            {[
-              "ALL",
-              "NEW",
-              "ASSIGNED",
-              "UNDER_VERIFICATION",
-              "VERIFIED",
-              "RENTED",
-              "SOLD",
-              "REJECTED",
-            ].map((st) => {
-              const isSelected = selectedStatus === st;
-              return (
-                <TouchableOpacity
-                  key={st}
-                  onPress={() => setSelectedStatus(st)}
-                  style={[
-                    styles.filterChip,
-                    {
-                      backgroundColor: isSelected
-                        ? "#0D9488"
-                        : isDark
-                          ? colors.cardBackground
-                          : "#FFFFFF",
-                      borderColor: isSelected ? "#0D9488" : colors.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.filterChipText,
-                      { color: isSelected ? "#FFFFFF" : colors.textSecondary },
-                    ]}
-                  >
-                    {st.replace("_", " ")}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
         </View>
 
-        {/* Property Directory Listing */}
-        <View style={styles.sectionHeaderRow}>
-          <Text
-            style={[
-              styles.sectionTitle,
-              { color: isDark ? "#FFFFFF" : "#0F172A" },
-            ]}
-          >
-            Property & Owner Directory ({filteredLeads.length})
-          </Text>
-          <Text style={[styles.sectionSub, { color: "#0D9488" }]}>
-            UNMASKED PII ACCESS
-          </Text>
-        </View>
-
+        {/* Loading / Empty / Property Listing Content */}
         {loading ? (
-          <ActivityIndicator
-            color="#0D9488"
-            size="large"
-            style={{ marginVertical: 30 }}
-          />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator color="#0D9488" size="large" />
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+              Loading property directory...
+            </Text>
+          </View>
         ) : filteredLeads.length === 0 ? (
           <View
             style={[
@@ -516,7 +726,14 @@ export default function SuperAdminDashboard() {
               },
             ]}
           >
-            <Feather name="inbox" size={36} color="#94A3B8" />
+            <View
+              style={[
+                styles.emptyIconCircle,
+                { backgroundColor: isDark ? "#1E293B" : "#F1F5F9" },
+              ]}
+            >
+              <Feather name="inbox" size={32} color="#94A3B8" />
+            </View>
             <Text
               style={[
                 styles.emptyTitle,
@@ -526,298 +743,78 @@ export default function SuperAdminDashboard() {
               No Properties Found
             </Text>
             <Text style={[styles.emptyDesc, { color: colors.textSecondary }]}>
-              No property records match your current filter criteria.
+              No property records match your current search query or status
+              filter.
             </Text>
+            {searchQuery.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setSearchQuery("")}
+                style={styles.resetFilterBtn}
+              >
+                <Text style={styles.resetFilterBtnText}>
+                  Clear Search Filter
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : viewMode === "grid" ? (
+          <View style={styles.gridContainer}>
+            {filteredLeads.map((lead) => (
+              <PropertyGridItem
+                key={lead._id}
+                lead={lead}
+                isDark={isDark}
+                colors={colors}
+                onCall={() => handleCall(lead.ownerPhone)}
+                onWhatsApp={() => handleWhatsApp(lead.ownerPhone)}
+                onResolveDuplicate={() => handleResolveDuplicate(lead)}
+                onDetails={() => {
+                  setSelectedLead(lead);
+                  setIsDetailModalVisible(true);
+                }}
+                onAssign={() => {
+                  setSelectedLead(lead);
+                  setIsAssignModalVisible(true);
+                }}
+                onDeal={() => {
+                  setSelectedLead(lead);
+                  setIsDealModalVisible(true);
+                }}
+                onCommission={() => {
+                  setSelectedLead(lead);
+                  setIsCommissionModalVisible(true);
+                }}
+              />
+            ))}
           </View>
         ) : (
-          filteredLeads.map((lead) => {
-            const statusColor = getStatusColor(lead.status);
-            const coverImg =
-              lead.coverPhoto ||
-              (lead.photos && lead.photos[0]?.url) ||
-              (lead.images && lead.images[0]);
-
-            return (
-              <View
-                key={lead._id}
-                style={[
-                  styles.propertyCard,
-                  {
-                    backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
-                    borderColor: lead.duplicateFlag?.isDuplicate
-                      ? "#F59E0B"
-                      : colors.border,
-                  },
-                ]}
-              >
-                {/* Duplicate Alert Pill */}
-                {lead.duplicateFlag?.isDuplicate && (
-                  <View
-                    style={[
-                      styles.duplicateWarning,
-                      { backgroundColor: isDark ? "#451A03" : "#FEF3C7" },
-                    ]}
-                  >
-                    <Ionicons name="warning" size={14} color="#D97706" />
-                    <Text
-                      style={[
-                        styles.duplicateWarningText,
-                        { color: isDark ? "#FCD34D" : "#92400E" },
-                      ]}
-                    >
-                      Duplicate Listing Flagged
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => handleResolveDuplicate(lead)}
-                      style={styles.resolveSmallBtn}
-                    >
-                      <Text style={styles.resolveSmallBtnText}>Resolve</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-
-                {/* Card Top Info */}
-                <View style={styles.cardTopRow}>
-                  <View style={styles.imageWrap}>
-                    {coverImg ? (
-                      <Image
-                        source={{ uri: coverImg }}
-                        style={styles.propImg}
-                      />
-                    ) : (
-                      <View
-                        style={[
-                          styles.imgPlaceholder,
-                          { backgroundColor: isDark ? "#1E293B" : "#F1F5F9" },
-                        ]}
-                      >
-                        <Feather name="home" size={24} color="#94A3B8" />
-                      </View>
-                    )}
-                    <View
-                      style={[
-                        styles.typeBadge,
-                        {
-                          backgroundColor:
-                            lead.listingType === "sale" ? "#6D28D9" : "#0D9488",
-                        },
-                      ]}
-                    >
-                      <Text style={styles.typeBadgeText}>
-                        {(lead.listingType || "RENT").toUpperCase()}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={{ flex: 1, gap: 4 }}>
-                    <View style={styles.idRow}>
-                      <Text style={styles.leadId}>{lead.leadId || "LEAD"}</Text>
-                      <View
-                        style={[
-                          styles.statusPill,
-                          { backgroundColor: statusColor + "20" },
-                        ]}
-                      >
-                        <View
-                          style={[
-                            styles.statusDot,
-                            { backgroundColor: statusColor },
-                          ]}
-                        />
-                        <Text
-                          style={[styles.statusText, { color: statusColor }]}
-                        >
-                          {lead.status?.toUpperCase().replace("_", " ")}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <Text
-                      style={[
-                        styles.cardTitle,
-                        { color: isDark ? "#FFFFFF" : "#0F172A" },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {lead.title || lead.propertyType + " in " + lead.locality}
-                    </Text>
-
-                    <Text style={[styles.priceTag, { color: "#0D9488" }]}>
-                      ₹{(lead.expectedPrice || 0).toLocaleString("en-IN")}
-                      <Text style={{ fontSize: 11, color: colors.textMuted }}>
-                        {lead.listingType === "sale" ? " (Total)" : " /month"}
-                      </Text>
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Owner Info Strip (UNMASKED) */}
-                <View
-                  style={[
-                    styles.ownerStrip,
-                    { backgroundColor: isDark ? "#0F172A" : "#F8FAFC" },
-                  ]}
-                >
-                  <View style={{ flex: 1 }}>
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 6,
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.ownerNameText,
-                          { color: isDark ? "#FFFFFF" : "#0F172A" },
-                        ]}
-                      >
-                        {lead.ownerName}
-                      </Text>
-                      {lead.ownerAadhaarLast4 ? (
-                        <View style={styles.aadhaarBadge}>
-                          <Text style={styles.aadhaarBadgeText}>
-                            Adhr: ****{lead.ownerAadhaarLast4}
-                          </Text>
-                        </View>
-                      ) : null}
-                    </View>
-                    <Text style={[styles.ownerPhoneText, { color: "#0D9488" }]}>
-                      +91 {lead.ownerPhone}
-                    </Text>
-                  </View>
-
-                  <View style={styles.commActions}>
-                    <TouchableOpacity
-                      onPress={() => handleCall(lead.ownerPhone)}
-                      style={styles.commBtn}
-                    >
-                      <Feather name="phone" size={14} color="#0D9488" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => handleWhatsApp(lead.ownerPhone)}
-                      style={styles.commBtn}
-                    >
-                      <FontAwesome5 name="whatsapp" size={14} color="#10B981" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                {/* Location & Agent Footnote */}
-                <View style={styles.cardFootnote}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 4,
-                      flex: 1,
-                    }}
-                  >
-                    <Feather name="map-pin" size={12} color="#64748B" />
-                    <Text
-                      style={[
-                        styles.footnoteText,
-                        { color: colors.textSecondary },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {lead.locality || "Delhi NCR"}
-                    </Text>
-                  </View>
-                  <Text
-                    style={[styles.footnoteText, { color: colors.textMuted }]}
-                  >
-                    Agent: {lead.agentName || lead.agent?.name || "Agent"}
-                  </Text>
-                </View>
-
-                {/* Super Admin Quick Actions */}
-                <View style={[styles.cardActionsRow, isSmallDevice && { flexWrap: "wrap", gap: 6 }]}>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setSelectedLead(lead);
-                      setIsDetailModalVisible(true);
-                    }}
-                    style={[styles.outlineBtn, isSmallDevice && { minWidth: "48%", flex: undefined }, { borderColor: colors.border }]}
-                  >
-                    <Feather
-                      name="eye"
-                      size={14}
-                      color={isDark ? "#94A3B8" : "#475569"}
-                    />
-                    <Text
-                      style={[
-                        styles.outlineBtnText,
-                        { color: isDark ? "#CBD5E1" : "#475569" },
-                      ]}
-                    >
-                      Details
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => {
-                      setSelectedLead(lead);
-                      setIsAssignModalVisible(true);
-                    }}
-                    style={[styles.outlineBtn, isSmallDevice && { minWidth: "48%", flex: undefined }, { borderColor: "#3B82F6" }]}
-                  >
-                    <Feather name="user-check" size={14} color="#3B82F6" />
-                    <Text style={[styles.outlineBtnText, { color: "#3B82F6" }]}>
-                      Assign
-                    </Text>
-                  </TouchableOpacity>
-
-                  {!lead.deal?.isClosed && lead.status !== "rented" ? (
-                    <TouchableOpacity
-                      onPress={() => {
-                        setSelectedLead(lead);
-                        setIsDealModalVisible(true);
-                      }}
-                      style={[
-                        styles.actionFilledBtn,
-                        isSmallDevice && { minWidth: "48%", flex: undefined },
-                        { backgroundColor: "#10B981" },
-                      ]}
-                    >
-                      <Feather name="check-circle" size={14} color="#FFFFFF" />
-                      <Text style={styles.actionFilledBtnText}>Close Deal</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      onPress={() => {
-                        setSelectedLead(lead);
-                        setIsDealModalVisible(true);
-                      }}
-                      style={[
-                        styles.actionFilledBtn,
-                        isSmallDevice && { minWidth: "48%", flex: undefined },
-                        { backgroundColor: "#0284C7" },
-                      ]}
-                    >
-                      <Feather name="users" size={14} color="#FFFFFF" />
-                      <Text style={styles.actionFilledBtnText}>Manage Tenant</Text>
-                    </TouchableOpacity>
-                  )}
-
-                  <TouchableOpacity
-                    onPress={() => {
-                      setSelectedLead(lead);
-                      setIsCommissionModalVisible(true);
-                    }}
-                    style={[
-                      styles.actionFilledBtn,
-                      isSmallDevice && { minWidth: "48%", flex: undefined },
-                      { backgroundColor: "#0D9488" },
-                    ]}
-                  >
-                    <Ionicons name="cash-outline" size={14} color="#FFFFFF" />
-                    <Text style={styles.actionFilledBtnText}>Comm.</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })
+          filteredLeads.map((lead) => (
+            <PropertyListItem
+              key={lead._id}
+              lead={lead}
+              isDark={isDark}
+              colors={colors}
+              onCall={() => handleCall(lead.ownerPhone)}
+              onWhatsApp={() => handleWhatsApp(lead.ownerPhone)}
+              onResolveDuplicate={() => handleResolveDuplicate(lead)}
+              onDetails={() => {
+                setSelectedLead(lead);
+                setIsDetailModalVisible(true);
+              }}
+              onAssign={() => {
+                setSelectedLead(lead);
+                setIsAssignModalVisible(true);
+              }}
+              onDeal={() => {
+                setSelectedLead(lead);
+                setIsDealModalVisible(true);
+              }}
+              onCommission={() => {
+                setSelectedLead(lead);
+                setIsCommissionModalVisible(true);
+              }}
+            />
+          ))
         )}
       </ScrollView>
 
@@ -891,13 +888,594 @@ export default function SuperAdminDashboard() {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Sub-Components (Memoized for high scroll performance)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface PropertyItemProps {
+  lead: any;
+  isDark: boolean;
+  colors: any;
+  onCall: () => void;
+  onWhatsApp: () => void;
+  onResolveDuplicate: () => void;
+  onDetails: () => void;
+  onAssign: () => void;
+  onDeal: () => void;
+  onCommission: () => void;
+}
+
+const getStatusBadgeConfig = (st: string) => {
+  switch (st?.toLowerCase()) {
+    case "verified":
+      return {
+        color: "#10B981",
+        bg: "rgba(16, 185, 129, 0.15)",
+        label: "VERIFIED",
+      };
+    case "rented":
+      return {
+        color: "#0D9488",
+        bg: "rgba(13, 148, 136, 0.15)",
+        label: "RENTED",
+      };
+    case "sold":
+      return {
+        color: "#8B5CF6",
+        bg: "rgba(139, 92, 246, 0.15)",
+        label: "SOLD",
+      };
+    case "under_verification":
+      return {
+        color: "#F59E0B",
+        bg: "rgba(245, 158, 11, 0.15)",
+        label: "UNDER REVIEW",
+      };
+    case "assigned":
+      return {
+        color: "#3B82F6",
+        bg: "rgba(59, 130, 246, 0.15)",
+        label: "ASSIGNED",
+      };
+    case "rejected":
+      return {
+        color: "#EF4444",
+        bg: "rgba(239, 68, 68, 0.15)",
+        label: "REJECTED",
+      };
+    default:
+      return {
+        color: "#64748B",
+        bg: "rgba(100, 116, 139, 0.15)",
+        label: (st || "NEW").toUpperCase().replace("_", " "),
+      };
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 1. Grid Card Sub-Component (2-Column Responsive)
+// ─────────────────────────────────────────────────────────────────────────────
+const PropertyGridItem = memo(
+  ({
+    lead,
+    isDark,
+    colors,
+    onCall,
+    onWhatsApp,
+    onResolveDuplicate,
+    onDetails,
+    onAssign,
+    onDeal,
+    onCommission,
+  }: PropertyItemProps) => {
+    const statusCfg = getStatusBadgeConfig(lead.status);
+    const coverImg =
+      lead.coverPhoto ||
+      (lead.photos && lead.photos[0]?.url) ||
+      (lead.images && lead.images[0]);
+
+    return (
+      <View
+        style={[
+          styles.gridCard,
+          {
+            backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+            borderColor: lead.duplicateFlag?.isDuplicate
+              ? "#F59E0B"
+              : colors.border,
+          },
+        ]}
+      >
+        {/* Duplicate Banner */}
+        {lead.duplicateFlag?.isDuplicate && (
+          <TouchableOpacity
+            onPress={onResolveDuplicate}
+            style={[
+              styles.gridDupBanner,
+              { backgroundColor: isDark ? "#451A03" : "#FEF3C7" },
+            ]}
+          >
+            <Ionicons name="warning" size={11} color="#D97706" />
+            <Text
+              style={[
+                styles.gridDupText,
+                { color: isDark ? "#FCD34D" : "#92400E" },
+              ]}
+              numberOfLines={1}
+            >
+              Duplicate
+            </Text>
+            <View style={styles.gridDupPill}>
+              <Text style={styles.gridDupPillText}>Fix</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
+        {/* Image / Header Media */}
+        <View style={styles.gridImageContainer}>
+          {coverImg ? (
+            <Image source={{ uri: coverImg }} style={styles.gridPropImg} />
+          ) : (
+            <View
+              style={[
+                styles.gridImgPlaceholder,
+                { backgroundColor: isDark ? "#1E293B" : "#F1F5F9" },
+              ]}
+            >
+              <Feather name="home" size={26} color="#94A3B8" />
+            </View>
+          )}
+
+          {/* Type Badge */}
+          <View
+            style={[
+              styles.gridTypeBadge,
+              {
+                backgroundColor:
+                  lead.listingType === "sale" ? "#7C3AED" : "#0D9488",
+              },
+            ]}
+          >
+            <Text style={styles.gridTypeBadgeText}>
+              {(lead.listingType || "RENT").toUpperCase()}
+            </Text>
+          </View>
+
+          {/* Price Tag Overlay */}
+          <View style={styles.gridPriceOverlay}>
+            <Text style={styles.gridPriceText}>
+              ₹{(lead.expectedPrice || 0).toLocaleString("en-IN")}
+            </Text>
+          </View>
+        </View>
+
+        {/* Content Body */}
+        <View style={styles.gridBody}>
+          {/* ID & Status Row */}
+          <View style={styles.gridIdRow}>
+            <Text style={styles.gridLeadId} numberOfLines={1}>
+              {lead.leadId || "LEAD"}
+            </Text>
+            <View
+              style={[styles.statusPill, { backgroundColor: statusCfg.bg }]}
+            >
+              <View
+                style={[styles.statusDot, { backgroundColor: statusCfg.color }]}
+              />
+              <Text style={[styles.statusText, { color: statusCfg.color }]}>
+                {statusCfg.label}
+              </Text>
+            </View>
+          </View>
+
+          {/* Property Title */}
+          <Text
+            style={[
+              styles.gridTitle,
+              { color: isDark ? "#FFFFFF" : "#0F172A" },
+            ]}
+            numberOfLines={1}
+          >
+            {lead.title ||
+              `${lead.propertyType || "Property"} in ${lead.locality || "Delhi"}`}
+          </Text>
+
+          {/* Location */}
+          <View style={styles.gridLocRow}>
+            <Feather name="map-pin" size={11} color="#64748B" />
+            <Text
+              style={[styles.gridLocText, { color: colors.textSecondary }]}
+              numberOfLines={1}
+            >
+              {lead.locality || "Delhi NCR"}
+            </Text>
+          </View>
+
+          {/* Owner Details Strip */}
+          <View
+            style={[
+              styles.gridOwnerStrip,
+              { backgroundColor: isDark ? "#0B132B" : "#F8FAFC" },
+            ]}
+          >
+            <View style={{ flex: 1, marginRight: 4 }}>
+              <Text
+                style={[
+                  styles.gridOwnerName,
+                  { color: isDark ? "#FFFFFF" : "#0F172A" },
+                ]}
+                numberOfLines={1}
+              >
+                {lead.ownerName || "Owner"}
+              </Text>
+              <Text style={styles.gridOwnerPhone} numberOfLines={1}>
+                +91 {lead.ownerPhone}
+              </Text>
+            </View>
+
+            {/* Quick Dialers */}
+            <View style={{ flexDirection: "row", gap: 4 }}>
+              <TouchableOpacity onPress={onCall} style={styles.gridCommBtn}>
+                <Feather name="phone" size={11} color="#0D9488" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={onWhatsApp}
+                style={[
+                  styles.gridCommBtn,
+                  { backgroundColor: "rgba(16, 185, 129, 0.12)" },
+                ]}
+              >
+                <FontAwesome5 name="whatsapp" size={11} color="#10B981" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Agent info */}
+          <Text
+            style={[styles.gridAgentText, { color: colors.textMuted }]}
+            numberOfLines={1}
+          >
+            Agent: {lead.agentName || lead.agent?.name || "Unassigned"}
+          </Text>
+
+          {/* Action Grid Buttons */}
+          <View style={styles.gridActionsRow}>
+            <TouchableOpacity
+              onPress={onDetails}
+              style={[styles.gridActionBtn, { borderColor: colors.border }]}
+              activeOpacity={0.75}
+            >
+              <Feather
+                name="eye"
+                size={12}
+                color={isDark ? "#CBD5E1" : "#475569"}
+              />
+              <Text
+                style={[
+                  styles.gridActionBtnText,
+                  { color: isDark ? "#CBD5E1" : "#475569" },
+                ]}
+              >
+                View
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={onAssign}
+              style={[styles.gridActionBtn, { borderColor: "#3B82F6" }]}
+              activeOpacity={0.75}
+            >
+              <Feather name="user-check" size={12} color="#3B82F6" />
+              <Text style={[styles.gridActionBtnText, { color: "#3B82F6" }]}>
+                Assign
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={onDeal}
+              style={[
+                styles.gridActionBtnFilled,
+                {
+                  backgroundColor: lead.deal?.isClosed ? "#0284C7" : "#10B981",
+                },
+              ]}
+              activeOpacity={0.8}
+            >
+              <Feather
+                name={lead.deal?.isClosed ? "users" : "check-circle"}
+                size={12}
+                color="#FFFFFF"
+              />
+              <Text style={styles.gridActionBtnFilledText}>
+                {lead.deal?.isClosed ? "Tenant" : "Deal"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  },
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2. List Card Sub-Component (Full-Width Rich Card)
+// ─────────────────────────────────────────────────────────────────────────────
+const PropertyListItem = memo(
+  ({
+    lead,
+    isDark,
+    colors,
+    onCall,
+    onWhatsApp,
+    onResolveDuplicate,
+    onDetails,
+    onAssign,
+    onDeal,
+    onCommission,
+  }: PropertyItemProps) => {
+    const statusCfg = getStatusBadgeConfig(lead.status);
+    const coverImg =
+      lead.coverPhoto ||
+      (lead.photos && lead.photos[0]?.url) ||
+      (lead.images && lead.images[0]);
+
+    return (
+      <View
+        style={[
+          styles.propertyCard,
+          {
+            backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+            borderColor: lead.duplicateFlag?.isDuplicate
+              ? "#F59E0B"
+              : colors.border,
+          },
+        ]}
+      >
+        {/* Duplicate Alert Pill */}
+        {lead.duplicateFlag?.isDuplicate && (
+          <View
+            style={[
+              styles.duplicateWarning,
+              { backgroundColor: isDark ? "#451A03" : "#FEF3C7" },
+            ]}
+          >
+            <Ionicons name="warning" size={14} color="#D97706" />
+            <Text
+              style={[
+                styles.duplicateWarningText,
+                { color: isDark ? "#FCD34D" : "#92400E" },
+              ]}
+            >
+              Duplicate Listing Flagged
+            </Text>
+            <TouchableOpacity
+              onPress={onResolveDuplicate}
+              style={styles.resolveSmallBtn}
+            >
+              <Text style={styles.resolveSmallBtnText}>Resolve</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Card Top Info */}
+        <View style={styles.cardTopRow}>
+          <View style={styles.imageWrap}>
+            {coverImg ? (
+              <Image source={{ uri: coverImg }} style={styles.propImg} />
+            ) : (
+              <View
+                style={[
+                  styles.imgPlaceholder,
+                  { backgroundColor: isDark ? "#1E293B" : "#F1F5F9" },
+                ]}
+              >
+                <Feather name="home" size={24} color="#94A3B8" />
+              </View>
+            )}
+            <View
+              style={[
+                styles.typeBadge,
+                {
+                  backgroundColor:
+                    lead.listingType === "sale" ? "#7C3AED" : "#0D9488",
+                },
+              ]}
+            >
+              <Text style={styles.typeBadgeText}>
+                {(lead.listingType || "RENT").toUpperCase()}
+              </Text>
+            </View>
+          </View>
+
+          <View style={{ flex: 1, gap: 4 }}>
+            <View style={styles.idRow}>
+              <Text style={styles.leadId}>{lead.leadId || "LEAD"}</Text>
+              <View
+                style={[styles.statusPill, { backgroundColor: statusCfg.bg }]}
+              >
+                <View
+                  style={[
+                    styles.statusDot,
+                    { backgroundColor: statusCfg.color },
+                  ]}
+                />
+                <Text style={[styles.statusText, { color: statusCfg.color }]}>
+                  {statusCfg.label}
+                </Text>
+              </View>
+            </View>
+
+            <Text
+              style={[
+                styles.cardTitle,
+                { color: isDark ? "#FFFFFF" : "#0F172A" },
+              ]}
+              numberOfLines={1}
+            >
+              {lead.title ||
+                (lead.propertyType
+                  ? `${lead.propertyType} in ${lead.locality}`
+                  : "Property Listing")}
+            </Text>
+
+            <Text style={[styles.priceTag, { color: "#0D9488" }]}>
+              ₹{(lead.expectedPrice || 0).toLocaleString("en-IN")}
+              <Text style={{ fontSize: 11, color: colors.textMuted }}>
+                {lead.listingType === "sale" ? " (Total)" : " /month"}
+              </Text>
+            </Text>
+          </View>
+        </View>
+
+        {/* Owner Info Strip (UNMASKED) */}
+        <View
+          style={[
+            styles.ownerStrip,
+            { backgroundColor: isDark ? "#0F172A" : "#F8FAFC" },
+          ]}
+        >
+          <View style={{ flex: 1 }}>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+            >
+              <Text
+                style={[
+                  styles.ownerNameText,
+                  { color: isDark ? "#FFFFFF" : "#0F172A" },
+                ]}
+              >
+                {lead.ownerName || "Owner"}
+              </Text>
+              {lead.ownerAadhaarLast4 ? (
+                <View style={styles.aadhaarBadge}>
+                  <Text style={styles.aadhaarBadgeText}>
+                    Adhr: ****{lead.ownerAadhaarLast4}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+            <Text style={[styles.ownerPhoneText, { color: "#0D9488" }]}>
+              +91 {lead.ownerPhone}
+            </Text>
+          </View>
+
+          <View style={styles.commActions}>
+            <TouchableOpacity onPress={onCall} style={styles.commBtn}>
+              <Feather name="phone" size={13} color="#0D9488" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={onWhatsApp}
+              style={[
+                styles.commBtn,
+                { backgroundColor: "rgba(16, 185, 129, 0.12)" },
+              ]}
+            >
+              <FontAwesome5 name="whatsapp" size={13} color="#10B981" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Location & Agent Footnote */}
+        <View style={styles.cardFootnote}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 4,
+              flex: 1,
+            }}
+          >
+            <Feather name="map-pin" size={12} color="#64748B" />
+            <Text
+              style={[styles.footnoteText, { color: colors.textSecondary }]}
+              numberOfLines={1}
+            >
+              {lead.locality || "Delhi NCR"}
+            </Text>
+          </View>
+          <Text style={[styles.footnoteText, { color: colors.textMuted }]}>
+            Agent: {lead.agentName || lead.agent?.name || "Unassigned"}
+          </Text>
+        </View>
+
+        {/* Super Admin Quick Actions */}
+        <View style={styles.cardActionsRow}>
+          <TouchableOpacity
+            onPress={onDetails}
+            style={[styles.outlineBtn, { borderColor: colors.border }]}
+            activeOpacity={0.75}
+          >
+            <Feather
+              name="eye"
+              size={13}
+              color={isDark ? "#94A3B8" : "#475569"}
+            />
+            <Text
+              style={[
+                styles.outlineBtnText,
+                { color: isDark ? "#CBD5E1" : "#475569" },
+              ]}
+            >
+              Details
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={onAssign}
+            style={[styles.outlineBtn, { borderColor: "#3B82F6" }]}
+            activeOpacity={0.75}
+          >
+            <Feather name="user-check" size={13} color="#3B82F6" />
+            <Text style={[styles.outlineBtnText, { color: "#3B82F6" }]}>
+              Assign
+            </Text>
+          </TouchableOpacity>
+
+          {!lead.deal?.isClosed && lead.status !== "rented" ? (
+            <TouchableOpacity
+              onPress={onDeal}
+              style={[styles.actionFilledBtn, { backgroundColor: "#10B981" }]}
+              activeOpacity={0.8}
+            >
+              <Feather name="check-circle" size={13} color="#FFFFFF" />
+              <Text style={styles.actionFilledBtnText}>Close Deal</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={onDeal}
+              style={[styles.actionFilledBtn, { backgroundColor: "#0284C7" }]}
+              activeOpacity={0.8}
+            >
+              <Feather name="users" size={13} color="#FFFFFF" />
+              <Text style={styles.actionFilledBtnText}>Tenant</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            onPress={onCommission}
+            style={[styles.actionFilledBtn, { backgroundColor: "#0D9488" }]}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="cash-outline" size={13} color="#FFFFFF" />
+            <Text style={styles.actionFilledBtnText}>Comm.</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  },
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Styles
+// ─────────────────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingBottom: 22,
+    paddingHorizontal: 18,
+    paddingBottom: 20,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
@@ -909,14 +1487,14 @@ const styles = StyleSheet.create({
   badgeRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 4,
+    gap: 7,
+    marginBottom: 3,
   },
   panelBadge: {
     color: "#99F6E4",
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: "800",
-    letterSpacing: 1.2,
+    letterSpacing: 1,
   },
   liveIndicator: {
     flexDirection: "row",
@@ -935,27 +1513,27 @@ const styles = StyleSheet.create({
   },
   liveText: {
     color: "#A7F3D0",
-    fontSize: 9,
+    fontSize: 8.5,
     fontWeight: "800",
   },
   headerTitle: {
     color: "#FFFFFF",
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "800",
   },
   hamburgerBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 11,
     backgroundColor: "rgba(255, 255, 255, 0.15)",
     justifyContent: "center",
     alignItems: "center",
   },
   headerIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255, 255, 255, 0.18)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -964,11 +1542,11 @@ const styles = StyleSheet.create({
     top: -2,
     right: -2,
     backgroundColor: "#EF4444",
-    paddingHorizontal: 5,
+    paddingHorizontal: 4,
     paddingVertical: 1,
-    borderRadius: 9,
-    minWidth: 18,
-    height: 18,
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
@@ -976,159 +1554,253 @@ const styles = StyleSheet.create({
   },
   headerBellBadgeText: {
     color: "#FFFFFF",
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "900",
   },
   headerSubtitle: {
     color: "#CCFBF1",
-    fontSize: 12,
+    fontSize: 11.5,
     marginTop: 6,
+    lineHeight: 16,
   },
   content: {
-    padding: 16,
-    gap: 16,
+    padding: 14,
+    gap: 14,
   },
   statsRow: {
     flexDirection: "row",
-    gap: 10,
+    gap: 8,
   },
   statCard: {
     flex: 1,
-    padding: 12,
-    borderRadius: 16,
+    padding: 10,
+    borderRadius: 14,
     borderWidth: 1,
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  statIconBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
   },
   statValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "900",
-    marginBottom: 2,
+    marginBottom: 1,
   },
   statLabel: {
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: "600",
     textAlign: "center",
   },
   quickActionsRow: {
     flexDirection: "row",
-    gap: 8,
+    gap: 7,
   },
   quickActionBtn: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 12,
+    gap: 5,
+    paddingVertical: 9,
+    borderRadius: 11,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
   quickActionBtnText: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
-  },
-  searchSection: {
-    gap: 10,
   },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 14,
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 12,
     borderWidth: 1,
   },
   searchInput: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 12.5,
     padding: 0,
+  },
+  clearSearchBtn: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "rgba(100, 116, 139, 0.12)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   filterChipsRow: {
     flexDirection: "row",
-    gap: 8,
+    gap: 7,
     paddingVertical: 2,
   },
   filterChip: {
-    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: 10,
     borderWidth: 1,
   },
   filterChipText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: "700",
   },
   sectionHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 4,
+    marginTop: 2,
   },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: "800",
   },
-  sectionSub: {
+  countBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  countBadgeText: {
     fontSize: 10,
     fontWeight: "800",
-    letterSpacing: 0.5,
+  },
+  viewModeToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 9,
+    padding: 2.5,
+    borderWidth: 1,
+    gap: 2,
+  },
+  viewModeBtn: {
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 7,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  viewModeBtnActive: {
+    backgroundColor: "#0D9488",
+    shadowColor: "#0D9488",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  loadingContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 40,
+    gap: 10,
+  },
+  loadingText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
   emptyCard: {
-    padding: 30,
-    borderRadius: 20,
+    padding: 28,
+    borderRadius: 18,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
   },
+  emptyIconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
   emptyTitle: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 15,
+    fontWeight: "800",
   },
   emptyDesc: {
-    fontSize: 12,
+    fontSize: 11.5,
     textAlign: "center",
+    lineHeight: 16,
   },
+  resetFilterBtn: {
+    marginTop: 6,
+    backgroundColor: "rgba(13, 148, 136, 0.12)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  resetFilterBtnText: {
+    color: "#0D9488",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // List View Styles
+  // ───────────────────────────────────────────────────────────────────────────
   propertyCard: {
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 1,
-    padding: 14,
-    gap: 12,
+    padding: 12,
+    gap: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
   },
   duplicateWarning: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
     borderRadius: 8,
   },
   duplicateWarningText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: "700",
     flex: 1,
-    marginLeft: 6,
+    marginLeft: 5,
   },
   resolveSmallBtn: {
     backgroundColor: "#D97706",
-    paddingHorizontal: 8,
+    paddingHorizontal: 7,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: 5,
   },
   resolveSmallBtnText: {
     color: "#FFFFFF",
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: "700",
   },
   cardTopRow: {
     flexDirection: "row",
-    gap: 12,
+    gap: 10,
   },
   imageWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 14,
+    width: 76,
+    height: 76,
+    borderRadius: 12,
     overflow: "hidden",
     position: "relative",
   },
@@ -1146,13 +1818,13 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 4,
     left: 4,
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
     paddingVertical: 2,
     borderRadius: 4,
   },
   typeBadgeText: {
     color: "#FFFFFF",
-    fontSize: 9,
+    fontSize: 8.5,
     fontWeight: "800",
   },
   idRow: {
@@ -1161,65 +1833,65 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   leadId: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: "700",
     color: "#64748B",
   },
   statusPill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 3.5,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
   },
   statusDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+    width: 4.5,
+    height: 4.5,
+    borderRadius: 2.25,
   },
   statusText: {
-    fontSize: 10,
-    fontWeight: "700",
+    fontSize: 9,
+    fontWeight: "800",
   },
   cardTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
   },
   priceTag: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "900",
   },
   ownerStrip: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 10,
-    borderRadius: 12,
+    padding: 8,
+    borderRadius: 10,
   },
   ownerNameText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
   },
   ownerPhoneText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
-    marginTop: 2,
+    marginTop: 1,
   },
   aadhaarBadge: {
     backgroundColor: "rgba(13, 148, 136, 0.12)",
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: 4,
   },
   aadhaarBadgeText: {
     color: "#0F766E",
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "700",
   },
   commActions: {
     flexDirection: "row",
-    gap: 6,
+    gap: 5,
   },
   commBtn: {
     width: 28,
@@ -1235,11 +1907,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   footnoteText: {
-    fontSize: 11,
+    fontSize: 10.5,
   },
   cardActionsRow: {
     flexDirection: "row",
-    gap: 8,
+    gap: 6,
     marginTop: 2,
   },
   outlineBtn: {
@@ -1247,13 +1919,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 4,
-    paddingVertical: 8,
-    borderRadius: 10,
+    gap: 3,
+    paddingVertical: 7,
+    borderRadius: 9,
     borderWidth: 1,
   },
   outlineBtnText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: "700",
   },
   actionFilledBtn: {
@@ -1261,13 +1933,190 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 4,
-    paddingVertical: 8,
-    borderRadius: 10,
+    gap: 3,
+    paddingVertical: 7,
+    borderRadius: 9,
   },
   actionFilledBtnText: {
     color: "#FFFFFF",
+    fontSize: 10.5,
+    fontWeight: "700",
+  },
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Grid View Styles (2-Column Grid)
+  // ───────────────────────────────────────────────────────────────────────────
+  gridContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    justifyContent: "space-between",
+  },
+  gridCard: {
+    width: "48.5%",
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  gridDupBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    gap: 4,
+  },
+  gridDupText: {
+    fontSize: 9.5,
+    fontWeight: "700",
+    flex: 1,
+  },
+  gridDupPill: {
+    backgroundColor: "#D97706",
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  gridDupPillText: {
+    color: "#FFFFFF",
+    fontSize: 8.5,
+    fontWeight: "800",
+  },
+  gridImageContainer: {
+    height: 105,
+    width: "100%",
+    position: "relative",
+  },
+  gridPropImg: {
+    width: "100%",
+    height: "100%",
+  },
+  gridImgPlaceholder: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  gridTypeBadge: {
+    position: "absolute",
+    top: 6,
+    left: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 5,
+  },
+  gridTypeBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 8.5,
+    fontWeight: "800",
+  },
+  gridPriceOverlay: {
+    position: "absolute",
+    bottom: 6,
+    right: 6,
+    backgroundColor: "rgba(15, 23, 42, 0.8)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  gridPriceText: {
+    color: "#5EEAD4",
     fontSize: 11,
+    fontWeight: "900",
+  },
+  gridBody: {
+    padding: 9,
+    gap: 6,
+  },
+  gridIdRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  gridLeadId: {
+    fontSize: 9.5,
+    fontWeight: "700",
+    color: "#64748B",
+    maxWidth: "50%",
+  },
+  gridTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    lineHeight: 15,
+  },
+  gridLocRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  gridLocText: {
+    fontSize: 10,
+    fontWeight: "500",
+  },
+  gridOwnerStrip: {
+    padding: 6,
+    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  gridOwnerName: {
+    fontSize: 10.5,
+    fontWeight: "700",
+  },
+  gridOwnerPhone: {
+    fontSize: 9.5,
+    fontWeight: "600",
+    color: "#0D9488",
+    marginTop: 1,
+  },
+  gridCommBtn: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "rgba(13, 148, 136, 0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  gridAgentText: {
+    fontSize: 9,
+  },
+  gridActionsRow: {
+    flexDirection: "row",
+    gap: 4,
+    marginTop: 2,
+  },
+  gridActionBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+    paddingVertical: 5,
+    borderRadius: 7,
+    borderWidth: 1,
+  },
+  gridActionBtnText: {
+    fontSize: 9.5,
+    fontWeight: "700",
+  },
+  gridActionBtnFilled: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+    paddingVertical: 5,
+    borderRadius: 7,
+  },
+  gridActionBtnFilledText: {
+    color: "#FFFFFF",
+    fontSize: 9.5,
     fontWeight: "700",
   },
 });
