@@ -104,18 +104,25 @@ export default function SuperAdminCRMMonitoringScreen() {
 
   // Modals state
   const [isAssignModalVisible, setIsAssignModalVisible] = useState(false);
-  const [selectedLeadForAssign, setSelectedLeadForAssign] = useState<CRMLeadItem | null>(null);
+  const [selectedLeadForAssign, setSelectedLeadForAssign] =
+    useState<CRMLeadItem | null>(null);
 
   const [isHandoffModalVisible, setIsHandoffModalVisible] = useState(false);
-  const [selectedHandoff, setSelectedHandoff] = useState<CRMHandoffItem | null>(null);
+  const [selectedHandoff, setSelectedHandoff] = useState<CRMHandoffItem | null>(
+    null,
+  );
 
   const [isAISummaryModalVisible, setIsAISummaryModalVisible] = useState(false);
-  const [selectedCallForAI, setSelectedCallForAI] = useState<CRMCallItem | null>(null);
+  const [selectedCallForAI, setSelectedCallForAI] =
+    useState<CRMCallItem | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
 
-  const [isCreateCallerModalVisible, setIsCreateCallerModalVisible] = useState(false);
-  const [isCreateLeadModalVisible, setIsCreateLeadModalVisible] = useState(false);
-  const [isScheduleVisitModalVisible, setIsScheduleVisitModalVisible] = useState(false);
+  const [isCreateCallerModalVisible, setIsCreateCallerModalVisible] =
+    useState(false);
+  const [isCreateLeadModalVisible, setIsCreateLeadModalVisible] =
+    useState(false);
+  const [isScheduleVisitModalVisible, setIsScheduleVisitModalVisible] =
+    useState(false);
   const [isTVControlModalVisible, setIsTVControlModalVisible] = useState(false);
 
   // Load all initial data
@@ -149,7 +156,10 @@ export default function SuperAdminCRMMonitoringScreen() {
   };
 
   // Caller Actions
-  const handleToggleCallerStatus = async (callerId: string, currentStatus: "active" | "inactive") => {
+  const handleToggleCallerStatus = async (
+    callerId: string,
+    currentStatus: "active" | "inactive",
+  ) => {
     const nextStatus = currentStatus === "active" ? "inactive" : "active";
     Alert.alert(
       "Confirm Status Change",
@@ -159,15 +169,21 @@ export default function SuperAdminCRMMonitoringScreen() {
         {
           text: "Confirm",
           onPress: async () => {
-            await dispatch(toggleCRMCallerStatus({ id: callerId, status: nextStatus }));
+            await dispatch(
+              toggleCRMCallerStatus({ id: callerId, status: nextStatus }),
+            );
           },
         },
-      ]
+      ],
     );
   };
 
   // Lead Assign Action
-  const handleAssignLead = async (leadId: string, teleCallerId: string, reason?: string) => {
+  const handleAssignLead = async (
+    leadId: string,
+    teleCallerId: string,
+    reason?: string,
+  ) => {
     await dispatch(assignCRMLead({ leadId, teleCallerId, reason }));
     await dispatch(fetchCRMDashboard({}));
   };
@@ -190,18 +206,40 @@ export default function SuperAdminCRMMonitoringScreen() {
       l.leadId.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus =
       leadStatusFilter === "ALL" ||
-      (leadStatusFilter === "UNASSIGNED" ? !l.assignedTo : l.status === leadStatusFilter.toLowerCase());
+      (leadStatusFilter === "UNASSIGNED"
+        ? !l.assignedTo
+        : l.status === leadStatusFilter.toLowerCase());
     return matchesSearch && matchesStatus;
   });
 
-  const TABS: Array<{ id: CRMActiveTab; label: string; icon: any; count?: number }> = [
+  const TABS: Array<{
+    id: CRMActiveTab;
+    label: string;
+    icon: any;
+    count?: number;
+  }> = [
     { id: "overview", label: "Overview", icon: "grid" },
     { id: "callers", label: "Callers", icon: "users", count: callers.length },
     { id: "leads", label: "Leads", icon: "target", count: leads.length },
     { id: "calls", label: "Calls", icon: "phone-call", count: calls.length },
-    { id: "visits", label: "Site Visits", icon: "map-pin", count: siteVisits.length },
-    { id: "followups", label: "Follow-ups", icon: "calendar", count: followUps.length },
-    { id: "handoffs", label: "Handoffs", icon: "check-circle", count: handoffs.length },
+    {
+      id: "visits",
+      label: "Site Visits",
+      icon: "map-pin",
+      count: siteVisits.length,
+    },
+    {
+      id: "followups",
+      label: "Follow-ups",
+      icon: "calendar",
+      count: followUps.length,
+    },
+    {
+      id: "handoffs",
+      label: "Handoffs",
+      icon: "check-circle",
+      count: handoffs.length,
+    },
     { id: "audit", label: "Audit Logs", icon: "shield" },
   ];
 
@@ -228,14 +266,25 @@ export default function SuperAdminCRMMonitoringScreen() {
         ]}
       >
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Feather name="arrow-left" size={20} color={isDark ? "#FFFFFF" : "#0F172A"} />
+          <Feather
+            name="arrow-left"
+            size={20}
+            color={isDark ? "#FFFFFF" : "#0F172A"}
+          />
         </TouchableOpacity>
 
         <View style={styles.headerTitleCol}>
-          <Text style={[styles.headerTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
+          <Text
+            style={[
+              styles.headerTitle,
+              { color: isDark ? "#FFFFFF" : "#0F172A" },
+            ]}
+          >
             CRM & Tele-Caller Ops
           </Text>
-          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+          <Text
+            style={[styles.headerSubtitle, { color: colors.textSecondary }]}
+          >
             Super Admin Control & Telephony Desk
           </Text>
         </View>
@@ -244,7 +293,11 @@ export default function SuperAdminCRMMonitoringScreen() {
           style={[styles.tvBtn, { backgroundColor: "#0D9488" }]}
           onPress={() => setIsTVControlModalVisible(true)}
         >
-          <MaterialCommunityIcons name="television-play" size={16} color="#FFFFFF" />
+          <MaterialCommunityIcons
+            name="television-play"
+            size={16}
+            color="#FFFFFF"
+          />
         </TouchableOpacity>
       </View>
 
@@ -265,7 +318,9 @@ export default function SuperAdminCRMMonitoringScreen() {
                   isActive
                     ? { backgroundColor: "#0D9488", borderColor: "#0D9488" }
                     : {
-                        backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
+                        backgroundColor: isDark
+                          ? colors.cardBackground
+                          : "#FFFFFF",
                         borderColor: colors.border,
                       },
                 ]}
@@ -279,7 +334,13 @@ export default function SuperAdminCRMMonitoringScreen() {
                 <Text
                   style={[
                     styles.tabPillText,
-                    { color: isActive ? "#FFFFFF" : isDark ? "#E2E8F0" : "#475569" },
+                    {
+                      color: isActive
+                        ? "#FFFFFF"
+                        : isDark
+                          ? "#E2E8F0"
+                          : "#475569",
+                    },
                   ]}
                 >
                   {tab.label}
@@ -288,7 +349,11 @@ export default function SuperAdminCRMMonitoringScreen() {
                   <View
                     style={[
                       styles.tabCountPill,
-                      { backgroundColor: isActive ? "rgba(255,255,255,0.25)" : "#F1F5F9" },
+                      {
+                        backgroundColor: isActive
+                          ? "rgba(255,255,255,0.25)"
+                          : "#F1F5F9",
+                      },
                     ]}
                   >
                     <Text
@@ -311,13 +376,20 @@ export default function SuperAdminCRMMonitoringScreen() {
       <ScrollView
         style={styles.mainScroll}
         contentContainerStyle={styles.mainScrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
         showsVerticalScrollIndicator={false}
       >
         {/* ── TAB 1: OVERVIEW ─────────────────────────────────────────────── */}
         {activeTab === "overview" && (
           <View>
-            <Text style={[styles.sectionHeading, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
+            <Text
+              style={[
+                styles.sectionHeading,
+                { color: isDark ? "#FFFFFF" : "#0F172A" },
+              ]}
+            >
               Executive Operations Summary
             </Text>
 
@@ -377,7 +449,10 @@ export default function SuperAdminCRMMonitoringScreen() {
               />
               <CRMStatCard
                 title="Pending Handoffs"
-                value={dashboardStats?.pendingHandoffs ?? handoffs.filter((h) => h.status === "pending").length}
+                value={
+                  dashboardStats?.pendingHandoffs ??
+                  handoffs.filter((h: any) => h.status === "pending").length
+                }
                 icon="check-circle"
                 gradientColors={["#F59E0B", "#D97706"]}
                 subtitle="Awaiting deal closure"
@@ -397,7 +472,12 @@ export default function SuperAdminCRMMonitoringScreen() {
                 },
               ]}
             >
-              <Text style={[styles.boxTitle, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
+              <Text
+                style={[
+                  styles.boxTitle,
+                  { color: isDark ? "#FFFFFF" : "#0F172A" },
+                ]}
+              >
                 Quick CRM Actions
               </Text>
               <View style={styles.actionButtonsGrid}>
@@ -405,10 +485,20 @@ export default function SuperAdminCRMMonitoringScreen() {
                   style={styles.actionGridItem}
                   onPress={() => setIsCreateCallerModalVisible(true)}
                 >
-                  <View style={[styles.actionIconCircle, { backgroundColor: "#EFF6FF" }]}>
+                  <View
+                    style={[
+                      styles.actionIconCircle,
+                      { backgroundColor: "#EFF6FF" },
+                    ]}
+                  >
                     <Feather name="user-plus" size={18} color="#2563EB" />
                   </View>
-                  <Text style={[styles.actionGridLabel, { color: colors.textSecondary }]}>
+                  <Text
+                    style={[
+                      styles.actionGridLabel,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     Add Caller
                   </Text>
                 </TouchableOpacity>
@@ -417,10 +507,20 @@ export default function SuperAdminCRMMonitoringScreen() {
                   style={styles.actionGridItem}
                   onPress={() => setIsCreateLeadModalVisible(true)}
                 >
-                  <View style={[styles.actionIconCircle, { backgroundColor: "#F0FDF4" }]}>
+                  <View
+                    style={[
+                      styles.actionIconCircle,
+                      { backgroundColor: "#F0FDF4" },
+                    ]}
+                  >
                     <Feather name="plus-circle" size={18} color="#16A34A" />
                   </View>
-                  <Text style={[styles.actionGridLabel, { color: colors.textSecondary }]}>
+                  <Text
+                    style={[
+                      styles.actionGridLabel,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     New Lead
                   </Text>
                 </TouchableOpacity>
@@ -429,10 +529,24 @@ export default function SuperAdminCRMMonitoringScreen() {
                   style={styles.actionGridItem}
                   onPress={() => setIsTVControlModalVisible(true)}
                 >
-                  <View style={[styles.actionIconCircle, { backgroundColor: "#FEF3C7" }]}>
-                    <MaterialCommunityIcons name="television" size={18} color="#D97706" />
+                  <View
+                    style={[
+                      styles.actionIconCircle,
+                      { backgroundColor: "#FEF3C7" },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name="television"
+                      size={18}
+                      color="#D97706"
+                    />
                   </View>
-                  <Text style={[styles.actionGridLabel, { color: colors.textSecondary }]}>
+                  <Text
+                    style={[
+                      styles.actionGridLabel,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     TV Display
                   </Text>
                 </TouchableOpacity>
@@ -441,10 +555,20 @@ export default function SuperAdminCRMMonitoringScreen() {
                   style={styles.actionGridItem}
                   onPress={() => setActiveTab("audit")}
                 >
-                  <View style={[styles.actionIconCircle, { backgroundColor: "#FDF4FF" }]}>
+                  <View
+                    style={[
+                      styles.actionIconCircle,
+                      { backgroundColor: "#FDF4FF" },
+                    ]}
+                  >
                     <Feather name="shield" size={18} color="#9333EA" />
                   </View>
-                  <Text style={[styles.actionGridLabel, { color: colors.textSecondary }]}>
+                  <Text
+                    style={[
+                      styles.actionGridLabel,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     Audit Logs
                   </Text>
                 </TouchableOpacity>
@@ -457,7 +581,12 @@ export default function SuperAdminCRMMonitoringScreen() {
         {activeTab === "callers" && (
           <View>
             <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionHeading, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
+              <Text
+                style={[
+                  styles.sectionHeading,
+                  { color: isDark ? "#FFFFFF" : "#0F172A" },
+                ]}
+              >
                 Tele-Callers Directory ({callers.length})
               </Text>
               <TouchableOpacity
@@ -499,7 +628,10 @@ export default function SuperAdminCRMMonitoringScreen() {
               >
                 <Feather name="search" size={15} color="#94A3B8" />
                 <TextInput
-                  style={[styles.searchInput, { color: isDark ? "#FFFFFF" : "#0F172A" }]}
+                  style={[
+                    styles.searchInput,
+                    { color: isDark ? "#FFFFFF" : "#0F172A" },
+                  ]}
                   placeholder="Search by client name, mobile, lead ID..."
                   placeholderTextColor="#94A3B8"
                   value={searchQuery}
@@ -521,33 +653,52 @@ export default function SuperAdminCRMMonitoringScreen() {
             </View>
 
             {/* Status Filter Pills */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statusScroll}>
-              {["ALL", "UNASSIGNED", "NEW", "CONTACTED", "QUALIFIED", "SITE_VISIT", "NEGOTIATION", "CONVERTED", "LOST"].map(
-                (st) => (
-                  <TouchableOpacity
-                    key={st}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.statusScroll}
+            >
+              {[
+                "ALL",
+                "UNASSIGNED",
+                "NEW",
+                "CONTACTED",
+                "QUALIFIED",
+                "SITE_VISIT",
+                "NEGOTIATION",
+                "CONVERTED",
+                "LOST",
+              ].map((st) => (
+                <TouchableOpacity
+                  key={st}
+                  style={[
+                    styles.filterPill,
+                    leadStatusFilter === st
+                      ? { backgroundColor: "#0D9488", borderColor: "#0D9488" }
+                      : {
+                          backgroundColor: isDark
+                            ? colors.cardBackground
+                            : "#FFFFFF",
+                          borderColor: colors.border,
+                        },
+                  ]}
+                  onPress={() => setLeadStatusFilter(st)}
+                >
+                  <Text
                     style={[
-                      styles.filterPill,
-                      leadStatusFilter === st
-                        ? { backgroundColor: "#0D9488", borderColor: "#0D9488" }
-                        : {
-                            backgroundColor: isDark ? colors.cardBackground : "#FFFFFF",
-                            borderColor: colors.border,
-                          },
+                      styles.filterPillText,
+                      {
+                        color:
+                          leadStatusFilter === st
+                            ? "#FFFFFF"
+                            : colors.textSecondary,
+                      },
                     ]}
-                    onPress={() => setLeadStatusFilter(st)}
                   >
-                    <Text
-                      style={[
-                        styles.filterPillText,
-                        { color: leadStatusFilter === st ? "#FFFFFF" : colors.textSecondary },
-                      ]}
-                    >
-                      {st}
-                    </Text>
-                  </TouchableOpacity>
-                )
-              )}
+                    {st}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </ScrollView>
 
             {/* Leads List */}
@@ -571,7 +722,12 @@ export default function SuperAdminCRMMonitoringScreen() {
         {/* ── TAB 4: CALLS ────────────────────────────────────────────────── */}
         {activeTab === "calls" && (
           <View>
-            <Text style={[styles.sectionHeading, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
+            <Text
+              style={[
+                styles.sectionHeading,
+                { color: isDark ? "#FFFFFF" : "#0F172A" },
+              ]}
+            >
               Telephony Monitoring ({calls.length} Logs)
             </Text>
 
@@ -588,7 +744,12 @@ export default function SuperAdminCRMMonitoringScreen() {
         {/* ── TAB 5: SITE VISITS ──────────────────────────────────────────── */}
         {activeTab === "visits" && (
           <View>
-            <Text style={[styles.sectionHeading, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
+            <Text
+              style={[
+                styles.sectionHeading,
+                { color: isDark ? "#FFFFFF" : "#0F172A" },
+              ]}
+            >
               Field Site Inspections ({siteVisits.length})
             </Text>
 
@@ -597,24 +758,43 @@ export default function SuperAdminCRMMonitoringScreen() {
                 key={visit._id}
                 visit={visit}
                 onStatusPress={(v) => {
-                  Alert.alert("Update Visit Status", "Select new visit stage:", [
-                    {
-                      text: "Confirmed",
-                      onPress: () =>
-                        dispatch(updateCRMSiteVisitStatus({ id: v._id, status: "confirmed" })),
-                    },
-                    {
-                      text: "Client Reached",
-                      onPress: () =>
-                        dispatch(updateCRMSiteVisitStatus({ id: v._id, status: "client_reached" })),
-                    },
-                    {
-                      text: "Completed",
-                      onPress: () =>
-                        dispatch(updateCRMSiteVisitStatus({ id: v._id, status: "completed" })),
-                    },
-                    { text: "Cancel", style: "cancel" },
-                  ]);
+                  Alert.alert(
+                    "Update Visit Status",
+                    "Select new visit stage:",
+                    [
+                      {
+                        text: "Confirmed",
+                        onPress: () =>
+                          dispatch(
+                            updateCRMSiteVisitStatus({
+                              id: v._id,
+                              status: "confirmed",
+                            }),
+                          ),
+                      },
+                      {
+                        text: "Client Reached",
+                        onPress: () =>
+                          dispatch(
+                            updateCRMSiteVisitStatus({
+                              id: v._id,
+                              status: "client_reached",
+                            }),
+                          ),
+                      },
+                      {
+                        text: "Completed",
+                        onPress: () =>
+                          dispatch(
+                            updateCRMSiteVisitStatus({
+                              id: v._id,
+                              status: "completed",
+                            }),
+                          ),
+                      },
+                      { text: "Cancel", style: "cancel" },
+                    ],
+                  );
                 }}
               />
             ))}
@@ -624,7 +804,12 @@ export default function SuperAdminCRMMonitoringScreen() {
         {/* ── TAB 6: FOLLOW-UPS ───────────────────────────────────────────── */}
         {activeTab === "followups" && (
           <View>
-            <Text style={[styles.sectionHeading, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
+            <Text
+              style={[
+                styles.sectionHeading,
+                { color: isDark ? "#FFFFFF" : "#0F172A" },
+              ]}
+            >
               Follow-Up Tasks ({followUps.length})
             </Text>
 
@@ -641,7 +826,12 @@ export default function SuperAdminCRMMonitoringScreen() {
         {/* ── TAB 7: HANDOFFS ─────────────────────────────────────────────── */}
         {activeTab === "handoffs" && (
           <View>
-            <Text style={[styles.sectionHeading, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
+            <Text
+              style={[
+                styles.sectionHeading,
+                { color: isDark ? "#FFFFFF" : "#0F172A" },
+              ]}
+            >
               Qualified Lead Handoff Desk ({handoffs.length})
             </Text>
 
@@ -661,7 +851,9 @@ export default function SuperAdminCRMMonitoringScreen() {
                 }}
               >
                 <View style={styles.handoffHeader}>
-                  <Text style={[styles.handoffId, { color: colors.primary }]}>{h.handoffId}</Text>
+                  <Text style={[styles.handoffId, { color: colors.primary }]}>
+                    {h.handoffId}
+                  </Text>
                   <View
                     style={[
                       styles.handoffStatusPill,
@@ -670,8 +862,8 @@ export default function SuperAdminCRMMonitoringScreen() {
                           h.status === "accepted"
                             ? "#DCFCE7"
                             : h.status === "rejected"
-                            ? "#FEE2E2"
-                            : "#FEF3C7",
+                              ? "#FEE2E2"
+                              : "#FEF3C7",
                       },
                     ]}
                   >
@@ -683,8 +875,8 @@ export default function SuperAdminCRMMonitoringScreen() {
                             h.status === "accepted"
                               ? "#15803D"
                               : h.status === "rejected"
-                              ? "#DC2626"
-                              : "#B45309",
+                                ? "#DC2626"
+                                : "#B45309",
                         },
                       ]}
                     >
@@ -693,11 +885,22 @@ export default function SuperAdminCRMMonitoringScreen() {
                   </View>
                 </View>
 
-                <Text style={[styles.handoffClient, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
+                <Text
+                  style={[
+                    styles.handoffClient,
+                    { color: isDark ? "#FFFFFF" : "#0F172A" },
+                  ]}
+                >
                   {h.lead?.name} ({h.lead?.phone})
                 </Text>
-                <Text style={[styles.handoffCaller, { color: colors.textSecondary }]}>
-                  Pitched by: {h.teleCaller?.name} ({h.teleCaller?.staffId || "Staff"})
+                <Text
+                  style={[
+                    styles.handoffCaller,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  Pitched by: {h.teleCaller?.name} (
+                  {h.teleCaller?.staffId || "Staff"})
                 </Text>
               </TouchableOpacity>
             ))}
@@ -707,7 +910,12 @@ export default function SuperAdminCRMMonitoringScreen() {
         {/* ── TAB 8: AUDIT LOGS ───────────────────────────────────────────── */}
         {activeTab === "audit" && (
           <View>
-            <Text style={[styles.sectionHeading, { color: isDark ? "#FFFFFF" : "#0F172A" }]}>
+            <Text
+              style={[
+                styles.sectionHeading,
+                { color: isDark ? "#FFFFFF" : "#0F172A" },
+              ]}
+            >
               System Audit Trail ({auditLogs.length} Events)
             </Text>
 
@@ -723,7 +931,9 @@ export default function SuperAdminCRMMonitoringScreen() {
                 ]}
               >
                 <View style={styles.auditHeader}>
-                  <Text style={[styles.auditAction, { color: colors.primary }]}>{log.action}</Text>
+                  <Text style={[styles.auditAction, { color: colors.primary }]}>
+                    {log.action}
+                  </Text>
                   <Text style={[styles.auditTime, { color: colors.textMuted }]}>
                     {new Date(log.createdAt).toLocaleTimeString("en-IN", {
                       hour: "2-digit",
@@ -733,8 +943,14 @@ export default function SuperAdminCRMMonitoringScreen() {
                     })}
                   </Text>
                 </View>
-                <Text style={[styles.auditActor, { color: isDark ? "#E2E8F0" : "#334155" }]}>
-                  Actor: {log.actor?.name || "System"} ({log.actorRole?.toUpperCase()}) • IP: {log.ip || "127.0.0.1"}
+                <Text
+                  style={[
+                    styles.auditActor,
+                    { color: isDark ? "#E2E8F0" : "#334155" },
+                  ]}
+                >
+                  Actor: {log.actor?.name || "System"} (
+                  {log.actorRole?.toUpperCase()}) • IP: {log.ip || "127.0.0.1"}
                 </Text>
               </View>
             ))}
@@ -761,9 +977,21 @@ export default function SuperAdminCRMMonitoringScreen() {
           setIsHandoffModalVisible(false);
           setSelectedHandoff(null);
         }}
-        onAccept={(id, remarks) => dispatch(reviewCRMHandoff({ id, action: "accept", remarks })).then(() => {})}
-        onReject={(id, remarks) => dispatch(reviewCRMHandoff({ id, action: "reject", remarks })).then(() => {})}
-        onReturn={(id, remarks) => dispatch(reviewCRMHandoff({ id, action: "return", remarks })).then(() => {})}
+        onAccept={(id, remarks) =>
+          dispatch(reviewCRMHandoff({ id, action: "accept", remarks })).then(
+            () => {},
+          )
+        }
+        onReject={(id, remarks) =>
+          dispatch(reviewCRMHandoff({ id, action: "reject", remarks })).then(
+            () => {},
+          )
+        }
+        onReturn={(id, remarks) =>
+          dispatch(reviewCRMHandoff({ id, action: "return", remarks })).then(
+            () => {},
+          )
+        }
       />
 
       <AISummaryModal
@@ -809,9 +1037,15 @@ export default function SuperAdminCRMMonitoringScreen() {
       <TVShowcaseControlModal
         visible={isTVControlModalVisible}
         showcases={showcases}
-        onPlay={(id, index) => dispatch(controlCRMShowcase({ id, action: "play", propertyIndex: index }))}
+        onPlay={(id, index) =>
+          dispatch(
+            controlCRMShowcase({ id, action: "play", propertyIndex: index }),
+          )
+        }
         onNext={(id) => dispatch(controlCRMShowcase({ id, action: "next" }))}
-        onPrevious={(id) => dispatch(controlCRMShowcase({ id, action: "previous" }))}
+        onPrevious={(id) =>
+          dispatch(controlCRMShowcase({ id, action: "previous" }))
+        }
         onClose={() => setIsTVControlModalVisible(false)}
       />
     </View>
